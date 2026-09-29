@@ -10,43 +10,16 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: security-${{ github.ref }}
   cancel-in-progress: true
 
+# NOTE: CodeQL code scanning needs GitHub Advanced Security on private
+# repositories, so it is intentionally not enabled here. The security stack is:
+# Dependabot alerts (enabled) + the dependency-graph submission below + the
+# weekly grouped Dependabot updates from .github/dependabot.yml.
 jobs:
-  codeql:
-    name: CodeQL Security Scan
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: gradle
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
-        with:
-          languages: java-kotlin
-          build-mode: manual
-
-      - name: Build for analysis
-        run: ./gradlew build --no-daemon
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v4
-
   dependency-submission:
     name: Submit Dependency Graph
     runs-on: ubuntu-24.04

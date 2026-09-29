@@ -114,7 +114,7 @@ def last_tag(cwd: Path) -> Optional[str]:
             parse_semver(tag)
             return tag
         except ValueError:
-            continue  # skip non-semver tags (e.g. date tags) rather than crash
+            continue  # skip tags that are not vMAJOR.MINOR.PATCH rather than crash
     return None
 
 
@@ -240,7 +240,14 @@ def main() -> int:
         return 2
 
     if args.current_tag:
-        version = format_semver(parse_semver(args.current_tag))
+        try:
+            version = format_semver(parse_semver(args.current_tag))
+        except ValueError:
+            print(
+                f"error: tag {args.current_tag!r} is not vMAJOR.MINOR.PATCH — release tags must be semantic",
+                file=sys.stderr,
+            )
+            return 2
         tag = f"v{version}"
         previous = run(["git", "tag", "--list", "v*", "--sort=-v:refname"], cwd=root).splitlines()
         previous = [t.strip() for t in previous if t.strip() and t.strip() != tag]
