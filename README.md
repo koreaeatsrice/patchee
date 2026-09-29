@@ -1,5 +1,8 @@
 # Patchee
 
+> [!NOTE]
+> **Disclaimer:** The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod. Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
+
 **A small server-side GTNH 1.7.10 addon that fixes two cross-mod annoyances — without touching anyone else's jar.**
 
 Patchee is a *patcher addon*: it changes the behaviour of other mods (JABBA,
@@ -129,8 +132,17 @@ Standard GTNH toolchain (the repo is the official
 ./gradlew build           # -> build/libs/patchee-<version>.jar
 ```
 
-Pushing a git tag named after the version (e.g. `1.0.0`) triggers the GitHub
-workflow that builds and attaches the release artifacts.
+CI (`.github/workflows/ci.yml`) builds the mod on every push to `main` and then
+boots a throwaway dev server with the self-test enabled, failing the run unless
+it logs `[SelfTest] result: N passed, 0 failed`. Security analysis (CodeQL +
+dependency graph submission) runs on the weekly schedule and on pushes
+(`security.yml`).
+
+Releases are prepared by the `Release` workflow: dispatch it from the Actions
+tab (choose `auto`/`patch`/`minor`/`major`, plus an optional dry run), or push a
+`v*` tag. It generates grouped release notes from Conventional Commits, updates
+`CHANGELOG.md`, tags the release, builds the jar, and opens a **draft** GitHub
+release for review. `release.py` and its unit tests live in `.github/scripts/`.
 
 ## Verified against
 
