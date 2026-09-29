@@ -42,3 +42,5 @@
 *.[pP][sS]1             text eol=crlf
 
 *[aA][uU][tT][oO][gG][eE][nN][eE][rR][aA][tT][eE][dD]* binary
+gradlew text eol=lf
+gradlew.bat text eol=crlf
