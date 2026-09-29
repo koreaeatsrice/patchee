@@ -222,6 +222,7 @@ def main() -> int:
     group.add_argument("--current-tag")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", ""))
+    parser.add_argument("--remote", default="origin", help="git remote to push the release commit and tags to")
     parser.add_argument("--dir", default=".")
     args = parser.parse_args()
 
@@ -266,7 +267,9 @@ def main() -> int:
     run(["git", "add", "CHANGELOG.md"], cwd=root)
     run(["git", "commit", "-m", f"chore(release): {tag}"], cwd=root)
     run(["git", "tag", "-a", tag, "-m", f"Release {tag}"], cwd=root)
-    print(f"committed and tagged {tag}")
+    # Push the release commit and the new tag so the later jobs can check the tag out.
+    run(["git", "push", args.remote, "HEAD:main", "--tags"], cwd=root)
+    print(f"committed, tagged and pushed {tag}")
     write_outputs(tag, next_version, False)
     return 0
 
