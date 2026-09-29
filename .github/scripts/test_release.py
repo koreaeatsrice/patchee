@@ -12,6 +12,7 @@ from release import (
     calculate_next_version,
     categorize_commits,
     generate_release_notes,
+    last_tag,
     parse_semver,
     update_changelog,
 )
@@ -151,6 +152,18 @@ All notable changes to this project will be documented in this file.
             updated = p.read_text(encoding="utf-8")
             self.assertIn("# Changelog", updated)
             self.assertIn("## [1.0.0] - ", updated)
+
+    def test_last_tag_skips_non_semver(self):
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            subprocess.run(["git", "init", "-q"], cwd=tmpdir, check=True)
+            subprocess.run(["git", "config", "user.email", "test@example.invalid"], cwd=tmpdir, check=True)
+            subprocess.run(["git", "config", "user.name", "test"], cwd=tmpdir, check=True)
+            subprocess.run(["git", "commit", "--allow-empty", "-m", "init", "-q"], cwd=tmpdir, check=True)
+            for tag in ["vnot-a-version", "v2", "v1.4.0", "v1.3.0"]:
+                subprocess.run(["git", "tag", tag], cwd=tmpdir, check=True)
+            self.assertEqual(last_tag(Path(tmpdir)), "v1.4.0")
 
 
 if __name__ == "__main__":

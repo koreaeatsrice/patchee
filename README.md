@@ -134,9 +134,9 @@ Standard GTNH toolchain (the repo is the official
 
 CI (`.github/workflows/ci.yml`) builds the mod on every push to `main` and then
 boots a throwaway dev server with the self-test enabled, failing the run unless
-it logs `[SelfTest] result: N passed, 0 failed`. Security analysis (CodeQL +
-dependency graph submission) runs on the weekly schedule and on pushes
-(`security.yml`).
+it logs `[SelfTest] result: N passed, 0 failed`. Dependency-graph submission
+runs weekly and on pushes (`security.yml`), feeding Dependabot alerts
+(enabled); weekly dependency PRs are auto-merged when green.
 
 Releases are prepared by the `Release` workflow: dispatch it from the Actions
 tab (choose `auto`/`patch`/`minor`/`major`, plus an optional dry run), or push a
