@@ -14,7 +14,9 @@ public class CommonProxy {
 
         Patchee.LOG.info(
             "Patchee " + Tags.VERSION
-                + " — dollyFix="
+                + " — enabled="
+                + Config.enabled
+                + " dollyFix="
                 + Config.enableDollyFix
                 + " mattockFix="
                 + Config.enableMattockFix
@@ -23,12 +25,16 @@ public class CommonProxy {
     }
 
     public void postInit(FMLPostInitializationEvent event) {
+        if (!Config.enabled) {
+            Patchee.LOG.info("[patchee] master switch is off — all fixes skipped");
+            return;
+        }
         DollyFix.apply();
         MattockFix.apply();
     }
 
     public void serverStarted(FMLServerStartedEvent event) {
-        if (Config.runSelfTest) {
+        if (Config.enabled && Config.runSelfTest) {
             SelfTest.run();
         }
     }
