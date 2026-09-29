@@ -1,15 +1,10 @@
 version: 2
+# CI-only dependency updates: the Gradle ecosystem is intentionally NOT enabled
+# because Dependabot cannot resolve this project's build (the GTNH /
+# RetroFuturaGradle toolchain needs the GTNH maven and a full toolchain setup
+# that Dependabot's sandbox does not provide), which only produces failing
+# update runs. The mod's Gradle deps are pinned by the GTNH toolchain anyway.
 updates:
-  - package-ecosystem: "gradle"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    groups:
-      gradle-dependencies:
-        patterns: [ "*" ]
-        update-types: [ "minor", "patch" ]
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
