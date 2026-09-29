@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Build (includes Spotless formatting + Checkstyle)
+        run: ./gradlew build --no-daemon
+
+      - name: Upload release jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: patchee-jar
+          path: |
+            build/libs/*.jar
+            !build/libs/*-dev.jar
+            !build/libs/*-sources.jar
+          if-no-files-found: error
+
+  smoke:
+    name: Server smoke test (self-test must pass)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: gradle
+
+      - name: Prepare a throwaway server with the self-test enabled
+        run: |
+          mkdir -p run/server/config
+          echo "eula=true" > run/server/eula.txt
+          echo "eula=true" > run/eula.txt
+          printf 'online-mode=false\nlevel-name=patchee-ci\nspawn-protection=0\nmax-players=2\nview-distance=4\n' > run/server/server.properties
+          printf 'online-mode=false\n' > run/server.properties
+          cat > run/server/config/patchee.cfg <<'EOF'
+          # Configuration file
+
+          general {
+              B:enableDollyFix=true
+              B:enableMattockFix=true
+              B:runSelfTest=true
+              S:extraDollyClasses <
+               >
+          }
+          EOF
+
+      - name: Boot the dev server (bounded) and verify the patches
+        run: |
+          set -u
+          (timeout 900 ./gradlew runServer --no-daemon > server.log 2>&1 || true) &
+          found=0
+          for _ in $(seq 1 130); do
+            if grep -q "\[SelfTest\] result:" server.log 2>/dev/null; then found=1; break; fi
+            sleep 6
+          done
+          echo "=== patchee log lines ==="
+          grep -E "\[patchee\]" server.log || true
+          if [ "$found" != "1" ]; then
+            echo "::error::self-test never produced a result line"
+            tail -150 server.log
+            exit 1
+          fi
+          fail=0
+          grep -q "\[DollyFix\] Dolly now accepts" server.log || { echo "::error::DollyFix did not arm"; fail=1; }
+          grep -q "\[MattockFix\] mattock shovel materials" server.log || { echo "::error::MattockFix did not arm"; fail=1; }
+          grep -q "\[SelfTest\] result: [0-9]* passed, 0 failed" server.log || { echo "::error::self-test reported failures"; grep "\[SelfTest\] FAIL" server.log || true; fail=1; }
+          exit "$fail"
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: patchee-smoke-server-log
+          path: server.log
+          if-no-files-found: warn
