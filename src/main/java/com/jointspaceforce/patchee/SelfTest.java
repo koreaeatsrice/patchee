@@ -10,7 +10,7 @@ import net.minecraft.item.Item;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
 
-import com.jointspaceforce.patchee.fixes.DollyFix;
+import com.jointspaceforce.patchee.features.DollyFeature;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 
@@ -89,7 +89,7 @@ public final class SelfTest {
         // check below runs the gate's own final loop against JABBA's live
         // classExtensions list:
         // `for (Class c : classExtensions) if (c.isInstance(te))`.
-        for (String name : DollyFix.beeHousingClassNames()) {
+        for (String name : DollyFeature.beeHousingClassNames()) {
             Class<?> clazz;
             try {
                 clazz = Class.forName(name);

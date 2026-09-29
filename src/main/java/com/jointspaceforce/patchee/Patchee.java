@@ -18,12 +18,12 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * single-block crafted bee housings (Forestry Apiary, Gendustry Industrial
  * Apiary, MagicBees Magic Apiary) because Jabba's movable-class list is a
  * hardcoded static that is built once at class-init. Patchee appends those
- * classes to it at postInit ({@link com.jointspaceforce.patchee.fixes.DollyFix}).
+ * classes to it at postInit ({@link com.jointspaceforce.patchee.features.DollyFeature}).
  *
  * <p>
  * 2. <b>Tinkers' Construct Mattock.</b> The mattock's shovel-material list
  * lacks sand/snow, so it digs them at hand speed. Patchee extends the static
- * array ({@link com.jointspaceforce.patchee.fixes.MattockFix}). The Forge
+ * array ({@link com.jointspaceforce.patchee.features.MattockFeature}). The Forge
  * "shovel" tool class is deliberately NOT claimed, so no other mod's
  * behaviour changes.
  *

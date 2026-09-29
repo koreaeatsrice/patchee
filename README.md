@@ -3,156 +3,101 @@
 > [!NOTE]
 > **Disclaimer:** The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod. Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
 
-**A small server-side GTNH 1.7.10 addon that fixes two cross-mod annoyances — without touching anyone else's jar.**
+**A small add-on for our GTNH server that fixes a few annoying things — and never takes anyone else's mod apart to do it.**
 
-Patchee is a *patcher addon*: it changes the behaviour of other mods (JABBA,
-Tinkers' Construct) at runtime through reflection, so pack updates never
-silently revert the fixes and no third-party jar is ever edited. Clients need
-nothing installed (`acceptableRemoteVersions = "*"`).
+## Do I need to install anything?
 
-## What it fixes
+| I am… | Then… |
+|---|---|
+| Just playing on the server | **Nothing to do.** Patchee runs on the server; players need zero files. |
+| Running the server | Go to **[Install on the server](docs/INSTALL-SERVER.md)** — takes about two minutes. |
+| Curious about optional client mods | Go to **[Optional client mods](docs/CLIENT-MODS.md)**. |
+| Building or changing the code | Go to **[DEVELOPER.md](DEVELOPER.md)**. |
 
-### 1. JABBA Dolly × bee housings
+## What it fixes, in plain words
 
-The Dolly picks up barrels and chests, plus a hardcoded list of other block
-types — which does **not** include the bee housings, so you cannot move a
-working apiary with its bees.
+1. **Moving bee houses.** You could not move an apiary with a JABBA Dolly — it refused. Now the Dolly picks up Forestry apiaries, Forestry bee houses, Gendustry industrial apiaries and MagicBees magic apiaries — **bees still inside**.
+2. **Digging sand and snow with a Mattock.** The Tinkers' Construct mattock dug sand and snow slowly, and often dropped nothing. Now it digs them like a shovel.
+3. **Big GregTech tanks that make you sick.** Carrying a filled Super Tank or Super Chest gave you hunger, slow legs, slow mining and weakness. Those effects now never stick.
 
-Patchee adds the **single-block crafted bee housings** to that list:
+Every fix can be turned off, and all switches live in **one settings file** — see **[docs/SETTINGS.md](docs/SETTINGS.md)**.
 
-| Mod | Block | TileEntity class |
+## What you need
+
+- The GTNH pack on Minecraft 1.7.10. Nothing else.
+- Patchee changes mods the pack already has (JABBA, Tinkers' Construct, GregTech). If one of them is not installed, that one fix simply does nothing — the server still starts fine.
+- **Only the server needs the mod. Players need nothing**, and everything works for normal clients.
+
+## Install in three steps
+
+1. Open the **[Releases page](https://github.com/koreaeatsrice/patchee/releases)**, click the newest release, and under **Assets** download **`patchee-<version>.jar`**. Do **not** pick a file with `-dev` in the name — that one is for programmers only.
+2. Put the file into the server's **`mods`** folder (do not unzip it).
+3. **Restart the server the normal way** — not "reload".
+
+Full steps, and what to look for in the log: **[docs/INSTALL-SERVER.md](docs/INSTALL-SERVER.md)**.
+
+## Word list
+
+- **jar** — a mod file. Do not unzip it; just drop it in the folder.
+- **mods folder** — the folder where mod files go, called `mods` inside the server folder.
+- **settings file** — a small text file with on/off switches: `config/patchee.cfg`.
+- **log** — the text file where the game writes what it is doing: `logs/latest.log`.
+
+## Something is wrong?
+
+Look here first: **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — find what you see, do what it says.
+Still stuck? Send: your Patchee version (the jar name), your GTNH version, and the log lines around the word `patchee`.
+
+## The details (for the curious)
+
+<details>
+<summary><b>Which bee houses exactly? (click)</b></summary>
+
+| Mod | Block | Internal class |
 |---|---|---|
 | Forestry | Apiary | `forestry.apiculture.tiles.TileApiary` |
 | Forestry | Bee House | `forestry.apiculture.tiles.TileBeehouse` |
 | Gendustry | Industrial Apiary | `net.bdew.gendustry.machines.apiary.TileApiary` |
 | MagicBees | Magic Apiary | `magicbees.tileentity.TileEntityMagicApiary` |
 
-(Two Forestry blocks share one block id and differ by metadata; Jabba's pickup
-stores that metadata, and the self-test verifies both housing classes are
-accepted. Forestry's housing base class `TileBeeHousingBase` is also
-registered — its only concrete subclasses are exactly the Apiary and the Bee
-House.)
+A moved apiary keeps the direction it was facing (cosmetic only). Natural world
+hives and the big multi-block Alveary are deliberately **not** included — the
+Alveary is a giant structure, and moving it one block at a time breaks it just
+like mining it does. Jabba's own 1 MB size limit for a pickup still applies.
+</details>
 
-**Out of scope by design:** natural/world-generation hives (Forestry
-`TileSwarm`, Binnie, MagicBees hives) and the multi-block Alveary (moving one
-block of a multiblock at a time leaves the structure temporarily broken —
-same as mining it).
+<details>
+<summary><b>What changes about the mattock? (click)</b></summary>
 
-Small honest caveats: a moved apiary keeps the facing it had (Jabba has no
-placement hook for bee housings — cosmetic only), and meta 0/2 of Forestry's
-block are both covered. `extraDollyClasses` should only list blocks whose
-tile entity is always created (Jabba restores NBT without a null check).
-Jabba's own 1 MB "too complex" limit still applies to any pickup, and — for
-completeness — Binnie's alveary parts are already movable in stock Jabba
-(`binnie.core.machines.TileEntityMachine` is on Jabba's list), independent of
-Patchee.
+The mattock's "shovel list" is missing sand and snow, so Patchee adds them
+(`sand`, snow layers, snow blocks). Existing mattocks are fixed by themselves.
+Other mods still see the mattock as an axe only — exactly like the game always
+did. The only other place inside Tinkers' Construct that reads the list is the
+"Omni" active modifier, which gains the same behaviour.
+</details>
 
-### 2. Tinkers' Construct Mattock × sand/snow
+<details>
+<summary><b>What changes about the tanks? (click)</b></summary>
 
-The mattock is an axe+shovel hybrid, but its shovel-material list is missing
-sand and snow, so it digs them at hand speed. Patchee extends the mattock's
-static `shovelMaterials` array with `sand`, `snow` (layers) and `craftedSnow`
-(blocks). Existing mattocks benefit immediately — the game reads the array on
-every dig.
+GregTech's code gives the four effects to whoever **carries** a filled Super
+Tank / Super Chest — it is hardcoded and has no off switch. Patchee clears the
+four effects once per player tick while such an item is carried, on both the
+server and the client (if the player has the mod too). While a filled tank is
+carried, those four effects are cleared no matter where they came from — the
+pack's pollution can also use them.
+</details>
 
-The Forge "shovel" tool class is deliberately **not** claimed (`getToolClasses`
-still answers `{"axe"}`), so other mods' harvest-tool checks are untouched.
-The one visible side effect is the intended one: the mattock now answers
-`canHarvestBlock`/`isEffective` as **true** for those three materials — that
-is what makes the blocks drop (snow layer → snowball, snow block → 4
-snowballs). The only other reader of that answer inside Tinkers' Construct is
-the "Omni" active modifier, which gains the same behaviour. This is the same
-result the older bytecode patch produced, now delivered as a proper addon.
+<details>
+<summary><b>How does it work without editing any jars? (click)</b></summary>
 
-## How it works (and why the obvious route doesn't)
-
-- **Dolly:** Jabba's pickup gate (`ItemBarrelMover`) matches the target
-  TileEntity against a static `classExtensions` list that is built once at
-  class-init from `classExtensionsNames`. Patchee appends the bee-housing
-  classes to that list at `postInit`. (Jabba ships a
-  `MovableRegistrar`/`IDollyHandler` API package, but nothing in Jabba ever
-  calls it — it is dead code and cannot be used.)
-- **Mattock:** `DualHarvestTool.getDigSpeed`/`isEffective` fetch the arrays
-  through `getEffectiveMaterials()`/`getEffectiveSecondaryMaterials()` on
-  every call, so replacing the static field works for existing items.
-
-Both fixes fail soft. When the target mod is simply **not installed**, the fix
-is skipped with an INFO line (normal on smaller packs). If the target mod is
-present but has changed shape (field renamed, class moved), Patchee logs an
-ERROR with the details and leaves that mod untouched instead of crashing.
-
-## Config (`config/patchee.cfg`)
-
-```
-general {
-    B:enableDollyFix=true      # bee-housing dolly support
-    B:enableMattockFix=true    # mattock digs sand/snow at shovel speed
-    S:extraDollyClasses=       # extra TileEntity class names the Dolly should accept
-    B:runSelfTest=false        # one-shot PASS/FAIL check at server start (see below)
-}
-```
-
-`extraDollyClasses` notes: entries must be TileEntity classes (anything else is
-ignored with a warning); a class that Jabba's own blacklist already lists
-(exact class match, in Jabba's config) stays blocked; a class that cannot be
-loaded is skipped and reported in the log line.
-
-## Install
-
-Server only: drop `patchee-<version>.jar` into the pack's `mods/` folder and
-restart. Use the plain release jar — **not** the `-dev` one (that one is only
-for development environments). It needs, but does not bundle, the mods it
-patches (JABBA, Tinkers' Construct, and whichever bee mods you run).
-
-## Verify it armed (recommended after install or a pack update)
-
-Set `B:runSelfTest=true`, restart once, and read the log:
-
-- `[SelfTest] PASS  dolly accepts …` for each installed bee housing,
-- `[SelfTest] PASS  dolly refuses …` for a natural hive and a furnace,
-- `[SelfTest] PASS  mattock isEffective(sand) = true`,
-- a final `[SelfTest] result: N passed, 0 failed`.
-
-Then set it back to `false`. The same lines to look for after a normal boot:
-
-- `[DollyFix] Dolly now accepts N bee-housing class(es)`
-- `[MattockFix] mattock shovel materials 3 -> 6 (+3)`
-
-If a line says "not installed — skipped", that mod is absent from the pack
-(fine). If it says "failed — … left unchanged", the target mod changed shape:
-check `patchee` on GitHub and re-verify the field/class names.
-
-## Build
-
-Standard GTNH toolchain (the repo is the official
-[ExampleMod1.7.10 starter](https://github.com/GTNewHorizons/ExampleMod1.7.10)):
-
-```sh
-./gradlew spotlessApply   # formatting
-./gradlew build           # -> build/libs/patchee-<version>.jar
-```
-
-CI (`.github/workflows/ci.yml`) builds the mod on every push to `main` and then
-boots a throwaway dev server with the self-test enabled, failing the run unless
-it logs `[SelfTest] result: N passed, 0 failed`. Dependency-graph submission
-runs weekly and on pushes (`security.yml`), feeding Dependabot alerts
-(enabled); weekly dependency PRs are auto-merged when green.
-
-Releases are prepared by the `Release` workflow: dispatch it from the Actions
-tab (choose `auto`/`patch`/`minor`/`major`, plus an optional dry run), or push a
-`v*` tag. It generates grouped release notes from Conventional Commits, updates
-`CHANGELOG.md`, tags the release, builds the jar, and opens a **draft** GitHub
-release for review. `release.py` and its unit tests live in `.github/scripts/`.
-
-## Verified against
-
-- JABBA (GTNH fork), `ItemBarrelMover` — static list at class-init, gate at
-  `for (Class c : classExtensions) if (c.isInstance(te)) return true;`.
-- Tinkers' Construct (GTNH fork) `1.14.108-GTNH` — javap-verified:
-  `static Material[] shovelMaterials` (package-private, not final) is read
-  per call by `getEffectiveSecondaryMaterials()`.
-- Forestry (GTNH fork), Gendustry, MagicBees — class names read from source.
+Patchee changes the other mods' live data at server start through reflection —
+a list of movable blocks (JABBA) and a list of materials (Tinkers' Construct) —
+and watches the player's inventory for the tank fix. Nothing is ever patched
+into anyone else's jar, so a pack update can't silently undo the fixes. If a
+patched mod is missing, the fix skips itself with a note; if one changed shape,
+the fix logs an error and leaves it alone. The server always starts.
+</details>
 
 ## Licence
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE). Built for the Joint Space Force server.
