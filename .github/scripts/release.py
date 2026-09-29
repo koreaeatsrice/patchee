@@ -106,8 +106,16 @@ def parse_commit(subject: str, body: str) -> Tuple[Optional[str], Optional[str],
 
 def last_tag(cwd: Path) -> Optional[str]:
     out = run(["git", "tag", "--list", "v*", "--sort=-v:refname"], cwd=cwd)
-    tags = [t for t in out.splitlines() if t.strip()]
-    return tags[0].strip() if tags else None
+    for tag in out.splitlines():
+        tag = tag.strip()
+        if not tag:
+            continue
+        try:
+            parse_semver(tag)
+            return tag
+        except ValueError:
+            continue  # skip non-semver tags (e.g. date tags) rather than crash
+    return None
 
 
 def collect_commits(since: Optional[str], cwd: Path) -> List[Commit]:
