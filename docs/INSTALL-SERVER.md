@@ -2,7 +2,7 @@
 
 **You only do this once.** It takes about two minutes.
 
-Patchee is a **server-side** mod. Only the server needs the file. Players do nothing.
+Patchee runs on the server. The server needs the file; players do not need anything to join. Players who want the changes on their own game — and their client in step with the server — can install the same jar: [CLIENT-MODS.md](CLIENT-MODS.md).
 
 ---
 
@@ -69,7 +69,7 @@ Vein mining on this server is provided by **VeinMiner** — a mod the GTNH pack 
 
 - Patchee then keeps it to **sand, clay and gravel, 64 blocks max per vein** (see [SETTINGS.md](SETTINGS.md)).
 - **Do not edit VeinMiner's own files in `config/veinminer/`** — Patchee rewrites them at every start.
-- Players need nothing: without the client mod they type `/veinminer mode sneak` once (again after each server restart), then sneak while mining.
+- Players need nothing extra for this: without the client mod they type `/veinminer mode sneak` once (again after each server restart), then sneak while mining. The client copy only adds the hotkey and menu.
 
 ## How to undo it
 

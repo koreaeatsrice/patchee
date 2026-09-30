@@ -44,7 +44,10 @@ banner field and pipeline steps all follow from it.
 - **Every fix stays fail-soft** (INFO skip on absent mods, ERROR + untouched on
   malformed targets) and **config-gated**.
 - One jar must stay **client-optional** and **acceptableRemoteVersions = "*"**:
-  players never need it.
+  clients never need it to join. Without a client copy, a client is out of step
+  where a fix changes something (e.g. the server clears the tank effects while
+  the client still applies them, and the mattock's sand/snow speed differs) —
+  that is accepted; the docs describe it.
 
 ## CI / CD
 
