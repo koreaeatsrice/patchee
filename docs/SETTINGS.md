@@ -38,7 +38,7 @@ Everything after a `#` on a line is a note for humans — the game ignores it.
 
 - **Dolly fix:** a moved apiary keeps the direction it was facing (cosmetic only). Natural world hives and the big multi-block Alveary are deliberately **not** included. Moving a block out of a finished Alveary still breaks it — same as mining it.
 - **Mattock fix:** other mods still see the mattock as an axe only — same as the game always did. Nothing else about the tool changes.
-- **Supertank fix:** while a filled tank/chest is carried, those four effects are cleared no matter where they came from (the pack's pollution can also use them). And for the *feeling* to disappear (screen icons, slow legs), **you** need the mod too — installing it on your client is optional: [CLIENT-MODS.md](CLIENT-MODS.md).
+- **Supertank fix:** while a filled tank/chest is carried, those four effects are cleared no matter where they came from (the pack's pollution can also use them). A client without Patchee still shows the effects and the slow movement (out of step with the server); installing the same jar on your client clears them there too — optional: [CLIENT-MODS.md](CLIENT-MODS.md).
 - **VeinMiner fix:** it needs **VeinMiner installed on the server** — the pack does not include it ([INSTALL-SERVER.md](INSTALL-SERVER.md) has the optional part). **Never edit the files in `config/veinminer/` yourself** — Patchee rewrites them at every start. Players without the VeinMiner client mod can still vein-mine: type `/veinminer mode sneak` once (again after a server restart), then sneak while mining.
 - All fixes fail soft: if one of the patched mods is missing or changed shape, that fix simply does nothing and writes a note in the log. The server always starts.
 

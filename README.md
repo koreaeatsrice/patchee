@@ -12,7 +12,7 @@ A small add-on for our GTNH server that fixes a few things I personally find ann
 
 | I am… | Then… |
 |---|---|
-| Playing on a server running this | Nothing required. Patchee runs on the server; this mod is not required to join |
+| Playing on a server running this | Nothing required to join. Patchee runs on the server; a client copy is optional (see "What you need" below) |
 | Running the server | See [Install on the server](docs/INSTALL-SERVER.md) |
 | Looking for optional client mods | See [Optional client mods](docs/CLIENT-MODS.md) |
 | Building or changing the code | See [DEVELOPER.md](DEVELOPER.md) |
@@ -30,7 +30,8 @@ Patchee fixes four things. Each has its own on/off switch, and all switches are 
 
 - The GTNH pack for Minecraft 1.7.10.
 - Patchee modifies mods the pack already has (JABBA, Tinkers' Construct, GregTech), plus VeinMiner if it is installed. If one of them is missing, that part of Patchee does nothing; the server still starts.
-- Only the server needs the mod. Players do not need to install anything.
+- The server must have the mod. Clients do not need it to join.
+- A client without it is out of step with the server wherever Patchee changes something: sand and snow break faster than that client expects, and a filled Super Tank still shows its effects on that client while the server does not apply them. Install the same jar on a client to have the changes there too.
 
 ## Install
 
@@ -75,7 +76,7 @@ The mattock's shovel list is missing sand and snow, so Patchee adds them (sand, 
 <details>
 <summary><b>What changes about the tanks?</b></summary>
 
-GregTech applies the four effects to whoever carries a filled Super Tank or Super Chest. It is hardcoded and has no off switch. Patchee clears the four effects once per player tick while such an item is carried — on the server, and on the client if the player has Patchee installed too. While a filled tank or chest is carried, those four effects are cleared whatever their source; the pack's pollution can also apply them.
+GregTech applies the four effects to whoever carries a filled Super Tank or Super Chest. It is hardcoded and has no off switch. Patchee clears the four effects once per player tick while such an item is carried — on the server, and on the client if the player has Patchee installed too. A client without Patchee keeps showing the effects (and the slow movement) while the server ignores them. While a filled tank or chest is carried, those four effects are cleared whatever their source; the pack's pollution can also apply them.
 </details>
 
 <details>
