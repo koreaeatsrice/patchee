@@ -12,9 +12,11 @@ jobs:
   automerge:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    if: github.actor == 'dependabot[bot]'
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]' && startsWith(github.head_ref, 'dependabot/')
     steps:
       - name: Enable auto-merge (squash)
-        run: gh pr merge "${{ github.event.pull_request.number }}" --squash --auto --repo "${{ github.repository }}"
+        run: gh pr merge "$PR_NUMBER" --squash --auto --repo "$REPO"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
