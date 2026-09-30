@@ -44,6 +44,11 @@ dependencies {
         exclude group: "net.industrial-craft", module: "industrialcraft-2"
         exclude group: "com.mod-buildcraft", module: "buildcraft"
     }
+    // VeinConfig's end-to-end target. Patchee writes VeinMiner's config files
+    // (config/veinminer/*), so the dev server has to run VeinMiner to prove the
+    // write, the load order and the read-back verification. Runtime-only: it is
+    // a separate mod the pack owner installs, never published or bundled.
+    runtimeOnlyNonPublishable(rfg.deobf("curse.maven:veinminer-67133:2435506"))
     // NOTE: Gendustry (Industrial Apiary) and MagicBees (Magic Apiary) are also
     // patched by DollyFix, but their jitpack dev artifacts drag in unresolvable
     // transitive pins (CodeChickenLib 1.1.5.1 is gone), so the local dev

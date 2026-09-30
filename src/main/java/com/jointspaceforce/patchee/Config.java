@@ -1,8 +1,10 @@
 package com.jointspaceforce.patchee;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.minecraftforge.common.config.Configuration;
@@ -43,12 +45,38 @@ public class Config {
         + "log PASS/FAIL per check. Switch it on for one server start after installing or "
         + "after a pack update, then set it back to false.";
 
+    private static final String VEIN_BLOCK_LIMIT_COMMENT = "VeinConfig: the most blocks one vein may have (VeinMiner limit.blocks). "
+        + "The default 64 keeps a vein small. Set with care.";
+
+    private static final String VEIN_RADIUS_COMMENT = "VeinConfig: how far from the first block VeinMiner searches "
+        + "(VeinMiner limit.radius). The default 20 is the whole reach of the mod.";
+
+    private static final String VEIN_BLOCKS_COMMENT = "VeinConfig: the blocks that may be vein-mined, separated by commas. "
+        + "Format is mod:block or mod:block/metadata (metadata = exact data value; no metadata = any). "
+        + "Everything not listed here cannot be vein-mined. The default allows the three soft building "
+        + "blocks: minecraft:sand/0,minecraft:sand/1,minecraft:clay,minecraft:gravel.";
+
+    private static final String VEIN_EXTRA_TOOLS_COMMENT = "VeinConfig: extra item names (mod:item) to accept as shovels for vein mining, "
+        + "separated by commas. Added on top of the built-in shovel list.";
+
     public static boolean enabled = true;
     public static String[] extraDollyClasses = new String[0];
     public static boolean runSelfTest = false;
+    public static int veinBlockLimit = 64;
+    public static int veinRadius = 20;
+    public static String veinBlocks = "minecraft:sand/0,minecraft:sand/1,minecraft:clay,minecraft:gravel";
+    public static String veinExtraTools = "";
 
     /** The snapshot the pipeline reads; replaced by every load. */
-    private static Toggles toggles = new Snapshot(true, Collections.<String, Boolean>emptyMap(), false, new String[0]);
+    private static Toggles toggles = new Snapshot(
+        true,
+        Collections.<String, Boolean>emptyMap(),
+        false,
+        new String[0],
+        64,
+        20,
+        new String[] { "minecraft:sand/0", "minecraft:sand/1", "minecraft:clay", "minecraft:gravel" },
+        new String[0]);
 
     /** The immutable config snapshot the features read. */
     public static Toggles toggles() {
@@ -76,7 +104,24 @@ public class Config {
 
             runSelfTest = configuration.getBoolean("runSelfTest", CATEGORY, runSelfTest, RUN_SELF_TEST_COMMENT);
 
-            toggles = new Snapshot(enabled, featureSwitches, runSelfTest, extraDollyClasses.clone());
+            veinBlockLimit = configuration
+                .get(CATEGORY, "veinConfig.blockLimit", veinBlockLimit, VEIN_BLOCK_LIMIT_COMMENT)
+                .getInt(veinBlockLimit);
+            veinRadius = configuration.get(CATEGORY, "veinConfig.radius", veinRadius, VEIN_RADIUS_COMMENT)
+                .getInt(veinRadius);
+            veinBlocks = configuration.getString("veinConfig.blocks", CATEGORY, veinBlocks, VEIN_BLOCKS_COMMENT);
+            veinExtraTools = configuration
+                .getString("veinConfig.extraTools", CATEGORY, veinExtraTools, VEIN_EXTRA_TOOLS_COMMENT);
+
+            toggles = new Snapshot(
+                enabled,
+                featureSwitches,
+                runSelfTest,
+                extraDollyClasses.clone(),
+                veinBlockLimit,
+                veinRadius,
+                splitList(veinBlocks),
+                splitList(veinExtraTools));
         } finally {
             if (configuration.hasChanged()) {
                 configuration.save();
@@ -91,12 +136,21 @@ public class Config {
         private final Map<String, Boolean> features;
         private final boolean selfTest;
         private final String[] extraDolly;
+        private final int veinBlockLimit;
+        private final int veinRadius;
+        private final String[] veinBlocks;
+        private final String[] veinExtraTools;
 
-        private Snapshot(boolean master, Map<String, Boolean> features, boolean selfTest, String[] extraDolly) {
+        private Snapshot(boolean master, Map<String, Boolean> features, boolean selfTest, String[] extraDolly,
+            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools) {
             this.master = master;
             this.features = Collections.unmodifiableMap(features);
             this.selfTest = selfTest;
             this.extraDolly = extraDolly;
+            this.veinBlockLimit = veinBlockLimit;
+            this.veinRadius = veinRadius;
+            this.veinBlocks = veinBlocks;
+            this.veinExtraTools = veinExtraTools;
         }
 
         @Override
@@ -119,5 +173,41 @@ public class Config {
         public String[] extraDollyClasses() {
             return extraDolly.clone();
         }
+
+        @Override
+        public int veinBlockLimit() {
+            return veinBlockLimit;
+        }
+
+        @Override
+        public int veinRadius() {
+            return veinRadius;
+        }
+
+        @Override
+        public String[] veinBlocks() {
+            return veinBlocks.clone();
+        }
+
+        @Override
+        public String[] veinExtraTools() {
+            return veinExtraTools.clone();
+        }
+    }
+
+    /** A comma-separated config value as a trimmed list, blanks dropped. */
+    private static String[] splitList(String value) {
+        if (value == null || value.trim()
+            .isEmpty()) {
+            return new String[0];
+        }
+        List<String> parts = new ArrayList<String>();
+        for (String part : value.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) {
+                parts.add(trimmed);
+            }
+        }
+        return parts.toArray(new String[0]);
     }
 }

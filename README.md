@@ -19,13 +19,14 @@
 1. **Moving bee houses.** You could not move an apiary with a JABBA Dolly — it refused. Now the Dolly picks up Forestry apiaries, Forestry bee houses, Gendustry industrial apiaries and MagicBees magic apiaries — **bees still inside**.
 2. **Digging sand and snow with a Mattock.** The Tinkers' Construct mattock dug sand and snow slowly, and often dropped nothing. Now it digs them like a shovel.
 3. **Big GregTech tanks that make you sick.** Carrying a filled Super Tank or Super Chest gave you hunger, slow legs, slow mining and weakness. Those effects now never stick.
+4. **VeinMiner going overboard.** VeinMiner — a mod we add on the server, it is not part of the pack — chain-mines a whole vein from one swing. The server now keeps it to small stuff only: **sand (both kinds), clay and gravel — 64 blocks max per vein**. If VeinMiner is not installed, this fix does nothing.
 
 Every fix can be turned off, and all switches live in **one settings file** — see **[docs/SETTINGS.md](docs/SETTINGS.md)**.
 
 ## What you need
 
 - The GTNH pack on Minecraft 1.7.10. Nothing else.
-- Patchee changes mods the pack already has (JABBA, Tinkers' Construct, GregTech). If one of them is not installed, that one fix simply does nothing — the server still starts fine.
+- Patchee changes mods the pack already has (JABBA, Tinkers' Construct, GregTech) — plus **VeinMiner**, which we add on top of the pack. If one of them is not installed, that one fix simply does nothing — the server still starts fine.
 - **Only the server needs the mod. Players need nothing**, and everything works for normal clients.
 
 ## Install in three steps
@@ -88,10 +89,23 @@ pack's pollution can also use them.
 </details>
 
 <details>
+<summary><b>What changes about VeinMiner? (click)</b></summary>
+
+VeinMiner decides what it may chain-mine from its own two settings files.
+Patchee rewrites them at every server start — **before** VeinMiner reads
+them — so only sand (both data values), clay and gravel can be vein-mined,
+up to 64 blocks per vein. Block auto-detection and the "all blocks / all
+tools" overrides are forced off, so ores and logs cannot sneak back in.
+VeinMiner stays a separate mod: Patchee never bundles or edits it, and the
+fix skips itself when VeinMiner is not installed.
+</details>
+
+<details>
 <summary><b>How does it work without editing any jars? (click)</b></summary>
 
 Patchee changes the other mods' live data at server start through reflection —
-a list of movable blocks (JABBA) and a list of materials (Tinkers' Construct) —
+a list of movable blocks (JABBA) and a list of materials (Tinkers' Construct),
+rewrites VeinMiner's own settings file **before** the game reads it —
 and watches the player's inventory for the tank fix. Nothing is ever patched
 into anyone else's jar, so a pack update can't silently undo the fixes. If a
 patched mod is missing, the fix skips itself with a note; if one changed shape,

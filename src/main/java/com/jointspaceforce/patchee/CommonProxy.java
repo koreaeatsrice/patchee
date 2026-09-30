@@ -10,10 +10,13 @@ import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.core.policy.Policies;
 import com.jointspaceforce.patchee.core.reflect.Reflective;
 import com.jointspaceforce.patchee.features.PatcheeFeatures;
+import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.relauncher.Side;
 
 /**
  * The composition root: the one place that knows about everything and wires it
@@ -35,6 +38,7 @@ public class CommonProxy {
     private Toggles toggles = Config.toggles();
     private PatchContext context;
     private FeaturePipeline pipeline;
+    private FeaturePipeline earlyPipeline;
 
     public void preInit(FMLPreInitializationEvent event) {
         Config.synchronizeConfiguration(event.getSuggestedConfigurationFile(), features);
@@ -46,10 +50,23 @@ public class CommonProxy {
             toggles,
             Policies.FAIL_LOG_ERROR_CONTINUE,
             Policies.QUIET_SKIP_INFO,
-            new Reflective());
-        pipeline = new PatchFactory(features, decorators, Patchee.LOG).build(toggles);
+            new Reflective(),
+            event.getModConfigurationDirectory());
+        PatchFactory factory = new PatchFactory(features, decorators, Patchee.LOG);
+        pipeline = factory.build(toggles);
+        earlyPipeline = factory.buildEarly(toggles);
 
         Patchee.LOG.info(banner());
+
+        // Features marked early (VeinConfig) must land BEFORE the mod they target
+        // has run its own preInit: VeinMiner reads its config files there, and
+        // FML runs every mod's preInit before any postInit. Patchee declares
+        // before:VeinMiner in its @Mod, so this preInit comes first. Server only,
+        // and gated by the master switch exactly like the postInit pipeline.
+        if (FMLCommonHandler.instance()
+            .getSide() == Side.SERVER && toggles.masterEnabled()) {
+            earlyPipeline.run(context);
+        }
     }
 
     public void postInit(FMLPostInitializationEvent event) {
@@ -61,8 +78,15 @@ public class CommonProxy {
     }
 
     public void serverStarted(FMLServerStartedEvent event) {
+        // The VeinConfig check reads VeinMiner's live state and the files on
+        // disk, both of which only exist on the server.
+        if (FMLCommonHandler.instance()
+            .getSide() == Side.SERVER && toggles.masterEnabled()
+            && toggles.featureEnabled(VeinConfigFeature.ID)) {
+            VeinConfigFeature.verifyAndLog(Patchee.LOG, toggles);
+        }
         if (toggles.masterEnabled() && toggles.runSelfTest()) {
-            SelfTest.run();
+            SelfTest.run(toggles, context.configDirectory());
         }
     }
 

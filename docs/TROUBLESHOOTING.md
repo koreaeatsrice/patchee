@@ -12,6 +12,9 @@ Find what you see in the left column. Do what the right column says.
 | The mattock still digs sand slowly | The mattock fix is off — or Patchee is old. | Check `enableMattockFix=true` in `config/patchee.cfg`. Existing mattocks are fixed by themselves; no need to craft a new one. |
 | The Dolly still refuses an apiary | The dolly fix is off — or it is not a supported block. | Check `enableDollyFix=true`. Only the small bee houses work; natural hives and the big Alveary are on purpose not included. |
 | Carrying a big tank still makes me sick | You are on a normal client, so your screen still shows it — or the fix is off. | Check `enableSuperTankFix=true`. For the feeling to disappear too, install the same jar on your client: [CLIENT-MODS.md](CLIENT-MODS.md). |
+| Log: `[VeinConfig] VeinMiner not installed — skipped` | VeinMiner is not installed on the server. | Nothing — or add VeinMiner to `mods` if you want vein mining ([INSTALL-SERVER.md](INSTALL-SERVER.md)). |
+| VeinMiner still mines everything, or the limits do not change | The VeinConfig fix is off, or VeinMiner is not installed. (Editing `config/veinminer/` yourself will not stick — Patchee rewrites those files at every start.) | Check `enableVeinConfig=true` in `config/patchee.cfg`, then restart and look for `[VeinConfig] wrote …` in the log. |
+| Log: `[VeinConfig] MISMATCH: …` | Very unusual — Patchee wrote the settings but VeinMiner's live values do not match them. | Update Patchee to the newest release. If it persists, send the log (below). |
 | Two `patchee-…` files in `mods` | It got installed twice. | Delete the older one. Keep only the newest. |
 | The server will not start after installing | Wrong file or wrong pack version. | Delete the `patchee` jar and start again — the server will come back. Then tell an admin what happened. |
 | It worked, then a pack update broke it | A pack update replaces the `mods` folder. | Install the newest Patchee again. Still broken? Send the log. |

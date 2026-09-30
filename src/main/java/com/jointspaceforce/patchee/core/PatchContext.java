@@ -1,5 +1,7 @@
 package com.jointspaceforce.patchee.core;
 
+import java.io.File;
+
 import org.apache.logging.log4j.Logger;
 
 import com.jointspaceforce.patchee.core.policy.FailurePolicy;
@@ -18,14 +20,16 @@ public final class PatchContext {
     private final FailurePolicy failurePolicy;
     private final MissingTargetPolicy missingTargetPolicy;
     private final Reflective reflect;
+    private final File configDirectory;
 
     public PatchContext(Logger log, Toggles toggles, FailurePolicy failurePolicy,
-        MissingTargetPolicy missingTargetPolicy, Reflective reflect) {
+        MissingTargetPolicy missingTargetPolicy, Reflective reflect, File configDirectory) {
         this.log = log;
         this.toggles = toggles;
         this.failurePolicy = failurePolicy;
         this.missingTargetPolicy = missingTargetPolicy;
         this.reflect = reflect;
+        this.configDirectory = configDirectory;
     }
 
     public Logger log() {
@@ -46,5 +50,14 @@ public final class PatchContext {
 
     public Reflective reflect() {
         return reflect;
+    }
+
+    /**
+     * The game's {@code config/} directory, as handed to Patchee at preInit.
+     * A feature that writes another mod's config file builds its path from this
+     * instead of reaching for a static.
+     */
+    public File configDirectory() {
+        return configDirectory;
     }
 }

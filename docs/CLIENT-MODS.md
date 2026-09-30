@@ -12,6 +12,7 @@ These are allowed on the server, and each one only changes things on **your** co
 | Mod | What it does for you | Do you need it? |
 |---|---|---|
 | **Patchee** (this mod) | Removes the tank-debuff feeling locally: the effects are cleared before your game ever shows them. Without it, the server still ignores the debuffs, but your own screen still shakes/flashes the icons. | Only if the "carry a big GregTech tank" debuffs bother you. |
+| **VeinMiner** (client side) | Adds the vein-mining hotkey and a settings menu. The server runs VeinMiner too; **without** your client copy you can still vein-mine — type `/veinminer mode sneak` once (again after a server restart), then sneak while mining. | Only if you prefer a hotkey over sneaking. Get the Minecraft **1.7.10** file (VeinMiner 0.36.0) from its CurseForge page. |
 
 *(More optional client mods will be listed here as we add them. Nothing is ever required.)*
 
