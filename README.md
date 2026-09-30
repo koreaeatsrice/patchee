@@ -6,7 +6,7 @@
 > [!NOTE]
 > Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
 
-A small add-on for [my GTNH server](https://jointspaceforce.com/servers/gtnh.html) that fixes a few things I personally find annoying.
+A small add-on for our GTNH server that fixes a few things I personally find annoying.
 
 ## Do I need to install anything?
 
@@ -93,6 +93,4 @@ Patchee changes the other mods' live data at server start through reflection —
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). 
-
-**Built for the Joint Space Force server.**
+MIT — see [LICENSE](LICENSE). Built for the Joint Space Force server.
