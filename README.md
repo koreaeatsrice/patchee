@@ -1,58 +1,60 @@
 # Patchee
 
-> [!NOTE]
-> **Disclaimer:** The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod. Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
+> [!WARNING]
+> The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod.
 
-**A small add-on for our GTNH server that fixes a few annoying things — and never takes anyone else's mod apart to do it.**
+> [!NOTE]
+> Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
+
+A small add-on for our GTNH server that fixes a few things I personally find annoying.
 
 ## Do I need to install anything?
 
 | I am… | Then… |
 |---|---|
-| Just playing on the server | **Nothing to do.** Patchee runs on the server; players need zero files. |
-| Running the server | Go to **[Install on the server](docs/INSTALL-SERVER.md)** — takes about two minutes. |
-| Curious about optional client mods | Go to **[Optional client mods](docs/CLIENT-MODS.md)**. |
-| Building or changing the code | Go to **[DEVELOPER.md](DEVELOPER.md)**. |
+| Playing on a server running this | Nothing required. Patchee runs on the server; this mod is not required to join |
+| Running the server | See [Install on the server](docs/INSTALL-SERVER.md) |
+| Looking for optional client mods | See [Optional client mods](docs/CLIENT-MODS.md) |
+| Building or changing the code | See [DEVELOPER.md](DEVELOPER.md) |
 
-## What it fixes, in plain words
+## What it fixes
 
-1. **Moving bee houses.** You could not move an apiary with a JABBA Dolly — it refused. Now the Dolly picks up Forestry apiaries, Forestry bee houses, Gendustry industrial apiaries and MagicBees magic apiaries — **bees still inside**.
-2. **Digging sand and snow with a Mattock.** The Tinkers' Construct mattock dug sand and snow slowly, and often dropped nothing. Now it digs them like a shovel.
-3. **Big GregTech tanks that make you sick.** Carrying a filled Super Tank or Super Chest gave you hunger, slow legs, slow mining and weakness. Those effects now never stick.
-4. **VeinMiner going overboard.** VeinMiner — a mod we add on the server, it is not part of the pack — chain-mines a whole vein from one swing. The server now keeps it to small stuff only: **sand (both kinds), clay and gravel — 64 blocks max per vein**. If VeinMiner is not installed, this fix does nothing.
+Patchee fixes four things. Each has its own on/off switch, and all switches are in one settings file — see [docs/SETTINGS.md](docs/SETTINGS.md).
 
-Every fix can be turned off, and all switches live in **one settings file** — see **[docs/SETTINGS.md](docs/SETTINGS.md)**.
+1. **Bee houses and the JABBA Dolly.** The Dolly would not pick up Forestry apiaries or bee houses, Gendustry industrial apiaries, or MagicBees magic apiaries. It now picks them up, with the bees inside.
+2. **Tinkers' Construct mattock.** Sand and snow were dug slowly, and often dropped nothing. The mattock now treats them like a shovel.
+3. **GregTech Super Tanks and Super Chests.** Carrying a filled one applies hunger, slowness, mining fatigue and weakness. Those effects no longer stick to the player carrying it.
+4. **VeinMiner.** Not part of the pack; it is installed separately on the server. It allows mining a whole vein of the same block with one swing. Patchee limits it to sand (both variants), clay and gravel, with a maximum of 64 blocks per vein. If VeinMiner is not installed, this does nothing.
 
 ## What you need
 
-- The GTNH pack on Minecraft 1.7.10. Nothing else.
-- Patchee changes mods the pack already has (JABBA, Tinkers' Construct, GregTech) — plus **VeinMiner**, which we add on top of the pack. If one of them is not installed, that one fix simply does nothing — the server still starts fine.
-- **Only the server needs the mod. Players need nothing**, and everything works for normal clients.
+- The GTNH pack for Minecraft 1.7.10.
+- Patchee modifies mods the pack already has (JABBA, Tinkers' Construct, GregTech), plus VeinMiner if it is installed. If one of them is missing, that part of Patchee does nothing; the server still starts.
+- Only the server needs the mod. Players do not need to install anything.
 
-## Install in three steps
+## Install
 
-1. Open the **[Releases page](https://github.com/koreaeatsrice/patchee/releases)**, click the newest release, and under **Assets** download **`patchee-<version>.jar`**. Do **not** pick a file with `-dev` in the name — that one is for programmers only.
-2. Put the file into the server's **`mods`** folder (do not unzip it).
-3. **Restart the server the normal way** — not "reload".
+1. On the [Releases page](https://github.com/koreaeatsrice/patchee/releases), open the newest release and download `patchee-<version>.jar` from the **Assets** list. Do not use files with `-dev` in the name; those are for development.
+2. Put the file in the server's `mods` folder. Do not unzip it.
+3. Restart the server normally — not "reload".
 
-Full steps, and what to look for in the log: **[docs/INSTALL-SERVER.md](docs/INSTALL-SERVER.md)**.
+Full steps and what to look for in the log: [docs/INSTALL-SERVER.md](docs/INSTALL-SERVER.md).
 
 ## Word list
 
-- **jar** — a mod file. Do not unzip it; just drop it in the folder.
-- **mods folder** — the folder where mod files go, called `mods` inside the server folder.
-- **settings file** — a small text file with on/off switches: `config/patchee.cfg`.
-- **log** — the text file where the game writes what it is doing: `logs/latest.log`.
+- **jar** — a mod file. Do not unzip it; put it in the folder.
+- **mods folder** — the folder called `mods` inside the server folder.
+- **settings file** — `config/patchee.cfg`, the text file with the on/off switches.
+- **log** — `logs/latest.log`, the text file where the game writes what it is doing.
 
-## Something is wrong?
+## If something is wrong
 
-Look here first: **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — find what you see, do what it says.
-Still stuck? Send: your Patchee version (the jar name), your GTNH version, and the log lines around the word `patchee`.
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) first. If that does not solve it, send: the Patchee jar name, your GTNH version, and the log lines around the word `patchee`.
 
-## The details (for the curious)
+## Details
 
 <details>
-<summary><b>Which bee houses exactly? (click)</b></summary>
+<summary><b>Which bee houses are included?</b></summary>
 
 | Mod | Block | Internal class |
 |---|---|---|
@@ -61,55 +63,31 @@ Still stuck? Send: your Patchee version (the jar name), your GTNH version, and t
 | Gendustry | Industrial Apiary | `net.bdew.gendustry.machines.apiary.TileApiary` |
 | MagicBees | Magic Apiary | `magicbees.tileentity.TileEntityMagicApiary` |
 
-A moved apiary keeps the direction it was facing (cosmetic only). Natural world
-hives and the big multi-block Alveary are deliberately **not** included — the
-Alveary is a giant structure, and moving it one block at a time breaks it just
-like mining it does. Jabba's own 1 MB size limit for a pickup still applies.
+A moved apiary keeps the direction it was facing (cosmetic only). Natural world hives and the multi-block Alveary are not included — the Alveary is a large structure, and moving it one block at a time breaks it, the same as mining it. Jabba's 1 MB pickup size limit still applies.
 </details>
 
 <details>
-<summary><b>What changes about the mattock? (click)</b></summary>
+<summary><b>What changes about the mattock?</b></summary>
 
-The mattock's "shovel list" is missing sand and snow, so Patchee adds them
-(`sand`, snow layers, snow blocks). Existing mattocks are fixed by themselves.
-Other mods still see the mattock as an axe only — exactly like the game always
-did. The only other place inside Tinkers' Construct that reads the list is the
-"Omni" active modifier, which gains the same behaviour.
+The mattock's shovel list is missing sand and snow, so Patchee adds them (sand, snow layers, snow blocks). Existing mattocks are fixed by themselves. Other mods still see the mattock as an axe only — the same as always. The only other place inside Tinkers' Construct that reads the list is the "Omni" active modifier, which gains the same behaviour.
 </details>
 
 <details>
-<summary><b>What changes about the tanks? (click)</b></summary>
+<summary><b>What changes about the tanks?</b></summary>
 
-GregTech's code gives the four effects to whoever **carries** a filled Super
-Tank / Super Chest — it is hardcoded and has no off switch. Patchee clears the
-four effects once per player tick while such an item is carried, on both the
-server and the client (if the player has the mod too). While a filled tank is
-carried, those four effects are cleared no matter where they came from — the
-pack's pollution can also use them.
+GregTech applies the four effects to whoever carries a filled Super Tank or Super Chest. It is hardcoded and has no off switch. Patchee clears the four effects once per player tick while such an item is carried — on the server, and on the client if the player has Patchee installed too. While a filled tank or chest is carried, those four effects are cleared whatever their source; the pack's pollution can also apply them.
 </details>
 
 <details>
-<summary><b>What changes about VeinMiner? (click)</b></summary>
+<summary><b>What changes about VeinMiner?</b></summary>
 
-VeinMiner decides what it may chain-mine from its own two settings files.
-Patchee rewrites them at every server start — **before** VeinMiner reads
-them — so only sand (both data values), clay and gravel can be vein-mined,
-up to 64 blocks per vein. Block auto-detection and the "all blocks / all
-tools" overrides are forced off, so ores and logs cannot sneak back in.
-VeinMiner stays a separate mod: Patchee never bundles or edits it, and the
-fix skips itself when VeinMiner is not installed.
+VeinMiner decides what it may chain-mine from its own two settings files. Patchee rewrites them at every server start, before VeinMiner reads them, so only sand (both data values), clay and gravel can be vein-mined, up to 64 blocks per vein. Block auto-detection and the "all blocks" / "all tools" overrides are forced off. VeinMiner stays a separate mod: Patchee does not bundle or edit it, and this does nothing when VeinMiner is not installed.
 </details>
 
 <details>
-<summary><b>How does it work without editing any jars? (click)</b></summary>
+<summary><b>How does it work without editing any jars?</b></summary>
 
-Patchee changes the other mods' live data at server start through reflection —
-a list of movable blocks (JABBA) and a list of materials (Tinkers' Construct),
-rewrites VeinMiner's own settings file **before** the game reads it —
-and watches the player's inventory for the tank fix. Nothing is ever patched
-into anyone else's jar, so a pack update can't silently undo the fixes. If a
-patched mod is missing, the fix skips itself with a note; if one changed shape,
-the fix logs an error and leaves it alone. The server always starts.
+Patchee changes the other mods' live data at server start through reflection — the Dolly's movable-block list (JABBA), the mattock's material list (Tinkers' Construct) — rewrites VeinMiner's own settings files before the game reads them, and watches the player's inventory for the tank effects. No other mod's jar is modified, so a pack update does not silently undo the changes. If a targeted mod is missing, that part does nothing and writes a note to the log; if one has changed shape, Patchee writes an error and leaves it alone. The server starts either way.
 </details>
 
 ## Licence
