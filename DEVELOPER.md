@@ -20,7 +20,7 @@ banner field and pipeline steps all follow from it.
 
 | Pattern | Where |
 |---|---|
-| **Artifact registry** | `core/FeatureRegistry.java` + `core/Feature.java` (descriptor: id, config key, default, description, target class, steps) + `features/PatcheeFeatures.java` |
+| **Artifact registry** | `core/FeatureRegistry.java` + `core/Feature.java` (descriptor: id, config key, default, description, target class, steps, `early()` for work that must run at preInit — see `features/VeinConfigFeature.java`) + `features/PatcheeFeatures.java` |
 | **Composition** | `core/Step.java` (`Outcome run(PatchContext)`), `core/Steps.java` (`sequence`, `present`, `noop`) — features are composed steps, not monoliths |
 | **Decorators** | `core/StepDecorators.java`: `failSoft` (Throwable → FAILED, policy-logged; the server never breaks), `logged` (DEBUG-only, so prod logs are unchanged), `requiresTarget` (absent target → SKIPPED with the feature's INFO line) |
 | **Policies** | `core/policy/` — `FailurePolicy` (`FAIL_LOG_ERROR_CONTINUE`) and `MissingTargetPolicy` (`QUIET_SKIP_INFO`); decorators consult them, no feature contains a raw catch |
@@ -33,7 +33,8 @@ banner field and pipeline steps all follow from it.
 ## Invariants — do not break these
 
 - **Log strings are API.** The CI smoke test greps for `[DollyFix] Dolly now
-  accepts …`, `[MattockFix] mattock shovel materials …`, `[SuperTankFix] …` and
+  accepts …`, `[MattockFix] mattock shovel materials …`, `[SuperTankFix] …`,
+  `[VeinConfig] wrote …` and
   `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
   `enableMattockFix`, `enableSuperTankFix`, `extraDollyClasses`,

@@ -44,4 +44,19 @@ public interface Feature {
 
     /** The work, in order. The factory wraps every step in the standard decorators. */
     List<Step> steps();
+
+    /**
+     * True when this feature's work must run at Patchee's own preInit, before
+     * ANY other mod's preInit, instead of in the normal postInit pipeline.
+     *
+     * <p>
+     * A feature needs this when it writes a file another mod reads in that mod's
+     * own preInit: FML dispatches one lifecycle state to every mod before moving
+     * on to the next, so a postInit step would be too late. {@code VeinConfig}
+     * writes VeinMiner's config files, which VeinMiner loads in its preInit, and
+     * Patchee declares {@code before:VeinMiner} so its preInit comes first.
+     */
+    default boolean early() {
+        return false;
+    }
 }

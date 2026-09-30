@@ -17,7 +17,8 @@ public final class PatcheeFeatures {
         FeatureRegistry registry = new FeatureRegistry();
         registry.register(new DollyFeature())
             .register(new MattockFeature())
-            .register(new SuperTankFeature());
+            .register(new SuperTankFeature())
+            .register(new VeinConfigFeature());
         registry.freeze();
         return registry;
     }

@@ -37,7 +37,8 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
     version = Tags.VERSION,
     name = "Patchee",
     acceptedMinecraftVersions = "[1.7.10]",
-    acceptableRemoteVersions = "*")
+    acceptableRemoteVersions = "*",
+    dependencies = "before:VeinMiner")
 public class Patchee {
 
     public static final String MODID = "patchee";

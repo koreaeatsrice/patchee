@@ -21,4 +21,16 @@ public interface Toggles {
 
     /** Advanced: extra fully qualified class names the JABBA Dolly should accept. */
     String[] extraDollyClasses();
+
+    /** VeinConfig: the most blocks one vein may have (VeinMiner {@code limit.blocks}). */
+    int veinBlockLimit();
+
+    /** VeinConfig: the search radius around the first block (VeinMiner {@code limit.radius}). */
+    int veinRadius();
+
+    /** VeinConfig: the block IDs that may be vein-mined, e.g. {@code minecraft:sand/0}. */
+    String[] veinBlocks();
+
+    /** VeinConfig: extra item names appended to the shovel tool list. */
+    String[] veinExtraTools();
 }

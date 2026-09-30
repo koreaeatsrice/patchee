@@ -36,8 +36,24 @@ public final class PatchFactory {
     }
 
     public FeaturePipeline build(Toggles toggles) {
+        return build(toggles, false);
+    }
+
+    /**
+     * The same pipeline, but for the features that must run at Patchee's preInit
+     * ({@link Feature#early()}). The two pipelines are disjoint: every feature
+     * goes into exactly one of them.
+     */
+    public FeaturePipeline buildEarly(Toggles toggles) {
+        return build(toggles, true);
+    }
+
+    private FeaturePipeline build(Toggles toggles, boolean early) {
         List<Step> pipeline = new ArrayList<Step>();
         for (Feature feature : registry.features()) {
+            if (feature.early() != early) {
+                continue;
+            }
             if (toggles.featureEnabled(feature.id())) {
                 pipeline.add(enabled(feature));
             } else {
@@ -46,10 +62,11 @@ public final class PatchFactory {
         }
         if (log.isDebugEnabled()) {
             log.debug(
-                "[patchee] pipeline built: {} step(s), {} feature(s) registered",
+                "[patchee] pipeline built: {} step(s), {} feature(s) registered (early={})",
                 pipeline.size(),
                 registry.features()
-                    .size());
+                    .size(),
+                early);
         }
         return new FeaturePipeline(pipeline);
     }

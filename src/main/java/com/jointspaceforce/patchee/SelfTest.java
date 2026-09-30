@@ -1,18 +1,32 @@
 package com.jointspaceforce.patchee;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
+import net.minecraftforge.common.config.Configuration;
 
+import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.features.DollyFeature;
+import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
 
 /**
  * One-shot behavioural self-check for both patches, run at server start when
@@ -41,17 +55,29 @@ public final class SelfTest {
 
     private SelfTest() {}
 
-    public static void run() {
-        new SelfTest().runChecks();
+    public static void run(Toggles toggles, File configDirectory) {
+        new SelfTest().runChecks(toggles, configDirectory);
     }
 
-    private void runChecks() {
+    private void runChecks(Toggles toggles, File configDirectory) {
         Patchee.LOG.info("[SelfTest] running patched-decision checks (runSelfTest=true)");
 
         checkDollyGate();
         checkMattock();
+        checkVeinConfig(toggles, configDirectory);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
+    }
+
+    /** One PASS/FAIL line, counted. */
+    private void check(String what, boolean ok) {
+        if (ok) {
+            passed++;
+            Patchee.LOG.info("[SelfTest] PASS  {}", what);
+        } else {
+            failed++;
+            Patchee.LOG.error("[SelfTest] FAIL  {}", what);
+        }
     }
 
     // ---- 1. JABBA dolly gate ----------------------------------------------
@@ -184,5 +210,93 @@ public final class SelfTest {
             failed++;
             Patchee.LOG.error("[SelfTest] FAIL  mattock isEffective({}) = {} (expected {})", label, actual, expected);
         }
+    }
+
+    // ---- 3. Patchee's VeinMiner config (VeinConfig) ------------------------
+
+    /**
+     * The VeinConfig files must have been written and must read back as
+     * configured; when VeinMiner is present the live state must verify PASS, and
+     * an ordinary ore must be vein-mineable with no tool type (negative
+     * control). Server side only, because the files are only written there.
+     */
+    private void checkVeinConfig(Toggles toggles, File configDirectory) {
+        if (FMLCommonHandler.instance()
+            .getSide() != Side.SERVER) {
+            Patchee.LOG.info("[SelfTest] SKIP veinconfig — server-side feature, this is a client");
+            return;
+        }
+        if (!toggles.featureEnabled(VeinConfigFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP veinconfig — feature disabled in config");
+            return;
+        }
+        if (!Loader.isModLoaded(VeinConfigFeature.VEINMINER_MODID)) {
+            Patchee.LOG.info("[SelfTest] SKIP veinconfig — VeinMiner is not installed");
+            return;
+        }
+
+        File dir = VeinConfigFeature.directory(configDirectory);
+        File general = new File(dir, "general.cfg");
+        File json = new File(dir, "tools-and-blocks.json");
+        if (!general.isFile()) {
+            check("veinconfig general.cfg written", false);
+            return;
+        }
+        if (!json.isFile()) {
+            check("veinconfig tools-and-blocks.json written", false);
+            return;
+        }
+
+        try {
+            Configuration generalCfg = new Configuration(general);
+            generalCfg.load();
+            int cap = generalCfg.get("limit", "limit.blocks", -1, "")
+                .getInt(-1);
+            int radius = generalCfg.get("limit", "limit.radius", -1, "")
+                .getInt(-1);
+            check("veinconfig general.cfg limit.blocks = " + cap, cap == toggles.veinBlockLimit());
+            check("veinconfig general.cfg limit.radius = " + radius, radius == toggles.veinRadius());
+
+            Map<String, List<String>> blocklists = VeinConfigFeature.blocklistsInJson(readUtf8(json));
+            check(
+                "veinconfig tools-and-blocks.json has all five tool types",
+                blocklists.keySet()
+                    .containsAll(Arrays.asList(VeinConfigFeature.TOOL_TYPES)));
+
+            VeinConfigFeature.Verification live = VeinConfigFeature.verify(toggles);
+            if (live.applicable()) {
+                check("veinconfig live verification PASS", live.pass());
+            } else {
+                Patchee.LOG.info("[SelfTest] SKIP veinconfig — VeinMiner is not installed");
+            }
+
+            boolean oreFound = false;
+            for (List<String> blocks : blocklists.values()) {
+                if (blocks.contains("minecraft:iron_ore")) {
+                    oreFound = true;
+                    break;
+                }
+            }
+            check("veinconfig minecraft:iron_ore is not vein-mineable", !oreFound);
+        } catch (Exception | LinkageError e) {
+            Patchee.LOG.error("[SelfTest] FAIL  veinconfig — could not read the written files", e);
+            failed++;
+        }
+    }
+
+    private static String readUtf8(File file) throws IOException {
+        StringBuilder text = new StringBuilder();
+        BufferedReader reader = new BufferedReader(
+            new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8));
+        try {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                text.append(line)
+                    .append('\n');
+            }
+        } finally {
+            reader.close();
+        }
+        return text.toString();
     }
 }
