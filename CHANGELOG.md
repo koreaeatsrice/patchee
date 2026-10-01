@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-10-01
+
+### Features
+- **lightoverlay**: client-side override of NEI's F7 mob-spawn overlay light threshold, per dimension. Outside the Nether the overlay marks blocks at light level `lightOverlay.maxLightNormal` (default `0`); in the Nether at `lightOverlay.maxLightNether` (default `7`, NEI's own value). Implemented as a client-only, non-required Mixin on `codechicken.nei.WorldOverlayRenderer#getSpawnMode`, computed at runtime from the client's dimension plus the config snapshot; a client without NEI skips it instead of crashing. Turned off (`enableLightOverlayTweak=false`) the overlay is byte-identical to NEI. Only clients that install Patchee see the change; the server is not involved.
+- **tests**: JUnit 5 coverage for the pure threshold maths (`LightOverlayThresholdTest`).
+
 ## [1.2.0] - 2026-09-30
 
 ### Features

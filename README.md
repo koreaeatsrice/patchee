@@ -19,18 +19,20 @@ A small add-on for our GTNH server that fixes a few things I personally find ann
 
 ## What it fixes
 
-Patchee fixes four things. Each has its own on/off switch, and all switches are in one settings file — see [docs/SETTINGS.md](docs/SETTINGS.md).
+Patchee fixes five things. Each has its own on/off switch, and all switches are in one settings file — see [docs/SETTINGS.md](docs/SETTINGS.md).
 
 1. **Bee houses and the JABBA Dolly.** The Dolly would not pick up Forestry apiaries or bee houses, Gendustry industrial apiaries, or MagicBees magic apiaries. It now picks them up, with the bees inside.
 2. **Tinkers' Construct mattock.** Sand and snow were dug slowly, and often dropped nothing. The mattock now treats them like a shovel.
 3. **GregTech Super Tanks and Super Chests.** Carrying a filled one applies hunger, slowness, mining fatigue and weakness. Those effects no longer stick to the player carrying it.
 4. **VeinMiner.** Not part of the pack; it is installed separately on the server. It allows mining a whole vein of the same block with one swing. Patchee limits it to sand (both variants), clay and gravel, with a maximum of 64 blocks per vein. If VeinMiner is not installed, this does nothing.
+5. **NEI's F7 light overlay.** The overlay marks every block where monsters can spawn. Its light level is fixed, so it marks far more than the server actually allows. On a client that has Patchee installed, the marks now follow the server's rule: only pitch-dark blocks outside the Nether, and NEI's normal level in the Nether. Both levels are settings.
 
 ## What you need
 
 - The GTNH pack for Minecraft 1.7.10.
 - Patchee modifies mods the pack already has (JABBA, Tinkers' Construct, GregTech), plus VeinMiner if it is installed. If one of them is missing, that part of Patchee does nothing; the server still starts.
 - The server must have the mod. Clients do not need it to join.
+- The F7 overlay tweak is the one part that only works on the **client**: it changes nothing on a player who does not have Patchee installed. Everything else runs on the server.
 - A client without it is out of step with the server wherever Patchee changes something: sand and snow break faster than that client expects, and a filled Super Tank still shows its effects on that client while the server does not apply them. Install the same jar on a client to have the changes there too.
 
 ## Install
@@ -83,6 +85,12 @@ GregTech applies the four effects to whoever carries a filled Super Tank or Supe
 <summary><b>What changes about VeinMiner?</b></summary>
 
 VeinMiner decides what it may chain-mine from its own two settings files. Patchee rewrites them at every server start, before VeinMiner reads them, so only sand (both data values), clay and gravel can be vein-mined, up to 64 blocks per vein. Block auto-detection and the "all blocks" / "all tools" overrides are forced off. VeinMiner stays a separate mod: Patchee does not bundle or edit it, and this does nothing when VeinMiner is not installed.
+</details>
+
+<details>
+<summary><b>What changes about NEI's F7 overlay?</b></summary>
+
+Not Enough Items can draw a red or yellow X on every block where a monster could spawn (the F7 key). It decides this from a light level that is written into the mod itself and cannot be changed from the server. Patchee changes it **on your client only**, and only if you have Patchee installed: outside the Nether an X is drawn only at light level 0 (pitch dark), and in the Nether at light level 7 — NEI's own level. Both numbers are settings (`lightOverlay.maxLightNormal` and `lightOverlay.maxLightNether`). Turn the feature off and the overlay is exactly as NEI ships it. The server is not involved and does not need NEI.
 </details>
 
 <details>

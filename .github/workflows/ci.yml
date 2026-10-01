@@ -93,6 +93,7 @@ jobs:
 
           general {
               B:enableDollyFix=true
+              B:enableLightOverlayTweak=true
               B:enableMattockFix=true
               B:enableVeinConfig=true
               B:runSelfTest=true

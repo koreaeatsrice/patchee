@@ -1,0 +1,8 @@
+// Applied automatically by the GTNH convention plugin (StandardScriptsModules.AddonScriptModule).
+// JUnit 5 needs the platform engine selected explicitly.
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}

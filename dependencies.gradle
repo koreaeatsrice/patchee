@@ -34,6 +34,16 @@
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
 dependencies {
+    // ---- Compile-only: the Mixin target, for annotation-processor resolution ----
+    // The WorldOverlayRendererMixin patches codechicken.nei.WorldOverlayRenderer,
+    // so the SpongePowered Mixin annotation processor needs NEI's classes on the
+    // compile classpath to resolve the @Mixin target and the target method
+    // descriptor. This is compileOnly: NEI must NOT become a runtime dependency
+    // of patchee, and the shipped jar must never bundle or require it. The mixin
+    // config lists the mixin as client-only and not-required, so a client with a
+    // different (or no) NEI gets a silent no-op, never a crash.
+    compileOnly("com.github.GTNewHorizons:NotEnoughItems:2.8.130-GTNH:dev") { transitive = false }
+
     // ---- Test-runtime only: the mods Patchee patches, for ./gradlew runServer ----
     // Patchee compiles with NO dependency on these (both fixes are reflection),
     // and never publishes them; they exist so the two fixes can be exercised
@@ -54,4 +64,11 @@ dependencies {
     // transitive pins (CodeChickenLib 1.1.5.1 is gone), so the local dev
     // environment covers Forestry only. On a real pack both classes resolve and
     // the config-gated self-test verifies them there.
+
+    // ---- Test-only: the pure decision classes (no game needed) ----
+    // LightOverlayThreshold is deliberately free of Minecraft/Forge imports so
+    // ./gradlew test can prove the threshold maths without a running game.
+    testImplementation(platform("org.junit:junit-bom:5.14.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
