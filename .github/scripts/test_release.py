@@ -8,9 +8,11 @@ import tempfile
 import unittest
 
 from release import (
+    DEFAULT_CONTRIBUTOR,
     Commit,
     calculate_next_version,
     categorize_commits,
+    contributor_handle,
     generate_release_notes,
     last_tag,
     parse_semver,
@@ -115,8 +117,60 @@ class TestReleaseEngine(unittest.TestCase):
             notes,
         )
         self.assertIn("### Contributors", notes)
-        self.assertIn("- Uriel", notes)
+        self.assertIn("- @Uriel", notes)
+        self.assertIn(f"- @{DEFAULT_CONTRIBUTOR}", notes)
         self.assertIn("https://github.com/koreaeatsrice/patchee/compare/v1.3.0...v1.4.0", notes)
+
+    def test_contributor_handle_from_noreply_email(self):
+        # Plain noreply address carries the username.
+        self.assertEqual(
+            contributor_handle("Uriel", "uriel@users.noreply.github.com"), "@uriel"
+        )
+        # ID-prefixed noreply address carries the username too.
+        self.assertEqual(
+            contributor_handle("Uriel", "1234567+uriel@users.noreply.github.com"),
+            "@uriel",
+        )
+        # Non-noreply email falls back to the display name.
+        self.assertEqual(contributor_handle("Uriel", "uriel@example.com"), "@Uriel")
+        # Empty identity yields a bare "@" the caller skips.
+        self.assertEqual(contributor_handle("", ""), "@")
+
+    def test_generate_release_notes_always_includes_owner(self):
+        # No commit is authored by the owner — he must still be credited.
+        commits = [
+            Commit(
+                "1111111",
+                "fix: guard the null case",
+                "",
+                "fix",
+                None,
+                False,
+                "guard the null case",
+                "uriel-runner[bot]",
+                "uriel-runner[bot]@users.noreply.github.com",
+            ),
+        ]
+        notes = generate_release_notes("1.4.0", "v1.3.0", commits, repo="koreaeatsrice/patchee")
+        self.assertIn(f"- @{DEFAULT_CONTRIBUTOR}", notes)
+
+    def test_generate_release_notes_owner_not_duplicated(self):
+        # The owner IS the author — he must appear exactly once.
+        commits = [
+            Commit(
+                "2222222",
+                "feat: add the thing",
+                "",
+                "feat",
+                None,
+                False,
+                "add the thing",
+                DEFAULT_CONTRIBUTOR,
+                f"{DEFAULT_CONTRIBUTOR}@users.noreply.github.com",
+            ),
+        ]
+        notes = generate_release_notes("1.4.0", "v1.3.0", commits, repo="koreaeatsrice/patchee")
+        self.assertEqual(notes.count(f"- @{DEFAULT_CONTRIBUTOR}"), 1)
 
     def test_update_changelog(self):
         sample = """# Changelog
