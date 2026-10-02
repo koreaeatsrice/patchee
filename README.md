@@ -6,7 +6,7 @@
 > [!NOTE]
 > Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
 
-A small add-on for our GTNH server that fixes a few things I personally find annoying.
+A small add-on for my GTNH server that fixes a few things I personally find annoying.
 
 ## Do I need to install anything?
 
