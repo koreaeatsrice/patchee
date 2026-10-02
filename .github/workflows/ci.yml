@@ -133,3 +133,20 @@ jobs:
           name: patchee-smoke-server-log
           path: server.log
           if-no-files-found: warn
+
+  release-engine-tests:
+    name: Release Engine Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: 3.x
+
+      - name: Run release-engine unit tests
+        working-directory: .github/scripts
+        run: python3 -m unittest -v test_release
