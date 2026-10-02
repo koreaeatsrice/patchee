@@ -12,6 +12,7 @@ import net.minecraftforge.common.config.Configuration;
 import com.jointspaceforce.patchee.core.Feature;
 import com.jointspaceforce.patchee.core.FeatureRegistry;
 import com.jointspaceforce.patchee.core.Toggles;
+import com.jointspaceforce.patchee.features.LightOverlaySettings;
 
 /**
  * Forge config holder, in the usual Forge style: one static
@@ -60,11 +61,8 @@ public class Config {
         + "separated by commas. Added on top of the built-in shovel list.";
 
     private static final String LIGHT_OVERLAY_NORMAL_COMMENT = "LightOverlay: the light level at which NEI's F7 overlay draws an X, in every dimension "
-        + "except the Nether. 0 = only pitch-dark blocks get an X (the default). 7 = NEI's own default. "
-        + "Client-side only: it changes anything only on a client that has Patchee installed.";
-
-    private static final String LIGHT_OVERLAY_NETHER_COMMENT = "LightOverlay: the light level at which NEI's F7 overlay draws an X in the Nether. "
-        + "7 = NEI's own default (unchanged).";
+        + "(the Nether included; it has no separate value). 0 = only pitch-dark blocks get an X (the default). "
+        + "7 = NEI's own default. Client-side only: it changes anything only on a client that has Patchee installed.";
 
     public static boolean enabled = true;
     public static String[] extraDollyClasses = new String[0];
@@ -74,7 +72,6 @@ public class Config {
     public static String veinBlocks = "minecraft:sand/0,minecraft:sand/1,minecraft:clay,minecraft:gravel";
     public static String veinExtraTools = "";
     public static int lightOverlayMaxNormal = 0;
-    public static int lightOverlayMaxNether = 7;
 
     /** The snapshot the pipeline reads; replaced by every load. */
     private static Toggles toggles = new Snapshot(
@@ -86,8 +83,7 @@ public class Config {
         20,
         new String[] { "minecraft:sand/0", "minecraft:sand/1", "minecraft:clay", "minecraft:gravel" },
         new String[0],
-        0,
-        7);
+        0);
 
     /** The immutable config snapshot the features read. */
     public static Toggles toggles() {
@@ -125,11 +121,8 @@ public class Config {
                 .getString("veinConfig.extraTools", CATEGORY, veinExtraTools, VEIN_EXTRA_TOOLS_COMMENT);
 
             lightOverlayMaxNormal = configuration
-                .get(CATEGORY, "lightOverlay.maxLightNormal", lightOverlayMaxNormal, LIGHT_OVERLAY_NORMAL_COMMENT)
+                .get(CATEGORY, LightOverlaySettings.MAX_LIGHT_KEY, lightOverlayMaxNormal, LIGHT_OVERLAY_NORMAL_COMMENT)
                 .getInt(lightOverlayMaxNormal);
-            lightOverlayMaxNether = configuration
-                .get(CATEGORY, "lightOverlay.maxLightNether", lightOverlayMaxNether, LIGHT_OVERLAY_NETHER_COMMENT)
-                .getInt(lightOverlayMaxNether);
 
             toggles = new Snapshot(
                 enabled,
@@ -140,8 +133,7 @@ public class Config {
                 veinRadius,
                 splitList(veinBlocks),
                 splitList(veinExtraTools),
-                lightOverlayMaxNormal,
-                lightOverlayMaxNether);
+                lightOverlayMaxNormal);
         } finally {
             if (configuration.hasChanged()) {
                 configuration.save();
@@ -161,11 +153,10 @@ public class Config {
         private final String[] veinBlocks;
         private final String[] veinExtraTools;
         private final int lightOverlayMaxNormal;
-        private final int lightOverlayMaxNether;
 
         private Snapshot(boolean master, Map<String, Boolean> features, boolean selfTest, String[] extraDolly,
-            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools, int lightOverlayMaxNormal,
-            int lightOverlayMaxNether) {
+            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools,
+            int lightOverlayMaxNormal) {
             this.master = master;
             this.features = Collections.unmodifiableMap(features);
             this.selfTest = selfTest;
@@ -175,7 +166,6 @@ public class Config {
             this.veinBlocks = veinBlocks;
             this.veinExtraTools = veinExtraTools;
             this.lightOverlayMaxNormal = lightOverlayMaxNormal;
-            this.lightOverlayMaxNether = lightOverlayMaxNether;
         }
 
         @Override
@@ -222,11 +212,6 @@ public class Config {
         @Override
         public int lightOverlayMaxNormal() {
             return lightOverlayMaxNormal;
-        }
-
-        @Override
-        public int lightOverlayMaxNether() {
-            return lightOverlayMaxNether;
         }
     }
 

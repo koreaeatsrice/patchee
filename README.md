@@ -25,7 +25,7 @@ Patchee fixes five things. Each has its own on/off switch, and all switches are 
 2. **Tinkers' Construct mattock.** Sand and snow were dug slowly, and often dropped nothing. The mattock now treats them like a shovel.
 3. **GregTech Super Tanks and Super Chests.** Carrying a filled one applies hunger, slowness, mining fatigue and weakness. Those effects no longer stick to the player carrying it.
 4. **VeinMiner.** Not part of the pack; it is installed separately on the server. It allows mining a whole vein of the same block with one swing. Patchee limits it to sand (both variants), clay and gravel, with a maximum of 64 blocks per vein. If VeinMiner is not installed, this does nothing.
-5. **NEI's F7 light overlay.** The overlay marks every block where monsters can spawn. Its light level is fixed, so it marks far more than the server actually allows. On a client that has Patchee installed, the marks now follow the server's rule: only pitch-dark blocks outside the Nether, and NEI's normal level in the Nether. Both levels are settings.
+5. **NEI's F7 light overlay.** The overlay marks every block where monsters could spawn. Its light level is written into NEI itself, so it marks far more than it should. On a client that has Patchee installed the marks become strict: an X is drawn only on pitch-dark blocks. The level is a setting.
 
 ## What you need
 
@@ -90,13 +90,13 @@ VeinMiner decides what it may chain-mine from its own two settings files. Patche
 <details>
 <summary><b>What changes about NEI's F7 overlay?</b></summary>
 
-Not Enough Items can draw a red or yellow X on every block where a monster could spawn (the F7 key). It decides this from a light level that is written into the mod itself and cannot be changed from the server. Patchee changes it **on your client only**, and only if you have Patchee installed: outside the Nether an X is drawn only at light level 0 (pitch dark), and in the Nether at light level 7 — NEI's own level. Both numbers are settings (`lightOverlay.maxLightNormal` and `lightOverlay.maxLightNether`). Turn the feature off and the overlay is exactly as NEI ships it. The server is not involved and does not need NEI.
+Not Enough Items can draw a red or yellow X on every block where a monster could spawn (the F7 key). It decides this from a light level that is written into the mod itself and cannot be changed from the server. Patchee changes it **on your client only**, and only if you have Patchee installed: an X is drawn only at light level 0 (pitch dark), in every dimension. The level is a setting (`lightOverlay.maxLightNormal`). Turn the feature off and the overlay is exactly as NEI ships it. The server is not involved and does not need NEI. Patchee changes the two comparison constants inside NEI **while NEI loads** — the very same two numbers a person edits by hand in NEI's jar, with nothing added to NEI's own code.
 </details>
 
 <details>
 <summary><b>How does it work without editing any jars?</b></summary>
 
-Patchee changes the other mods' live data at server start through reflection — the Dolly's movable-block list (JABBA), the mattock's material list (Tinkers' Construct) — rewrites VeinMiner's own settings files before the game reads them, and watches the player's inventory for the tank effects. No other mod's jar is modified, so a pack update does not silently undo the changes. If a targeted mod is missing, that part does nothing and writes a note to the log; if one has changed shape, Patchee writes an error and leaves it alone. The server starts either way.
+Patchee changes the other mods' live data at server start through reflection — the Dolly's movable-block list (JABBA), the mattock's material list (Tinkers' Construct) — rewrites VeinMiner's own settings files before the game reads them, and watches the player's inventory for the tank effects. No other mod's jar file is ever modified, so a pack update does not silently undo the changes. The one exception is NEI's F7 overlay, where two numbers live inside NEI's own code: Patchee changes those two numbers in memory while NEI's class loads, and leaves the file on disk untouched. If a targeted mod is missing, that part does nothing and writes a note to the log; if one has changed shape, Patchee writes an error and leaves it alone. The server starts either way.
 </details>
 
 ## Licence

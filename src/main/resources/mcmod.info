@@ -4,7 +4,7 @@
         {
             "modid": "${modId}",
             "name": "${modName}",
-            "description": "Patchee — a small GTNH 1.7.10 addon that tames a few cross-mod annoyances without touching anyone else's jar: the JABBA Dolly gains support for the single-block crafted bee housings (Forestry Apiary, Gendustry Industrial Apiary, MagicBees Magic Apiary), the Tinkers' Construct Mattock digs sand and snow at full shovel speed, VeinMiner is kept under server control (sand, clay and gravel only; capped veins), and — on a client that installs it — NEI's F7 light overlay marks blocks per dimension (light 0 outside the Nether, 7 in the Nether, both configurable). Joint Space Force build.",
+            "description": "Patchee — a small GTNH 1.7.10 addon that tames a few cross-mod annoyances without touching anyone else's jar: the JABBA Dolly gains support for the single-block crafted bee housings (Forestry Apiary, Gendustry Industrial Apiary, MagicBees Magic Apiary), the Tinkers' Construct Mattock digs sand and snow at full shovel speed, VeinMiner is kept under server control (sand, clay and gravel only; capped veins), and — on a client that installs it — NEI's F7 light overlay marks only pitch-dark blocks (the level is configurable). Joint Space Force build.",
             "version": "${modVersion}",
             "mcversion": "${minecraftVersion}",
             "url": "",

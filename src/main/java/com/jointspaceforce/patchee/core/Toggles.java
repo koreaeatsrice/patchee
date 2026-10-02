@@ -35,12 +35,9 @@ public interface Toggles {
     String[] veinExtraTools();
 
     /**
-     * LightOverlay: the owner's max light level (X at light &le; this) for every
-     * dimension except the Nether. NEI draws an X below its comparison constant,
-     * so the constant is this value + 1.
+     * LightOverlay: the owner's max light level (X at light &le; this), in every
+     * dimension. NEI draws an X below its comparison constant, so the constant
+     * is this value + 1.
      */
     int lightOverlayMaxNormal();
-
-    /** LightOverlay: the owner's max light level (X at light &le; this) in the Nether. */
-    int lightOverlayMaxNether();
 }

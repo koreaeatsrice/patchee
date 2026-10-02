@@ -10,50 +10,47 @@ import org.junit.jupiter.api.Test;
  * <p>
  * The owner speaks in the light level the X appears at ({@code N}); NEI's
  * comparison constant is {@code N + 1} because it marks light strictly below
- * the threshold. These tests pin that conversion, the per-dimension split and
- * the off switch (which must reproduce NEI's own {@code 8}).
+ * the threshold. These tests pin that conversion and the clamp that keeps a
+ * typo in the config from producing a nonsense constant.
  */
 class LightOverlayThresholdTest {
 
-    private static final int NORMAL = 0;
-    private static final int NETHER = -1;
-    private static final int NEI_DEFAULT = 8;
-
     @Test
-    void normalDimensionDrawsXOnlyAtLightZero() {
-        assertEquals(1, LightOverlayThreshold.constant(true, NORMAL, 0, 7));
+    void ownerNumberPlusOneIsTheComparisonConstant() {
+        assertEquals(1, LightOverlayThreshold.constantFor(0));
+        assertEquals(2, LightOverlayThreshold.constantFor(1));
+        assertEquals(8, LightOverlayThreshold.constantFor(7));
     }
 
     @Test
-    void netherKeepsNeiBehaviourAtSeven() {
-        assertEquals(NEI_DEFAULT, LightOverlayThreshold.constant(true, NETHER, 0, 7));
+    void sevenReproducesNeisOwnBehaviour() {
+        assertEquals(LightOverlayThreshold.NEI_DEFAULT_CONSTANT, LightOverlayThreshold.constantFor(7));
     }
 
     @Test
-    void disabledAlwaysReproducesNei() {
-        assertEquals(NEI_DEFAULT, LightOverlayThreshold.constant(false, NORMAL, 0, 7));
-        assertEquals(NEI_DEFAULT, LightOverlayThreshold.constant(false, NETHER, 0, 7));
-        // even nonsense config values must not leak through when the tweak is off
-        assertEquals(NEI_DEFAULT, LightOverlayThreshold.constant(false, NORMAL, 15, 15));
+    void lowValuesClampToZero() {
+        assertEquals(0, LightOverlayThreshold.clampMaxLight(-1));
+        assertEquals(0, LightOverlayThreshold.clampMaxLight(Integer.MIN_VALUE));
+        assertEquals(1, LightOverlayThreshold.constantFor(-1));
     }
 
     @Test
-    void moddedDimensionsBehaveLikeNormal() {
-        assertEquals(1, LightOverlayThreshold.constant(true, 7, 0, 7));
-        assertEquals(1, LightOverlayThreshold.constant(true, 95, 0, 7));
-        // the Nether value must not leak into other dimensions
-        assertEquals(1, LightOverlayThreshold.constant(true, 0, 0, 15));
+    void highValuesClampToMinecraftsLightRange() {
+        assertEquals(15, LightOverlayThreshold.clampMaxLight(16));
+        assertEquals(15, LightOverlayThreshold.clampMaxLight(Integer.MAX_VALUE));
+        assertEquals(16, LightOverlayThreshold.constantFor(99));
     }
 
     @Test
-    void netherIgnoresTheNormalValue() {
-        assertEquals(4, LightOverlayThreshold.constant(true, NETHER, 0, 3));
-        assertEquals(1, LightOverlayThreshold.constant(true, NETHER, 15, 0));
-    }
-
-    @Test
-    void conversionIsOwnerNumberPlusOne() {
-        assertEquals(2, LightOverlayThreshold.constant(true, NORMAL, 1, 7));
-        assertEquals(9, LightOverlayThreshold.constant(true, NORMAL, 8, 7));
+    void everyConstantFitsInABipushOperand() {
+        // The patch writes the constant into a bipush instruction: it must stay
+        // a valid signed byte for every possible config value.
+        for (int level = Integer.MIN_VALUE; level < Integer.MAX_VALUE; level++) {
+            int constant = LightOverlayThreshold.constantFor(level);
+            assertEquals(constant, (byte) constant);
+            if (level > LightOverlayThreshold.MAX_LIGHT) {
+                break;
+            }
+        }
     }
 }
