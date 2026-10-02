@@ -3,6 +3,26 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-10-02
+
+### Bug Fixes
+- **lightoverlay**: apply NEI's light patch at class load instead of a Mixin (#3) ([`8954534`](https://github.com/koreaeatsrice/patchee/commit/895453440df09050ce5eaee43f3b1e01f300834f))
+- **release**: @-mention contributors and always credit the owner ([`31859d4`](https://github.com/koreaeatsrice/patchee/commit/31859d4c9934afe68d83d661a469f807fdae7050))
+- **changelog**: de-duplicate the v1.3.0 section (one section per version) ([`a1b5ad1`](https://github.com/koreaeatsrice/patchee/commit/a1b5ad1cb8cddf9466eb0e5a40fe0c004effc076))
+
+### Maintenance & CI
+- run the release-engine unit tests on every push and PR (#2) ([`eeb0b0b`](https://github.com/koreaeatsrice/patchee/commit/eeb0b0b68acb40c75292c572bf797d3ec57e1b22))
+
+### Other Changes
+- Update README for clarity on GTNH server add-on ([`9833676`](https://github.com/koreaeatsrice/patchee/commit/9833676ba87fadafc9e281bbdcb016aaa689bc89))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.3.0...v1.3.1
+
 ## [1.3.0] - 2026-10-02
 
 ### Features
