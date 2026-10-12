@@ -44,9 +44,14 @@ banner field and pipeline steps all follow from it.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
   `enableMattockFix`, `enableSuperTankFix`, `enableVeinConfig`,
   `enableLightOverlayTweak`, `enableAuroraBreak`, `enableArcticFurBreak`,
-  `extraDollyClasses`, `runSelfTest`) are user-facing; keep names, defaults and
-  the plain-language comments stable. Config generation is registry-driven — the
-  feature descriptor supplies the text.
+  `extraDollyClasses`, `runSelfTest`, the `veinConfig.*` section keys
+  (`veinConfig.blockLimit`, `veinConfig.radius`, `veinConfig.blocks`,
+  `veinConfig.extraTools`) and `lightOverlay.maxLightNormal`) are user-facing;
+  keep names, defaults and the plain-language comments stable. Config
+  generation is registry-driven — the feature descriptor supplies the text.
+  `docs/SETTINGS.md` is the complete, authoritative list of every key; keep
+  this bullet as the rule plus that pointer, never a hand-maintained list
+  that can rot.
 - **Every fix stays fail-soft** (INFO skip on absent mods, ERROR + untouched on
   malformed targets) and **config-gated**.
 - One jar must stay **client-optional** and **acceptableRemoteVersions = "*"**:
