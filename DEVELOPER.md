@@ -42,11 +42,11 @@ banner field and pipeline steps all follow from it.
   and
   `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
-  `enableMattockFix`, `enableSuperTankFix`, `enableAuroraBreak`,
-  `enableArcticFurBreak`, `extraDollyClasses`,
-  `runSelfTest`) are user-facing; keep names, defaults and the plain-language
-  comments stable. Config generation is registry-driven — the feature
-  descriptor supplies the text.
+  `enableMattockFix`, `enableSuperTankFix`, `enableVeinConfig`,
+  `enableLightOverlayTweak`, `enableAuroraBreak`, `enableArcticFurBreak`,
+  `extraDollyClasses`, `runSelfTest`) are user-facing; keep names, defaults and
+  the plain-language comments stable. Config generation is registry-driven — the
+  feature descriptor supplies the text.
 - **Every fix stays fail-soft** (INFO skip on absent mods, ERROR + untouched on
   malformed targets) and **config-gated**.
 - One jar must stay **client-optional** and **acceptableRemoteVersions = "*"**:

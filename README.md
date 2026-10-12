@@ -26,14 +26,14 @@ nothing to join.
   shears are held the arctic fur block breaks in at most 5. A floor, never a
   slowdown. The faster break is only seen on a client that has Patchee.
 
-Each feature has its own switch in `config/patchee.cfg` — six features and seven
-switches, since the Twilight Forest break speeds have one per rule. Keys,
-defaults and caveats: [docs/SETTINGS.md](docs/SETTINGS.md).
+Each feature has its own switch in `config/patchee.cfg`, the Twilight Forest
+break speeds have one per rule, and a master switch turns the whole mod off.
+Keys, defaults and caveats: [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Requirements
 
-GT:NH for Minecraft 1.7.10. Patchee targets JABBA, Tinkers' Construct and
-GregTech, plus Twilight Forest and VeinMiner when they are installed. A target
+GT:NH for Minecraft 1.7.10. Patchee targets JABBA, Tinkers' Construct, GregTech
+and NEI, plus Twilight Forest and VeinMiner when they are installed. A target
 that is missing or has changed shape disables that one feature and writes a line
 to the log — the server starts either way.
 
@@ -72,8 +72,8 @@ nothing looks wrong to that player. What each optional client mod does:
 - The F7 tweak is applied as NEI loads, so restart the game after changing
   `lightOverlay.maxLightNormal`.
 - Modern Twilight Forest speeds up the aurora block only. Patchee also covers the
-  aurora pillar and slab on purpose — same material, one consistent speed while
-  mining the palace.
+  aurora blocks (block, pillar, slab and double slab) on purpose — same material,
+  one consistent speed while mining the palace.
 
 ## Troubleshooting
 
@@ -94,7 +94,8 @@ release flow are in [DEVELOPER.md](DEVELOPER.md).
 
 MIT — see [LICENSE](LICENSE). Built for the Joint Space Force server.
 
-The Twilight Forest break-speed behaviour is a clean-room re-implementation read
-from the modern mod's source. Twilight Forest code is GNU LGPL v2.1-or-later, its
-art is CC BY-NC-SA 4.0, and its sounds are all rights reserved; Patchee ships no
-Twilight Forest code, art or sound.
+The Twilight Forest break-speed rule and its numbers were read from the modern
+mod's published source and re-written as Patchee's own code; no Twilight Forest
+source file, asset or sound is copied or shipped. Twilight Forest code is GNU
+LGPL v2.1-or-later, its art is CC BY-NC-SA 4.0, and its sounds are all rights
+reserved.
