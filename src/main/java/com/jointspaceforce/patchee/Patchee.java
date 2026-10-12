@@ -10,8 +10,9 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 
 /**
- * Patchee — a small server-side GTNH 1.7.10 addon that fixes two cross-mod
- * annoyances without editing any other mod's jar:
+ * Patchee — a small GTNH 1.7.10 addon that fixes six cross-mod annoyances
+ * without editing any other mod's jar. The fixes are registered in one place,
+ * {@link com.jointspaceforce.patchee.features.PatcheeFeatures}.
  *
  * <p>
  * 1. <b>JABBA Dolly × bee housings.</b> The Dolly refuses to pick up the
@@ -28,9 +29,31 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * behaviour changes.
  *
  * <p>
- * Both fixes are reflection-based against verified runtime names — no ASM,
- * no bytecode edits, no dependencies. Clients need nothing installed
- * ({@code acceptableRemoteVersions = "*"}).
+ * 3. <b>GregTech Super Tanks and Super Chests.</b> A filled one applies four
+ * potion effects to whoever carries it; Patchee clears them
+ * ({@link com.jointspaceforce.patchee.features.SuperTankFeature}).
+ *
+ * <p>
+ * 4. <b>VeinMiner.</b> Patchee rewrites VeinMiner's own settings at every
+ * server start so only sand, clay and gravel can be vein-mined, up to 64 blocks
+ * ({@link com.jointspaceforce.patchee.features.VeinConfigFeature}).
+ *
+ * <p>
+ * 5. <b>NEI's F7 light overlay.</b> On a client that has Patchee installed the
+ * overlay marks only pitch-dark blocks
+ * ({@link com.jointspaceforce.patchee.features.LightOverlayFeature}).
+ *
+ * <p>
+ * 6. <b>Twilight Forest break speeds.</b> The aurora blocks and the arctic fur
+ * block get the modern break speed as a floor
+ * ({@link com.jointspaceforce.patchee.features.AuroraBreakFeature},
+ * {@link com.jointspaceforce.patchee.features.ArcticFurBreakFeature}).
+ *
+ * <p>
+ * Every fix is reflection-based against verified runtime names — no ASM, no
+ * bytecode edits, no dependencies. Two fixes are seen on the client (the F7
+ * overlay and the break speeds); the rest run on the server, so clients need
+ * nothing installed to join ({@code acceptableRemoteVersions = "*"}).
  */
 @Mod(
     modid = Patchee.MODID,

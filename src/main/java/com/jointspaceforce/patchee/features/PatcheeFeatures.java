@@ -19,7 +19,9 @@ public final class PatcheeFeatures {
             .register(new MattockFeature())
             .register(new SuperTankFeature())
             .register(new VeinConfigFeature())
-            .register(new LightOverlayFeature());
+            .register(new LightOverlayFeature())
+            .register(new AuroraBreakFeature())
+            .register(new ArcticFurBreakFeature());
         registry.freeze();
         return registry;
     }

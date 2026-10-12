@@ -4,7 +4,11 @@
 
 > **You do not need to install anything to join.** Patchee runs on the server.
 > A client without it is out of step with the server wherever Patchee changes
-> something; the list below says what each one does for your own game.
+> something the client also computes; the list below says what each one does for
+> your own game.
+> A client copy is also what brings NEI's F7 light overlay and the Twilight
+> Forest break speeds to your own game; without it you just keep the plain
+> 1.7.10 break speeds for those blocks, with no mismatch.
 > Everything here is optional.
 
 ## The optional list
