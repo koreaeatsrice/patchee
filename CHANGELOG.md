@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] - 2026-10-12
+
+### Features
+- backport modern Twilight Forest break speeds (aurora blocks and arctic fur) ([`8ebb561`](https://github.com/koreaeatsrice/patchee/commit/8ebb561a23c603ace5a413ba80d443d6f4d52b51))
+
+### Documentation & Wiki
+- rewrite the README in the project's own voice (#4) ([`2cc6cbb`](https://github.com/koreaeatsrice/patchee/commit/2cc6cbb8aa3c205b29c87ed32dbf494594255955))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.3.1...v1.4.0
+
 ## [1.3.1] - 2026-10-02
 
 ### Bug Fixes
