@@ -13,13 +13,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.item.Item;
+import net.minecraft.stats.Achievement;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
 import net.minecraftforge.common.config.Configuration;
 
 import com.jointspaceforce.patchee.core.Toggles;
+import com.jointspaceforce.patchee.features.ArcticFurBreakFeature;
+import com.jointspaceforce.patchee.features.AuroraBreakFeature;
 import com.jointspaceforce.patchee.features.DollyFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -65,6 +69,8 @@ public final class SelfTest {
         checkDollyGate();
         checkMattock();
         checkVeinConfig(toggles, configDirectory);
+        checkAuroraBreak(toggles);
+        checkArcticFurBreak(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -281,6 +287,78 @@ public final class SelfTest {
         } catch (Exception | LinkageError e) {
             Patchee.LOG.error("[SelfTest] FAIL  veinconfig — could not read the written files", e);
             failed++;
+        }
+    }
+
+    // ---- 4. Twilight Forest aurora break speed (AuroraBreak) --------------
+
+    private void checkAuroraBreak(Toggles toggles) {
+        if (!toggles.featureEnabled(AuroraBreakFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP aurorabreak — feature disabled in config");
+            return;
+        }
+        if (!Loader.isModLoaded("TwilightForest")) {
+            Patchee.LOG.info("[SelfTest] SKIP aurorabreak — Twilight Forest is not installed");
+            return;
+        }
+        try {
+            Class<?> tfBlocks = Class.forName("twilightforest.block.TFBlocks");
+            int found = 0;
+            for (String name : AuroraBreakFeature.AURORA_FIELDS) {
+                if (staticBlockOrNull(tfBlocks, name) != null) {
+                    found++;
+                }
+            }
+            Class<?> page = Class.forName("twilightforest.TFAchievementPage");
+            Field field = page.getDeclaredField("twilightProgressGlacier");
+            field.setAccessible(true);
+            boolean gateFound = field.get(null) instanceof Achievement;
+            check(
+                "aurora break floor: " + found + "/4 blocks, Glacier achievement " + (gateFound ? "found" : "missing"),
+                found == 4 && gateFound);
+        } catch (Exception | LinkageError e) {
+            Patchee.LOG.error("[SelfTest] FAIL aurora break floor setup crashed", e);
+            failed++;
+        }
+    }
+
+    // ---- 5. Twilight Forest arctic fur break speed (ArcticFurBreak) -------
+
+    private void checkArcticFurBreak(Toggles toggles) {
+        if (!toggles.featureEnabled(ArcticFurBreakFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP arcticfurbreak — feature disabled in config");
+            return;
+        }
+        if (!Loader.isModLoaded("TwilightForest")) {
+            Patchee.LOG.info("[SelfTest] SKIP arcticfurbreak — Twilight Forest is not installed");
+            return;
+        }
+        try {
+            Class<?> tfBlocks = Class.forName("twilightforest.block.TFBlocks");
+            Block fur = staticBlockOrNull(tfBlocks, "arcticFurStorage");
+            // The storage types are separate block instances, not metadata
+            // variants: the field name is the arctic fur block and its class is
+            // BlockTFCompressed. See ArcticFurBreakFeature for the evidence.
+            check(
+                "arctic fur break floor: arctic fur block found",
+                fur != null && "twilightforest.block.BlockTFCompressed".equals(
+                    fur.getClass()
+                        .getName()));
+        } catch (Exception | LinkageError e) {
+            Patchee.LOG.error("[SelfTest] FAIL arctic fur break floor setup crashed", e);
+            failed++;
+        }
+    }
+
+    /** A declared static {@code Block} field of {@code owner}, or {@code null} when it is not one. */
+    private static Block staticBlockOrNull(Class<?> owner, String name) {
+        try {
+            Field field = owner.getDeclaredField(name);
+            field.setAccessible(true);
+            Object value = field.get(null);
+            return value instanceof Block ? (Block) value : null;
+        } catch (NoSuchFieldException | IllegalAccessException absent) {
+            return null;
         }
     }
 

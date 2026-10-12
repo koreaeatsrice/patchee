@@ -123,6 +123,8 @@ jobs:
           grep -q "\[MattockFix\] mattock shovel materials" server.log || { echo "::error::MattockFix did not arm"; fail=1; }
           grep -q "\[VeinConfig\] wrote config/veinminer/" server.log || { echo "::error::VeinConfig did not write VeinMiner config"; fail=1; }
           grep -q "\[VeinConfig\] verified:" server.log || { echo "::error::VeinConfig did not verify VeinMiner's live state"; fail=1; }
+          grep -q "\[AuroraBreak\] armed" server.log || { echo "::error::AuroraBreak did not arm"; fail=1; }
+          grep -q "\[ArcticFurBreak\] armed" server.log || { echo "::error::ArcticFurBreak did not arm"; fail=1; }
           grep -q "\[SelfTest\] result: [0-9]* passed, 0 failed" server.log || { echo "::error::self-test reported failures"; grep "\[SelfTest\] FAIL" server.log || true; fail=1; }
           exit "$fail"
 
