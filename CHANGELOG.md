@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.0] - 2026-10-14
+
+### Features
+- **teamchunkcap**: cap a team's chunk claims at 1500 and chunk loads at 500 (#6) ([`3c4338d`](https://github.com/koreaeatsrice/patchee/commit/3c4338d0fa391f1c0d9993e07352c169b15dce1f))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.4.0...v1.5.0
+
 ## [1.4.0] - 2026-10-12
 
 ### Features
