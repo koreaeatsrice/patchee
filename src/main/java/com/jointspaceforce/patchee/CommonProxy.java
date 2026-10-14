@@ -86,7 +86,10 @@ public class CommonProxy {
             VeinConfigFeature.verifyAndLog(Patchee.LOG, toggles);
         }
         if (toggles.masterEnabled() && toggles.runSelfTest()) {
-            SelfTest.run(toggles, context.configDirectory());
+            // ServerUtilities builds its claim data while the universe loads, which
+            // happens at the same moment this event fires, so the checks are run on
+            // the first server tick instead (see SelfTest.schedule).
+            SelfTest.schedule(toggles, context.configDirectory());
         }
     }
 

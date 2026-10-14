@@ -50,10 +50,21 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * {@link com.jointspaceforce.patchee.features.ArcticFurBreakFeature}).
  *
  * <p>
- * Every fix is reflection-based against verified runtime names — no ASM, no
- * bytecode edits, no dependencies. Two fixes are seen on the client (the F7
- * overlay and the break speeds); the rest run on the server, so clients need
- * nothing installed to join ({@code acceptableRemoteVersions = "*"}).
+ * 7. <b>ServerUtilities team chunk limits.</b> ServerUtilities adds a team's
+ * members' limits together, so a bigger team is allowed more land; Patchee caps
+ * the whole team at the single-player numbers, 1500 claimed and 500 loaded
+ * chunks, and leaves a solo player alone
+ * ({@link com.jointspaceforce.patchee.features.TeamChunkCapFeature}).
+ *
+ * <p>
+ * Most fixes are reflection-based against verified runtime names. Two of them
+ * cannot be: the F7 overlay comparison constant and ServerUtilities' team-limit
+ * return value live inside another mod's compiled method with no hook and no
+ * config key, so Patchee's coremod rewrites those class bytes as they load —
+ * see {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
+ * {@code tools/matcher-check}. Two fixes are seen on the client (the F7 overlay
+ * and the break speeds); the rest run on the server, so clients need nothing
+ * installed to join ({@code acceptableRemoteVersions = "*"}).
  */
 @Mod(
     modid = Patchee.MODID,

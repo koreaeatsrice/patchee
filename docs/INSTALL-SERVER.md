@@ -46,9 +46,12 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [MattockFix] mattock shovel materials 3 -> 6 (+3)
 [SuperTankFix] armed — carried GT Super Tanks/Chests will not keep their debuffs
 [VeinConfig] wrote config/veinminer/general.cfg + tools-and-blocks.json (blocks=4, cap=64, radius=20, autodetect=off)
+[TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits clamped to 1500 claimed / 500 loaded chunks (4 return sites; …)
+[TeamChunkCap] armed — every team is capped at 1500 claimed / 500 loaded chunks in total (…)
 ```
 
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
+- The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
 
 - A line that says **`not installed — skipped`** is fine — it just means that mod is not in your pack.
 - A line that says **`failed — … left unchanged`** means the other mod changed shape. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
@@ -56,10 +59,10 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 **Extra check (optional):** in the settings file set `runSelfTest=true`, restart once and look for:
 
 ```
-[SelfTest] result: 12 passed, 0 failed
+[SelfTest] result: 19 passed, 0 failed
 ```
 
-12 checks with VeinMiner installed; **7** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal).
+19 checks with VeinMiner installed; **14** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Four of them check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed.
 
 Then set it back to `false`. Settings explained: [SETTINGS.md](SETTINGS.md).
 

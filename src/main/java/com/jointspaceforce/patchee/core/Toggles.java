@@ -40,4 +40,16 @@ public interface Toggles {
      * is this value + 1.
      */
     int lightOverlayMaxNormal();
+
+    /**
+     * TeamChunkCap: the most chunks one TEAM may claim in total, whatever its
+     * size ({@code 0} = Patchee does not cap claims).
+     */
+    int teamChunkCapMaxClaims();
+
+    /**
+     * TeamChunkCap: the most chunks one TEAM may keep loaded in total, whatever
+     * its size ({@code 0} = Patchee does not cap loaded chunks).
+     */
+    int teamChunkCapMaxLoaded();
 }
