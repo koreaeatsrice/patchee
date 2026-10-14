@@ -25,6 +25,12 @@ nothing to join.
   Queen) is earned, the aurora blocks break in at most 10 ticks, and while
   shears are held the arctic fur block breaks in at most 5. A floor, never a
   slowdown. The faster break is only seen on a client that has Patchee.
+- **ServerUtilities team chunk limits** — ServerUtilities adds a team's members'
+  limits together, so a four-player team gets four times the space (6000 claims,
+  2000 loaded chunks). Patchee caps every team at the single-player numbers —
+  1500 claimed and 500 loaded chunks in total, however big the team — and
+  changes nothing for a solo player, whose own limit already is that number.
+  Server-side only; clients need nothing.
 
 Each feature has its own switch in `config/patchee.cfg`, the Twilight Forest
 break speeds have one per rule, and a master switch turns the whole mod off.

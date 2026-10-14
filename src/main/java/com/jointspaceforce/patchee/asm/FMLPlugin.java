@@ -5,15 +5,17 @@ import java.util.Map;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 /**
- * The coremod entry point: registers {@link LightOverlayTransformer} with Forge's
+ * The coremod entry point: registers Patchee's class transformers with Forge's
  * class loader.
  *
  * <p>
- * The F7 tweak has to change NEI's class bytes while they load, which is a
- * coremod's job. There is deliberately no coremod config and nothing else here:
- * the single transformer ignores every class except
- * {@code codechicken.nei.WorldOverlayRenderer}, so an absent NEI (every server,
- * and any client without it) costs one string comparison per class.
+ * Two tweaks have to change another mod's class bytes while those bytes load,
+ * which is a coremod's job: the F7 light overlay rewrites NEI's comparison
+ * constants on the client, and TeamChunkCap clamps ServerUtilities' team chunk
+ * limits on the server. There is deliberately no coremod config and nothing
+ * else here: each transformer ignores every class except its one target, so an
+ * absent NEI (every server) or an absent ServerUtilities costs one string
+ * comparison per class.
  */
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({ "com.jointspaceforce.patchee." })
@@ -21,7 +23,8 @@ public class FMLPlugin implements IFMLLoadingPlugin {
 
     @Override
     public String[] getASMTransformerClass() {
-        return new String[] { "com.jointspaceforce.patchee.asm.LightOverlayTransformer" };
+        return new String[] { "com.jointspaceforce.patchee.asm.LightOverlayTransformer",
+            "com.jointspaceforce.patchee.asm.TeamChunkCapTransformer" };
     }
 
     @Override
