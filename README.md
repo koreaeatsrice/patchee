@@ -22,15 +22,10 @@ nothing to join.
 - **NEI F7 light overlay** — marks only pitch-dark blocks instead of NEI's
   over-broad light levels. Client-side.
 - **Twilight Forest break speeds** — once the Glacier progression (the Snow
-  Queen) is earned, the aurora blocks break in at most 10 ticks, and while
-  shears are held the arctic fur block breaks in at most 5. A floor, never a
-  slowdown. The faster break is only seen on a client that has Patchee.
+  Queen) is earned, aurora blocks break in 10 ticks, and
+  shears break arctic fur blocks in 5 ticks.
 - **ServerUtilities team chunk limits** — ServerUtilities adds a team's members'
-  limits together, so a four-player team gets four times the space (6000 claims,
-  2000 loaded chunks). Patchee caps every team at the single-player numbers —
-  1500 claimed and 500 loaded chunks in total, however big the team — and
-  changes nothing for a solo player, whose own limit already is that number.
-  Server-side only; clients need nothing.
+  limits together. Patchee caps every team at the single-player numbers. Server-side.
 
 Each feature has its own switch in `config/patchee.cfg`, the Twilight Forest
 break speeds have one per rule, and a master switch turns the whole mod off.
