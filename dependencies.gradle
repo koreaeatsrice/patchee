@@ -61,6 +61,13 @@ dependencies {
     // exercised end to end in ./gradlew runServer. The rules reach TF by
     // reflection, so nothing links against it at compile time.
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:TwilightForest:2.7.41:dev")
+    // ServerUtilities, dev-runtime only (never compiled against or published):
+    // TeamChunkCap patches serverutils.data.ServerUtilitiesTeamData from a
+    // coremod working on raw class bytes, so Patchee never links against it.
+    // The dev server has to run ServerUtilities itself to prove the clamp end to
+    // end (a team whose members' limits sum past the caps, a solo team that must
+    // be untouched, and the claimed-chunks code refusing past the cap).
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.4.9")
     // NOTE: Gendustry (Industrial Apiary) and MagicBees (Magic Apiary) are also
     // patched by DollyFix, but their jitpack dev artifacts drag in unresolvable
     // transitive pins (CodeChickenLib 1.1.5.1 is gone), so the local dev

@@ -25,10 +25,13 @@ import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.features.ArcticFurBreakFeature;
 import com.jointspaceforce.patchee.features.AuroraBreakFeature;
 import com.jointspaceforce.patchee.features.DollyFeature;
+import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.eventhandler.SubscribeEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 
@@ -59,6 +62,48 @@ public final class SelfTest {
 
     private SelfTest() {}
 
+    /**
+     * Runs the checks once, on the first server tick.
+     *
+     * <p>
+     * Not at {@code FMLServerStartedEvent} directly: some of the live state the
+     * checks read is built by the mod being checked while the universe loads,
+     * which happens at the same instant that event fires — ServerUtilities
+     * creates its claimed-chunks state there, and the order of two mods' handlers
+     * for one event is arbitrary. Waiting for the first tick means the world is
+     * fully up, and every check sees the state a running server actually has.
+     */
+    public static void schedule(Toggles toggles, File configDirectory) {
+        FMLCommonHandler.instance()
+            .bus()
+            .register(new FirstTick(toggles, configDirectory));
+    }
+
+    /** The one-shot listener that defers the checks to the first server tick. */
+    public static final class FirstTick {
+
+        private final Toggles toggles;
+        private final File configDirectory;
+
+        private FirstTick(Toggles toggles, File configDirectory) {
+            this.toggles = toggles;
+            this.configDirectory = configDirectory;
+        }
+
+        // public, and the class public: FML builds an ASM event handler in another
+        // package, which cannot reach a private nested class.
+        @SubscribeEvent
+        public void onServerTick(TickEvent.ServerTickEvent event) {
+            if (event.phase != TickEvent.Phase.START) {
+                return;
+            }
+            FMLCommonHandler.instance()
+                .bus()
+                .unregister(this);
+            SelfTest.run(toggles, configDirectory);
+        }
+    }
+
     public static void run(Toggles toggles, File configDirectory) {
         new SelfTest().runChecks(toggles, configDirectory);
     }
@@ -71,6 +116,7 @@ public final class SelfTest {
         checkVeinConfig(toggles, configDirectory);
         checkAuroraBreak(toggles);
         checkArcticFurBreak(toggles);
+        checkTeamChunkCap(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -348,6 +394,329 @@ public final class SelfTest {
             Patchee.LOG.error("[SelfTest] FAIL arctic fur break floor setup crashed", e);
             failed++;
         }
+    }
+
+    // ---- 6. TeamChunkCap (ServerUtilities team chunk limits) --------------
+
+    /** ServerUtilities' own team-limit class and the two permission nodes it sums. */
+    private static final String SU_DATA_CLASS = "serverutils.data.ServerUtilitiesTeamData";
+    private static final String SU_CLAIMS_NODE = "serverutilities.claims.max_chunks";
+    private static final String SU_LOADS_NODE = "serverutilities.chunkloader.max_chunks";
+
+    /** Enough members that their per-player limits sum past Patchee's default caps. */
+    private static final int CAP_TEST_MEMBERS = 16;
+
+    /**
+     * The team cap, checked against ServerUtilities' own live objects: a team big
+     * enough to be over the cap must be answered the cap, a single-player team
+     * must be answered its own number, and the same server-side code that refuses
+     * a claim must refuse claims past the cap — with the cap switched off, the raw
+     * per-member sum must come back untouched.
+     *
+     * <p>
+     * Everything is reached by reflection (Patchee keeps no dependency on
+     * ServerUtilities), and only through fields and constructors where a method
+     * lookup would resolve a signature list Patchee does not own.
+     */
+    private void checkTeamChunkCap(Toggles toggles) {
+        if (FMLCommonHandler.instance()
+            .getSide() != Side.SERVER) {
+            Patchee.LOG.info("[SelfTest] SKIP teamchunkcap — server-side feature, this is a client");
+            return;
+        }
+        if (!toggles.featureEnabled(TeamChunkCapFeature.ID)) {
+            Patchee.LOG.info(
+                "[SelfTest] teamchunkcap — feature disabled in config, so nothing clamps; ServerUtilities' own totals stand (see the line below)");
+        }
+        Class<?> claimedChunks;
+        try {
+            claimedChunks = Class.forName("serverutils.data.ClaimedChunks");
+        } catch (ClassNotFoundException | LinkageError absent) {
+            Patchee.LOG.info("[SelfTest] SKIP teamchunkcap — ServerUtilities is not installed");
+            return;
+        }
+
+        Object instance;
+        try {
+            instance = claimedChunks.getField("instance")
+                .get(null);
+        } catch (Throwable unreachable) {
+            failed++;
+            Patchee.LOG.error(
+                "[SelfTest] FAIL teamchunkcap — could not reach ServerUtilities' claimed-chunks state",
+                unreachable);
+            return;
+        }
+        if (instance == null) {
+            Patchee.LOG.info(
+                "[SelfTest] SKIP teamchunkcap — chunk claiming is switched off on this server (ClaimedChunks.instance is null)");
+            return;
+        }
+
+        try {
+            Object universe = claimedChunks.getField("universe")
+                .get(instance);
+            Class<?> universeClass = universe.getClass();
+            @SuppressWarnings("unchecked")
+            Map<Object, Object> players = (Map<Object, Object>) universeClass.getField("players")
+                .get(universe);
+
+            Class<?> teamTypeClass = Class.forName("serverutils.lib.data.TeamType");
+            Object serverType = enumValue(teamTypeClass, "SERVER_NO_SAVE");
+            Class<?> teamClass = Class.forName("serverutils.lib.data.ForgeTeam");
+            Class<?> playerClass = Class.forName("serverutils.lib.data.ForgePlayer");
+            Class<?> dataClass = Class.forName(SU_DATA_CLASS);
+            Class<?> posClass = Class.forName("serverutils.lib.math.ChunkDimPos");
+
+            java.lang.reflect.Constructor<?> teamCtor = teamClass
+                .getConstructor(universeClass, short.class, String.class, teamTypeClass);
+            java.lang.reflect.Constructor<?> playerCtor = playerClass
+                .getConstructor(universeClass, java.util.UUID.class, String.class);
+            java.lang.reflect.Field playerTeam = playerClass.getField("team");
+            java.lang.reflect.Field playerProfile = playerClass.getField("profile");
+            java.lang.reflect.Method rankConfig = playerClass.getMethod("getRankConfig", String.class);
+            java.lang.reflect.Method getData = dataClass.getMethod("get", teamClass);
+            java.lang.reflect.Method maxClaim = dataClass.getMethod("getMaxClaimChunks");
+            java.lang.reflect.Method maxLoad = dataClass.getMethod("getMaxChunkloaderChunks");
+            java.lang.reflect.Constructor<?> posCtor = posClass.getConstructor(int.class, int.class, int.class);
+            java.lang.reflect.Method claimChunk = claimedChunks
+                .getMethod("claimChunk", playerClass, posClass, boolean.class);
+
+            int capClaims = toggles.teamChunkCapMaxClaims();
+            int capLoads = toggles.teamChunkCapMaxLoaded();
+
+            // a lone player, and a team big enough that ServerUtilities' per-member
+            // sum is past the cap
+            ForgeTeamProbe solo = team(
+                teamClass,
+                teamCtor,
+                universe,
+                serverType,
+                "captest-solo",
+                1,
+                players,
+                playerCtor,
+                playerTeam,
+                playerProfile);
+            ForgeTeamProbe big = team(
+                teamClass,
+                teamCtor,
+                universe,
+                serverType,
+                "captest-team",
+                CAP_TEST_MEMBERS,
+                players,
+                playerCtor,
+                playerTeam,
+                playerProfile);
+
+            int soloClaims = (Integer) maxClaim.invoke(getData.invoke(null, solo.team));
+            int soloLoads = (Integer) maxLoad.invoke(getData.invoke(null, solo.team));
+            int bigClaims = (Integer) maxClaim.invoke(getData.invoke(null, big.team));
+            int bigLoads = (Integer) maxLoad.invoke(getData.invoke(null, big.team));
+
+            int soloRawClaims = rankValue(rankConfig, solo.firstMember, SU_CLAIMS_NODE);
+            int bigRawClaims = rankValue(rankConfig, big.firstMember, SU_CLAIMS_NODE) * CAP_TEST_MEMBERS;
+            int bigRawLoads = rankValue(rankConfig, big.firstMember, SU_LOADS_NODE) * CAP_TEST_MEMBERS;
+
+            if (soloClaims < 0) {
+                Patchee.LOG.info(
+                    "[SelfTest] SKIP teamchunkcap — ServerUtilities answered {} (claimed chunks are not active in this world)",
+                    soloClaims);
+                return;
+            }
+
+            Patchee.LOG.info(
+                "[SelfTest] teamchunkcap observed: 1-member team raw {} claims, {}-member team raw {} claims / {} loaded, caps {} / {}",
+                soloRawClaims,
+                CAP_TEST_MEMBERS,
+                bigRawClaims,
+                bigRawLoads,
+                capClaims,
+                capLoads);
+
+            if (!toggles.featureEnabled(TeamChunkCapFeature.ID)) {
+                // Switched off means the class was not patched at all: the raw,
+                // per-member totals are what ServerUtilities serves.
+                Patchee.LOG.info(
+                    "[SelfTest] SKIP teamchunkcap checks — feature off: the {}-member team is served ServerUtilities' own {} claims / {} loaded (cap {} / {} not applied)",
+                    CAP_TEST_MEMBERS,
+                    bigClaims,
+                    bigLoads,
+                    capClaims,
+                    capLoads);
+                return;
+            }
+
+            // (c) a solo team: the sum already is the per-player number
+            check(
+                "teamchunkcap solo team not clamped: raw " + soloRawClaims + " claims -> " + soloClaims + " claims",
+                soloClaims == soloRawClaims);
+            check(
+                "teamchunkcap solo team not clamped: raw " + rankValue(rankConfig, solo.firstMember, SU_LOADS_NODE)
+                    + " loaded -> "
+                    + soloLoads,
+                soloLoads == rankValue(rankConfig, solo.firstMember, SU_LOADS_NODE));
+
+            // (b) the multi-member team is answered the capped number
+            check(
+                "teamchunkcap " + CAP_TEST_MEMBERS
+                    + "-member team capped: raw "
+                    + bigRawClaims
+                    + " claims -> "
+                    + bigClaims
+                    + " claims (cap "
+                    + capClaims
+                    + ")",
+                bigClaims == expected(bigRawClaims, capClaims));
+            check(
+                "teamchunkcap " + CAP_TEST_MEMBERS
+                    + "-member team capped: raw "
+                    + bigRawLoads
+                    + " loaded -> "
+                    + bigLoads
+                    + " loaded (cap "
+                    + capLoads
+                    + ")",
+                bigLoads == expected(bigRawLoads, capLoads));
+
+            // (a) the server's own claim code refuses past the cap
+            ClaimSweep sweep = sweepClaims(claimChunk, posCtor, instance, big, expected(bigRawClaims, capClaims));
+            if (sweep.dimensionBlocked) {
+                Patchee.LOG.info(
+                    "[SelfTest] SKIP teamchunkcap claim sweep — claiming is blocked in the dimensions this check tried");
+            } else {
+                check(
+                    "teamchunkcap claim sweep: " + sweep.accepted
+                        + " claim(s) accepted, then "
+                        + sweep.refusal
+                        + " (cap "
+                        + expected(bigRawClaims, capClaims)
+                        + ")",
+                    sweep.accepted == expected(bigRawClaims, capClaims) && "NO_POWER".equals(sweep.refusal));
+            }
+        } catch (Exception | LinkageError broken) {
+            failed++;
+            Patchee.LOG.error("[SelfTest] FAIL teamchunkcap — the live check crashed", broken);
+        }
+    }
+
+    /** One made team, with its members registered in ServerUtilities' player map. */
+    private static final class ForgeTeamProbe {
+
+        private final Object team;
+        private final Object firstMember;
+
+        private ForgeTeamProbe(Object team, Object firstMember) {
+            this.team = team;
+            this.firstMember = firstMember;
+        }
+    }
+
+    /** What one claim sweep saw. */
+    private static final class ClaimSweep {
+
+        private int accepted;
+        private String refusal = "none";
+        private boolean dimensionBlocked;
+
+        private ClaimSweep() {}
+    }
+
+    /** Builds a team of {@code members} plain (non-op) players. */
+    private static ForgeTeamProbe team(Class<?> teamClass, java.lang.reflect.Constructor<?> teamCtor, Object universe,
+        Object serverType, String name, int members, Map<Object, Object> players,
+        java.lang.reflect.Constructor<?> playerCtor, java.lang.reflect.Field playerTeam,
+        java.lang.reflect.Field playerProfile) throws Exception {
+        short uid = (short) (20000 + Math.abs(name.hashCode() % 10000));
+        Object team = teamCtor.newInstance(universe, uid, name, serverType);
+        Object first = null;
+        for (int i = 0; i < members; i++) {
+            java.util.UUID id = java.util.UUID.randomUUID();
+            Object player = playerCtor.newInstance(universe, id, name + "-m" + i);
+            playerTeam.set(player, team);
+            players.put(universeUuid(playerProfile, player), player);
+            if (first == null) {
+                first = player;
+            }
+        }
+        return new ForgeTeamProbe(team, first);
+    }
+
+    /** The player's own UUID, so the player map key and the profile agree. */
+    private static Object universeUuid(java.lang.reflect.Field playerProfile, Object player) throws Exception {
+        Object profile = playerProfile.get(player);
+        return Class.forName("com.mojang.authlib.GameProfile")
+            .getMethod("getId")
+            .invoke(profile);
+    }
+
+    /** A rank config value as an int, e.g. 100 for a plain player. */
+    private static int rankValue(java.lang.reflect.Method rankConfig, Object player, String node) throws Exception {
+        Object value = rankConfig.invoke(player, node);
+        return (Integer) value.getClass()
+            .getMethod("getInt")
+            .invoke(value);
+    }
+
+    /** What Patchee should answer: the cap when the sum is over it, the sum otherwise. */
+    private static int expected(int raw, int cap) {
+        return cap > 0 && raw > cap ? cap : raw;
+    }
+
+    /**
+     * Claims chunks with ServerUtilities' own method until it refuses, and reports
+     * how many it accepted. Dimensions that are blocked are skipped, so the sweep
+     * runs in a dimension where claiming is allowed.
+     */
+    private static ClaimSweep sweepClaims(java.lang.reflect.Method claimChunk, java.lang.reflect.Constructor<?> posCtor,
+        Object instance, ForgeTeamProbe probe, int cap) throws Exception {
+        ClaimSweep sweep = new ClaimSweep();
+        int[] dims = { 0, 1, -1, 7 };
+        Object dim = null;
+        for (int candidate : dims) {
+            Object pos = posCtor.newInstance(0, 0, candidate);
+            Object result = claimChunk.invoke(instance, probe.firstMember, pos, Boolean.TRUE);
+            if ("SUCCESS".equals(String.valueOf(result))) {
+                sweep.accepted = 1;
+                dim = candidate;
+                break;
+            }
+            if (!"DIMENSION_BLOCKED".equals(String.valueOf(result))) {
+                sweep.refusal = String.valueOf(result);
+                return sweep;
+            }
+        }
+        if (dim == null) {
+            sweep.dimensionBlocked = true;
+            return sweep;
+        }
+        int attempted = 0;
+        // Keep going one attempt past the cap: the refusal is the point of the sweep.
+        while (attempted < cap + 2) {
+            attempted++;
+            Object pos = posCtor.newInstance(attempted * 7, 100, (Integer) dim);
+            Object result = claimChunk.invoke(instance, probe.firstMember, pos, Boolean.TRUE);
+            String name = String.valueOf(result);
+            if ("SUCCESS".equals(name)) {
+                sweep.accepted++;
+            } else {
+                sweep.refusal = name;
+                return sweep;
+            }
+        }
+        return sweep;
+    }
+
+    /** One enum constant by name, or {@code null}. */
+    private static Object enumValue(Class<?> type, String name) {
+        for (Object constant : type.getEnumConstants()) {
+            if (String.valueOf(constant)
+                .equals(name)) {
+                return constant;
+            }
+        }
+        return null;
     }
 
     /** A declared static {@code Block} field of {@code owner}, or {@code null} when it is not one. */

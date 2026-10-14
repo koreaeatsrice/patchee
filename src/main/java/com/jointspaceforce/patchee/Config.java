@@ -13,6 +13,7 @@ import com.jointspaceforce.patchee.core.Feature;
 import com.jointspaceforce.patchee.core.FeatureRegistry;
 import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.features.LightOverlaySettings;
+import com.jointspaceforce.patchee.features.TeamChunkCap;
 
 /**
  * Forge config holder, in the usual Forge style: one static
@@ -64,6 +65,16 @@ public class Config {
         + "(the Nether included; it has no separate value). 0 = only pitch-dark blocks get an X (the default). "
         + "7 = NEI's own default. Client-side only: it changes anything only on a client that has Patchee installed.";
 
+    private static final String TEAM_CLAIMS_COMMENT = "TeamChunkCap: the most chunks a TEAM may claim in total, however many members it has. "
+        + "The default 1500 is one player's own limit, so a team gets the same total as a solo player. "
+        + "0 = Patchee does not cap claims (ServerUtilities' own per-member sum stands). "
+        + "A solo player is never affected.";
+
+    private static final String TEAM_LOADS_COMMENT = "TeamChunkCap: the most chunks a TEAM may keep loaded in total, however many members it has. "
+        + "The default 500 is one player's own limit, so a team gets the same total as a solo player. "
+        + "0 = Patchee does not cap loaded chunks (ServerUtilities' own per-member sum stands). "
+        + "A solo player is never affected.";
+
     public static boolean enabled = true;
     public static String[] extraDollyClasses = new String[0];
     public static boolean runSelfTest = false;
@@ -72,6 +83,8 @@ public class Config {
     public static String veinBlocks = "minecraft:sand/0,minecraft:sand/1,minecraft:clay,minecraft:gravel";
     public static String veinExtraTools = "";
     public static int lightOverlayMaxNormal = 0;
+    public static int teamChunkCapMaxClaims = TeamChunkCap.DEFAULT_MAX_CLAIMS;
+    public static int teamChunkCapMaxLoaded = TeamChunkCap.DEFAULT_MAX_LOADS;
 
     /** The snapshot the pipeline reads; replaced by every load. */
     private static Toggles toggles = new Snapshot(
@@ -83,7 +96,9 @@ public class Config {
         20,
         new String[] { "minecraft:sand/0", "minecraft:sand/1", "minecraft:clay", "minecraft:gravel" },
         new String[0],
-        0);
+        0,
+        TeamChunkCap.DEFAULT_MAX_CLAIMS,
+        TeamChunkCap.DEFAULT_MAX_LOADS);
 
     /** The immutable config snapshot the features read. */
     public static Toggles toggles() {
@@ -124,6 +139,13 @@ public class Config {
                 .get(CATEGORY, LightOverlaySettings.MAX_LIGHT_KEY, lightOverlayMaxNormal, LIGHT_OVERLAY_NORMAL_COMMENT)
                 .getInt(lightOverlayMaxNormal);
 
+            teamChunkCapMaxClaims = configuration
+                .get(CATEGORY, TeamChunkCap.CLAIMS_KEY, teamChunkCapMaxClaims, TEAM_CLAIMS_COMMENT)
+                .getInt(teamChunkCapMaxClaims);
+            teamChunkCapMaxLoaded = configuration
+                .get(CATEGORY, TeamChunkCap.LOADS_KEY, teamChunkCapMaxLoaded, TEAM_LOADS_COMMENT)
+                .getInt(teamChunkCapMaxLoaded);
+
             toggles = new Snapshot(
                 enabled,
                 featureSwitches,
@@ -133,7 +155,9 @@ public class Config {
                 veinRadius,
                 splitList(veinBlocks),
                 splitList(veinExtraTools),
-                lightOverlayMaxNormal);
+                lightOverlayMaxNormal,
+                teamChunkCapMaxClaims,
+                teamChunkCapMaxLoaded);
         } finally {
             if (configuration.hasChanged()) {
                 configuration.save();
@@ -153,10 +177,12 @@ public class Config {
         private final String[] veinBlocks;
         private final String[] veinExtraTools;
         private final int lightOverlayMaxNormal;
+        private final int teamChunkCapMaxClaims;
+        private final int teamChunkCapMaxLoaded;
 
         private Snapshot(boolean master, Map<String, Boolean> features, boolean selfTest, String[] extraDolly,
-            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools,
-            int lightOverlayMaxNormal) {
+            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools, int lightOverlayMaxNormal,
+            int teamChunkCapMaxClaims, int teamChunkCapMaxLoaded) {
             this.master = master;
             this.features = Collections.unmodifiableMap(features);
             this.selfTest = selfTest;
@@ -166,6 +192,8 @@ public class Config {
             this.veinBlocks = veinBlocks;
             this.veinExtraTools = veinExtraTools;
             this.lightOverlayMaxNormal = lightOverlayMaxNormal;
+            this.teamChunkCapMaxClaims = teamChunkCapMaxClaims;
+            this.teamChunkCapMaxLoaded = teamChunkCapMaxLoaded;
         }
 
         @Override
@@ -212,6 +240,16 @@ public class Config {
         @Override
         public int lightOverlayMaxNormal() {
             return lightOverlayMaxNormal;
+        }
+
+        @Override
+        public int teamChunkCapMaxClaims() {
+            return teamChunkCapMaxClaims;
+        }
+
+        @Override
+        public int teamChunkCapMaxLoaded() {
+            return teamChunkCapMaxLoaded;
         }
     }
 
