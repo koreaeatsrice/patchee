@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.5.1] - 2026-10-15
+
+### Bug Fixes
+- **teamchunkcap**: write claim-clamp samples to logs/patchee-claims.log instead of the console (#7) ([`9605420`](https://github.com/koreaeatsrice/patchee/commit/96054204ab409da4378c02d5202976199b79957a))
+
+### Other Changes
+- Refactor README.md for clarity on features ([`81e8c6d`](https://github.com/koreaeatsrice/patchee/commit/81e8c6df4abcd6f8309af7d2ea09631741a86a56))
+
+### Contributors
+
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.5.0...v1.5.1
+
 ## [1.5.0] - 2026-10-14
 
 ### Features
