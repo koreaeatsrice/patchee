@@ -1,6 +1,13 @@
 package com.jointspaceforce.patchee.features;
 
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.logging.log4j.LogManager;
@@ -35,6 +42,16 @@ public final class TeamChunkCapHooks {
 
     private static final AtomicLong CLAMPED = new AtomicLong();
     private static final AtomicLong LAST_LOG_AT = new AtomicLong();
+
+    /** Samples land here, beside the server's own logs (working-directory relative). */
+    private static final Path LOG_FILE = Paths.get("logs", "patchee-claims.log");
+    private static final DateTimeFormatter TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+    /** One write at a time; the throttle already caps this at one every 5 s. */
+    private static final Object WRITE_LOCK = new Object();
+
+    /** Set once so a broken log file costs one warning per JVM run, not one per sample. */
+    private static volatile boolean writeFailureReported;
 
     private static volatile Logger logger;
     private static volatile Field teamField;
@@ -76,25 +93,58 @@ public final class TeamChunkCapHooks {
         return cap;
     }
 
-    /** One line per {@link #LOG_INTERVAL_MS}, with the team, the sum and the cap. */
+    /** One line per {@link #LOG_INTERVAL_MS}, appended to {@link #LOG_FILE}. */
     private static void logSampled(String kind, String team, int raw, int cap, long total) {
         long now = System.currentTimeMillis();
         long last = LAST_LOG_AT.get();
         if (now - last < LOG_INTERVAL_MS || !LAST_LOG_AT.compareAndSet(last, now)) {
             return;
         }
-        Logger log = logger();
-        if (log == null) {
-            return;
+        String line = LocalDateTime.now()
+            .format(TIMESTAMP) + " "
+            + String.format(
+                "clamped team %s's %s limit - sum %d -> %d (cap %d; %d clamp(s) so far)",
+                team,
+                kind,
+                raw,
+                cap,
+                cap,
+                total);
+        appendSample(line);
+    }
+
+    /**
+     * Appends one line to {@link #LOG_FILE}, creating {@code logs/} if it is not
+     * there yet. A write that cannot be done is reported at most once per JVM run
+     * and never falls back to a console line per event.
+     */
+    private static void appendSample(String line) {
+        try {
+            synchronized (WRITE_LOCK) {
+                Files.createDirectories(LOG_FILE.getParent());
+                Files.write(
+                    LOG_FILE,
+                    (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+            }
+        } catch (Throwable unwritable) {
+            warnOnce(unwritable);
         }
-        log.info(
-            "[TeamChunkCap] clamped team {}'s {} limit — sum {} -> {} (cap {}; {} clamp(s) so far)",
-            team,
-            kind,
-            raw,
-            cap,
-            cap,
-            total);
+    }
+
+    /** The one and only word a broken log file gets for the whole JVM run. */
+    private static void warnOnce(Throwable cause) {
+        synchronized (WRITE_LOCK) {
+            if (writeFailureReported) {
+                return;
+            }
+            writeFailureReported = true;
+        }
+        Logger log = logger();
+        if (log != null) {
+            log.warn("[TeamChunkCap] cannot append sampled clamps to {}", LOG_FILE, cause);
+        }
     }
 
     /** The mod logger, or {@code null} when log4j is not there (the game always has it). */
