@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.0] - 2026-10-17
+
+### Features
+- **finalcastlebreak**: take the Final Castle apart once Glacier is earned (#8) ([`e087920`](https://github.com/koreaeatsrice/patchee/commit/e0879205c81f96c1d9f97773877ff80e304bed1e))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.5.1...v1.6.0
+
 ## [1.5.1] - 2026-10-15
 
 ### Bug Fixes
