@@ -464,3 +464,161 @@ count 0 → 4 and `if_icmpge 123 → 127` inside `BlockTFThorns.registerBlockIco
   from that smoke boot.
 - The client branches, the reflective `doThornBurst` invoke, and the live server's
   own TF jar beyond the stored bytes remain untested here (see §6).
+
+## 8. Review round 3: CI-only failure (repository file-type bug, not a feature bug)
+
+### The failure
+
+The first CI run of this branch failed on a test that passed locally:
+
+```
+FinalCastleBreakPatchTest > theLiveTfBlocksHasTheThreePublicStaticBlockFields() FAILED
+    java.lang.ArrayIndexOutOfBoundsException: Index 1119 out of bounds for length 1119
+        at org.objectweb.asm.ClassReader.readClass(ClassReader.java:...)
+        ...
+```
+
+That test only does `read(resource(LIVE + "TFBlocks.class"))` and then checks the
+three `TFBlocks` fields. Locally it passed; in CI the stored bytes came back
+short and ASM fell over at `readClass`.
+
+### Root cause: git normalized a binary `.class` file as text
+
+The stored live bytes at `src/test/resources/finalcastlebreak/live/TFBlocks.class`
+are real binary class bytes. On disk in this worktree:
+
+```
+19272 bytes, sha256 2c1e57b206d7fb69515aedc3d2d781e7d073043448339ccf8561fa67a2aef52a
+CR=37  CRLF=1  LF=240
+```
+
+`git hash-object --path=…TFBlocks.class` (i.e. the blob the publish path stores,
+with the repo's attribute filters applied) produced a **19271-byte** blob —
+one byte gone. In a fresh checkout of the published branch the same file is
+19271 bytes, sha256 `bc12f2734dcb…`, CR=36, CRLF=0. The single CRLF pair had been
+collapsed to LF, corrupting the class; ASM saw a 1119-byte fragment (the
+"length 1119" in the stack trace) instead of a 19272-byte class.
+
+The cause is `.gitattributes` line 1:
+
+```
+* text eol=lf
+```
+
+Every file is text by default and `.class` was **not** declared binary, so git
+(eol=lf) rewrote line endings inside the class file on publish. The other five
+stored `.class` files happen to contain no CRLF pair, so they survived — the same
+latent risk, unproven until a class with a CRLF shows up.
+
+Reproduced cheaply in the worktree: `git check-attr -a -- …/TFBlocks.class` said
+`text: set`, and the normalized blob was 19271 bytes vs 19272 on disk.
+
+### What changed (all inside the worktree; no git writes, not published)
+
+1. **`.gitattributes`** — added one line, in the file's own bracketed
+   case-insensitive / column-aligned style, next to the other JVM-archive rule:
+
+   ```
+   *.[jJ][aA][rR]          binary
+   *.[cC][lL][aA][sS][sS]  binary
+   ```
+
+   `binary` sets `text` unset, so git stops converting line endings inside
+   `.class` files (and the publish tool, which compares git-normalized blobs, now
+   stores the exact bytes).
+
+2. **`src/test/java/.../features/FinalCastleBreakPatchTest.java`** — the test no
+   longer trusts the bytes blindly. A single `FIXTURE_SHA256` map (one obvious
+   place, with a comment) records the sha256 of all six stored `.class` fixtures;
+   `resource(...)` now verifies the fetched bytes against it before any parse, and
+   fails with a message naming the file, the expected and actual sha, the byte
+   count, and the `.gitattributes`/text-normalization pitfall. No other assertion
+   changed; the live/dev bytes are untouched.
+
+3. **`src/test/resources/finalcastlebreak/README.md`** — new "File-type pitfall"
+   section: these are binary class bytes; `.gitattributes` must keep `.class`
+   binary; a text/eol=lf rule silently drops a byte from a class carrying a CRLF
+   pair (this happened to TFBlocks.class, 1 byte lost, CI failed); the sha guard;
+   and how the bytes were captured (the read-only `ssh … unzip -p` command, the
+   jar names/versions, and the recorded sha256s, which must agree with the test
+   map).
+
+4. This section.
+
+### Re-verification (raw output)
+
+Whether the fix works is proven by git's own attribute resolution, not by luck:
+
+```
+$ git check-attr -a -- src/test/resources/finalcastlebreak/live/TFBlocks.class
+src/test/resources/finalcastlebreak/live/TFBlocks.class: binary: set
+src/test/resources/finalcastlebreak/live/TFBlocks.class: diff: unset
+src/test/resources/finalcastlebreak/live/TFBlocks.class: merge: unset
+src/test/resources/finalcastlebreak/live/TFBlocks.class: text: unset
+src/test/resources/finalcastlebreak/live/TFBlocks.class: eol: lf
+```
+
+`text: unset` is the point: git will no longer normalize this file. The `.java`
+file is unaffected and still text:
+
+```
+$ git check-attr -a -- src/test/resources/finalcastlebreak/live/TFBlocks.class \
+                       src/main/java/com/jointspaceforce/patchee/features/FinalCastleBreak.java
+…TFBlocks.class: text: unset   (as above)
+…/FinalCastleBreak.java: text: set
+…/FinalCastleBreak.java: eol: lf
+```
+
+Additional check that the rule is what changed the outcome: with the new rule in
+place, `git hash-object --path=…/TFBlocks.class …/TFBlocks.class` now yields the
+same bytes — `git cat-file -s` reports **19272** (was 19271 before the fix).
+
+The sha guard itself was proven to fire: substituting the git-normalized
+19271-byte bytes (CR=36, CRLF=0) into the built resource dir and running the
+single test produced
+
+```
+FinalCastleBreakPatchTest > theLiveTfBlocksHasTheThreePublicStaticBlockFields() FAILED
+    org.opentest4j.AssertionFailedError at FinalCastleBreakPatchTest.java:442
+```
+
+— i.e. the loud sha-mismatch message, not an ASM stack trace. The built resource
+was then restored to the exact 19272 bytes / `2c1e57b2…`.
+
+Full build and tests after the fixes:
+
+```
+$ ./gradlew spotlessApply --no-daemon -q
+SPOTLESS_OK exit=0
+$ ./gradlew clean build --no-daemon
+BUILD SUCCESSFUL
+
+$ ./gradlew test --rerun-tasks --no-daemon
+BUILD SUCCESSFUL
+com.jointspaceforce.patchee.features.AuroraBreakFloorTest          tests=4  failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.FinalCastleBreakPatchTest     tests=21 failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.FinalCastleBreakSettingsTest  tests=10 failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.LightOverlayPatchTest         tests=6  failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.LightOverlaySettingsTest      tests=7  failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.LightOverlayThresholdTest     tests=5  failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.TeamChunkCapPatchTest         tests=8  failures=0 errors=0 skipped=0
+com.jointspaceforce.patchee.features.TeamChunkCapTest              tests=12 failures=0 errors=0 skipped=0
+TOTAL tests=73 failures=0 errors=0 skipped=0
+```
+
+Files changed in this round: `.gitattributes`,
+`src/test/java/com/jointspaceforce/patchee/features/FinalCastleBreakPatchTest.java`,
+`src/test/resources/finalcastlebreak/README.md`, and this report. No `.class`
+byte was modified and no git write was made.
+
+### Uncertainty
+
+- The proof that the publish path no longer mangles the file rests on git's
+  attribute resolution (`text: unset`) and on `git hash-object --path=` no longer
+  changing the bytes. The actual publish tool was not run here (the parent
+  publishes); if that tool does not honour `.gitattributes` at all, this fix would
+  not help — but the evidence (the fresh-checkout file was git-normalized to
+  19271 bytes) shows it does.
+- Only `live/TFBlocks.class` actually contained a CRLF pair and so was corrupted;
+  the other five were not damaged, and the sha guard now protects all six if a
+  future TF build ships a class with a CRLF.

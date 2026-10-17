@@ -61,3 +61,48 @@ descriptor + instruction shape and never by member name.
 The live server jar is **2.7.40**; the dev dependency is **2.7.41**. Both were
 checked and the two patched methods have the identical instruction shape in
 each, so the one patch covers both.
+
+## File-type pitfall (these are BINARY, and git must treat them so)
+
+These `.class` files are **real binary class bytes**, not text. The repo's
+`.gitattributes` line 1 is `* text eol=lf`, so **every** file is text by default;
+a `.class` file is binary only because of the explicit rule
+
+```
+*.[cC][lL][aA][sS][sS]  binary
+```
+
+That rule must stay. If `.class` is ever left as text (or the rule is dropped),
+git rewrites the line endings inside these files on publish and **silently drops
+bytes**: a class file that happens to contain a CRLF pair loses the CR.
+
+**This already happened.** On a fresh checkout of the published branch
+`live/TFBlocks.class` came back 19271 bytes (sha256 `bc12f2734dcb…`, 36 CR, 0
+CRLF) instead of the stored 19272 bytes (sha256
+`2c1e57b206d7fb69515aedc3d2d781e7d073043448339ccf8561fa67a2aef52a`, 37 CR, 1
+CRLF) — one byte gone, the class corrupted. ASM then threw
+`ArrayIndexOutOfBoundsException … length 1119` at `ClassReader.readClass` in
+`FinalCastleBreakPatchTest.theLiveTfBlocksHasTheThreePublicStaticBlockFields`,
+and CI failed. The other five fixtures happen to contain no CRLF pair, so they
+survived that time — the same latent risk applies to all of them.
+
+`FinalCastleBreakPatchTest` now guards against this: it verifies each stored
+fixture's sha256 (recorded once, in the test's `FIXTURE_SHA256` map) before ASM
+parses it, and fails with the file, both shas and a pointer to this pitfall. The
+sha values in that map and in the tables above must agree.
+
+### How the bytes were captured
+
+The live bytes were pulled read-only (no change to the server) with:
+
+```
+ssh -i ~/.ssh/mainframe_key -p 2222 root@46.4.120.77 \
+  'unzip -p /home/amp/.ampdata/instances/GTNH/Minecraft/mods/TwilightForest-2.7.40.jar \
+   twilightforest/block/<Class>.class'
+```
+
+for `BlockTFCastleBlock`, `BlockTFThorns`, `BlockTFCastleMagic` and `TFBlocks`
+from `TwilightForest-2.7.40.jar` (the jar the live GTNH server runs). The dev
+bytes were unzipped the same way from `TwilightForest-2.7.41-dev.jar` in the
+Gradle cache (`com.github.GTNewHorizons:TwilightForest:2.7.41:dev`). The
+sha256s of all six stored files are recorded in the two tables above.

@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -53,6 +56,33 @@ class FinalCastleBreakPatchTest {
 
     private static final String LIVE = "live/";
     private static final String DEV = "dev/";
+
+    /**
+     * sha256 of every stored {@code .class} fixture, keyed by its path under this
+     * package's resource root. ONE place only — the same values are recorded in
+     * {@code src/test/resources/finalcastlebreak/README.md} and the two MUST agree.
+     *
+     * <p>
+     * This is a guard, not bookkeeping. These fixtures are real binary class
+     * bytes, but the repo's top {@code .gitattributes} rule is {@code * text
+     * eol=lf}; unless a {@code .class ... binary} rule overrides it, git
+     * normalizes the line endings inside these files on publish. A class carrying
+     * a CRLF pair (live/TFBlocks.class does) then silently loses a byte, and ASM
+     * dies with a cryptic {@code ArrayIndexOutOfBoundsException} instead of saying
+     * why. This check fails loudly, naming the file, both shas and the pitfall.
+     */
+    private static final Map<String, String> FIXTURE_SHA256 = fixtureShas();
+
+    private static Map<String, String> fixtureShas() {
+        Map<String, String> shas = new LinkedHashMap<String, String>();
+        shas.put(LIVE + "BlockTFCastleBlock.class", "332ac1774a3d7808cbe1def4fddd4fafb1b1e218012da9a30e3537f2498af1b8");
+        shas.put(LIVE + "BlockTFThorns.class", "5af1ce7c4f7b50204e188f79e70872557e2aa3da0ba81991396279e48d01d375");
+        shas.put(LIVE + "BlockTFCastleMagic.class", "3717ecf1336ecf2f82fa6e60f67822db6a94cc45b06c209c3d13e92116b1ab65");
+        shas.put(LIVE + "TFBlocks.class", "2c1e57b206d7fb69515aedc3d2d781e7d073043448339ccf8561fa67a2aef52a");
+        shas.put(DEV + "BlockTFCastleBlock.class", "4b72c0f60a305f091945dfca12ac29858e107ea39f511a73510450ec35bb7127");
+        shas.put(DEV + "BlockTFThorns.class", "af9ea6a07bb32028453c952652571689ad3af8503a98abbfa755beacf5e9c09d");
+        return shas;
+    }
 
     // ---- the castle bricks -------------------------------------------------
 
@@ -384,6 +414,7 @@ class FinalCastleBreakPatchTest {
     // ---- helpers -----------------------------------------------------------
 
     private static byte[] resource(String path) throws Exception {
+        byte[] bytes;
         try (InputStream in = FinalCastleBreakPatchTest.class.getClassLoader()
             .getResourceAsStream("finalcastlebreak/" + path)) {
             assertTrue(in != null, "missing test resource: " + path);
@@ -393,8 +424,47 @@ class FinalCastleBreakPatchTest {
             while ((read = in.read(buffer)) != -1) {
                 out.write(buffer, 0, read);
             }
-            return out.toByteArray();
+            bytes = out.toByteArray();
         }
+        assertFixtureBytes(path, bytes);
+        return bytes;
+    }
+
+    /**
+     * Fails loudly if a stored {@code .class} fixture no longer matches its
+     * recorded sha256 — the symptom of a text/EOL normalization dropping bytes
+     * from a binary class file (see {@link #FIXTURE_SHA256}).
+     */
+    private static void assertFixtureBytes(String path, byte[] bytes) throws Exception {
+        String expected = FIXTURE_SHA256.get(path);
+        assertTrue(expected != null, "no recorded sha256 for fixture: " + path);
+        String actual = sha256(bytes);
+        assertEquals(
+            expected,
+            actual,
+            "stored class bytes for " + path
+                + " are not the recorded bytes (sha256 "
+                + actual
+                + ", expected "
+                + expected
+                + ", "
+                + bytes.length
+                + " bytes). The most likely cause is TEXT normalization of a BINARY"
+                + " .class file: the repo's top .gitattributes rule is '* text eol=lf', so unless a `*.[cC][lL][aA][sS][sS]"
+                + " binary` rule is present, git rewrites CRLF inside these files on publish and silently drops bytes"
+                + " (this already happened to live/TFBlocks.class, which lost 1 byte and broke ASM). See"
+                + " src/test/resources/finalcastlebreak/README.md ('File-type pitfall').");
+    }
+
+    private static String sha256(byte[] bytes) throws Exception {
+        byte[] hash = MessageDigest.getInstance("SHA-256")
+            .digest(bytes);
+        StringBuilder out = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            out.append(Character.forDigit((b >> 4) & 0xF, 16));
+            out.append(Character.forDigit(b & 0xF, 16));
+        }
+        return out.toString();
     }
 
     private static ClassNode read(byte[] bytes) {
