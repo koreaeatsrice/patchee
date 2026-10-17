@@ -126,6 +126,7 @@ jobs:
           grep -q "\[AuroraBreak\] armed" server.log || { echo "::error::AuroraBreak did not arm"; fail=1; }
           grep -q "\[ArcticFurBreak\] armed" server.log || { echo "::error::ArcticFurBreak did not arm"; fail=1; }
           grep -q "\[TeamChunkCap\] armed" server.log || { echo "::error::TeamChunkCap did not arm"; fail=1; }
+          grep -q "\[FinalCastleBreak\] armed" server.log || { echo "::error::FinalCastleBreak did not arm"; fail=1; }
           grep -q "\[SelfTest\] result: [0-9]* passed, 0 failed" server.log || { echo "::error::self-test reported failures"; grep "\[SelfTest\] FAIL" server.log || true; fail=1; }
           exit "$fail"
 

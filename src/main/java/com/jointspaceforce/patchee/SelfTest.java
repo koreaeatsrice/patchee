@@ -25,6 +25,8 @@ import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.features.ArcticFurBreakFeature;
 import com.jointspaceforce.patchee.features.AuroraBreakFeature;
 import com.jointspaceforce.patchee.features.DollyFeature;
+import com.jointspaceforce.patchee.features.FinalCastleBreak;
+import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -117,6 +119,7 @@ public final class SelfTest {
         checkAuroraBreak(toggles);
         checkArcticFurBreak(toggles);
         checkTeamChunkCap(toggles);
+        checkFinalCastleBreak(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -396,7 +399,58 @@ public final class SelfTest {
         }
     }
 
-    // ---- 6. TeamChunkCap (ServerUtilities team chunk limits) --------------
+    // ---- 6. FinalCastleBreak (Twilight Forest castle + thorn wall) --------
+
+    /**
+     * The castle/thorn feature: the three blocks and the Glacier achievement must
+     * resolve, and the class-load behaviour patch must really have applied to
+     * <b>both</b> target classes — a bare "the classes exist" probe is not enough,
+     * because the transformer hands an unrecognised shape back untouched, and one
+     * patched half must not stand in for the other. The break-speed handler is
+     * registered by the same arm step the ARMED flag comes from.
+     */
+    private void checkFinalCastleBreak(Toggles toggles) {
+        if (!toggles.featureEnabled(FinalCastleBreakFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP finalcastlebreak — feature disabled in config");
+            return;
+        }
+        if (!Loader.isModLoaded("TwilightForest")) {
+            Patchee.LOG.info("[SelfTest] SKIP finalcastlebreak — Twilight Forest is not installed");
+            return;
+        }
+        try {
+            Class<?> tfBlocks = Class.forName("twilightforest.block.TFBlocks");
+            int found = 0;
+            for (String name : FinalCastleBreakFeature.BLOCK_FIELDS) {
+                if (staticBlockOrNull(tfBlocks, name) != null) {
+                    found++;
+                }
+            }
+            Class<?> page = Class.forName("twilightforest.TFAchievementPage");
+            Field field = page.getDeclaredField("twilightProgressGlacier");
+            field.setAccessible(true);
+            boolean gateFound = field.get(null) instanceof Achievement;
+            // Both halves are required: a boot where only one target class was
+            // patched is not a working feature, so a bare patchApplied() would
+            // hide the inert half.
+            boolean castle = FinalCastleBreak.patchedCastle();
+            boolean thorns = FinalCastleBreak.patchedThorns();
+            check(
+                "finalcastlebreak: " + found
+                    + "/3 castle blocks, Glacier achievement "
+                    + (gateFound ? "found" : "missing")
+                    + ", class-load patch castle "
+                    + (castle ? "applied" : "NOT applied")
+                    + ", thorns "
+                    + (thorns ? "applied" : "NOT applied"),
+                found == 3 && gateFound && castle && thorns);
+        } catch (Exception | LinkageError e) {
+            Patchee.LOG.error("[SelfTest] FAIL finalcastlebreak setup crashed", e);
+            failed++;
+        }
+    }
+
+    // ---- 7. TeamChunkCap (ServerUtilities team chunk limits) --------------
 
     /** ServerUtilities' own team-limit class and the two permission nodes it sums. */
     private static final String SU_DATA_CLASS = "serverutils.data.ServerUtilitiesTeamData";
