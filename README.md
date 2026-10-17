@@ -24,6 +24,12 @@ nothing to join.
 - **Twilight Forest break speeds** — once the Glacier progression (the Snow
   Queen) is earned, aurora blocks break in 10 ticks, and
   shears break arctic fur blocks in 5 ticks.
+- **Twilight Forest Final Castle** — once the Glacier progression (the Snow
+  Queen) is earned, the castle bricks, the castle magic blocks and the thorn
+  wall break in 10 ticks, the castle bricks no longer drain the pickaxe 16x, and
+  the thorn wall can be broken for good instead of growing back and multiplying.
+  The behaviour change takes effect on the server; the break speed is seen on a
+  client that has Patchee.
 - **ServerUtilities team chunk limits** — ServerUtilities adds a team's members'
   limits together. Patchee caps every team at the single-player numbers. Server-side.
 
