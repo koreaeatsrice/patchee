@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.6.1] - 2026-10-19
+
+### Bug Fixes
+- **teamchunkcap**: read a team's limit from the best member's per-rank setting (#9) ([`f07c314`](https://github.com/koreaeatsrice/patchee/commit/f07c314f3014e1e459e9fad6480f47566952f89b))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.6.0...v1.6.1
+
 ## [1.6.0] - 2026-10-17
 
 ### Features
