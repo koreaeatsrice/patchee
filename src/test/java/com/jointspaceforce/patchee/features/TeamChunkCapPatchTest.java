@@ -22,17 +22,18 @@ import org.objectweb.asm.tree.MethodNode;
 import com.jointspaceforce.patchee.asm.TeamChunkCapTransformer;
 
 /**
- * The team chunk-cap byte patch, against synthetic class bytes shaped exactly
+ * The team chunk-limit byte patch, against synthetic class bytes shaped exactly
  * like ServerUtilities 2.4.9's {@code ServerUtilitiesTeamData}: two limit
  * methods, each with a {@code -1} sentinel return, a {@code -2} sentinel return,
- * the cached early return and the final return.
+ * the cached early return and the final return, and a {@code team} field.
  *
  * <p>
  * These tests pin the contract the transformer relies on: exactly four return
  * sites are changed, everything else stays as it was, a class of any other shape
  * is left completely untouched, a second pass does nothing — and, strongest of
- * all, the patched class actually loads and the clamp actually happens when the
- * method is called (with the unpatched class as the control).
+ * all, the patched class actually loads and the rule actually applies when the
+ * method is called (with the unpatched class as the control, and a stand-in
+ * team whose members' per-rank limits the injected hooks read).
  */
 class TeamChunkCapPatchTest {
 
@@ -43,6 +44,8 @@ class TeamChunkCapPatchTest {
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
         writer.visit(Opcodes.V1_8, Opcodes.ACC_PUBLIC, OWNER, null, "java/lang/Object", null);
         writer.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "active", "Z", null, null)
+            .visitEnd();
+        writer.visitField(Opcodes.ACC_PUBLIC, "team", "Ljava/lang/Object;", null, null)
             .visitEnd();
         writer.visitField(Opcodes.ACC_PRIVATE, TeamChunkCapPatch.CLAIM_FIELD, "I", null, null)
             .visitEnd();
@@ -187,32 +190,53 @@ class TeamChunkCapPatchTest {
 
     /**
      * The real thing: the patched class is loaded and called. A team whose summed
-     * limits are over the caps gets the caps; a solo team keeps its own number; and
+     * limits are past a member's own number is answered the best member's number;
+     * a member whose rank carries higher numbers keeps them; a solo team keeps its
+     * own number; a team the hooks cannot read keeps ServerUtilities' own sum; and
      * the unpatched class returns the raw sums, which is what proves the patch —
-     * not the harness — did the clamping.
+     * not the harness — did the work.
      */
     @Test
-    void thePatchedClassReallyClampsWhenCalled() throws Exception {
-        TeamChunkCap.configure(true, true, 1500, 500);
+    void thePatchedClassReallyAppliesTheBestMemberRule() throws Exception {
+        TeamChunkCap.configure(true, true);
 
-        // a two-player team: the per-player numbers summed = 3000 / 1000
-        Class<?> overCap = load(
+        // a two-player team: the per-member numbers summed = 3000 / 1000, each
+        // member worth 1500 / 500 — the team gets the best member's own numbers
+        Class<?> patched = load(
             TeamChunkCapPatch.apply(syntheticClass(3000, 1000))
                 .bytes());
-        assertEquals(1500, call(overCap, TeamChunkCapPatch.CLAIM_METHOD));
-        assertEquals(500, call(overCap, TeamChunkCapPatch.LOAD_METHOD));
+        assertEquals(1500, call(patched, TeamChunkCapPatch.CLAIM_METHOD, team(2, 1500, 500)));
+        assertEquals(500, call(patched, TeamChunkCapPatch.LOAD_METHOD, team(2, 1500, 500)));
 
         // the control: the same class, unpatched, returns the raw sums
         Class<?> raw = load(syntheticClass(3000, 1000));
-        assertEquals(3000, call(raw, TeamChunkCapPatch.CLAIM_METHOD));
-        assertEquals(1000, call(raw, TeamChunkCapPatch.LOAD_METHOD));
+        assertEquals(3000, call(raw, TeamChunkCapPatch.CLAIM_METHOD, team(2, 1500, 500)));
+        assertEquals(1000, call(raw, TeamChunkCapPatch.LOAD_METHOD, team(2, 1500, 500)));
 
-        // a solo team: the sum is already the per-player number, so nothing changes
+        // a solo team: the sum is already the member's own number, so nothing changes
         Class<?> solo = load(
             TeamChunkCapPatch.apply(syntheticClass(1500, 500))
                 .bytes());
-        assertEquals(1500, call(solo, TeamChunkCapPatch.CLAIM_METHOD));
-        assertEquals(500, call(solo, TeamChunkCapPatch.LOAD_METHOD));
+        assertEquals(1500, call(solo, TeamChunkCapPatch.CLAIM_METHOD, team(1, 1500, 500)));
+        assertEquals(500, call(solo, TeamChunkCapPatch.LOAD_METHOD, team(1, 1500, 500)));
+
+        // a member whose rank carries higher numbers (an admin) keeps them: the
+        // team's sum is 31500 / 30500 and the best member is worth 30000 / 30000
+        Class<?> mixed = load(
+            TeamChunkCapPatch.apply(syntheticClass(31500, 30500))
+                .bytes());
+        FakeTeam mixedTeam = new FakeTeam();
+        mixedTeam.members.add(new FakeMember(30000, 30000));
+        mixedTeam.members.add(new FakeMember(1500, 500));
+        assertEquals(30000, call(mixed, TeamChunkCapPatch.CLAIM_METHOD, mixedTeam));
+        assertEquals(30000, call(mixed, TeamChunkCapPatch.LOAD_METHOD, mixedTeam));
+
+        // a team the hooks cannot read: ServerUtilities' own number stands
+        Class<?> unreadable = load(
+            TeamChunkCapPatch.apply(syntheticClass(3000, 1000))
+                .bytes());
+        assertEquals(3000, call(unreadable, TeamChunkCapPatch.CLAIM_METHOD, null));
+        assertEquals(1000, call(unreadable, TeamChunkCapPatch.LOAD_METHOD, null));
     }
 
     /** With the feature switched off, the patched class must behave like stock. */
@@ -221,19 +245,69 @@ class TeamChunkCapPatchTest {
         Class<?> patched = load(
             TeamChunkCapPatch.apply(syntheticClass(3000, 1000))
                 .bytes());
+        FakeTeam team = team(2, 1500, 500);
         try {
-            TeamChunkCap.configure(true, false, 1500, 500);
-            assertEquals(3000, call(patched, TeamChunkCapPatch.CLAIM_METHOD));
-            assertEquals(1000, call(patched, TeamChunkCapPatch.LOAD_METHOD));
+            TeamChunkCap.configure(true, false);
+            assertEquals(3000, call(patched, TeamChunkCapPatch.CLAIM_METHOD, team));
+            assertEquals(1000, call(patched, TeamChunkCapPatch.LOAD_METHOD, team));
 
-            TeamChunkCap.configure(false, true, 1500, 500);
-            assertEquals(3000, call(patched, TeamChunkCapPatch.CLAIM_METHOD));
+            TeamChunkCap.configure(false, true);
+            assertEquals(3000, call(patched, TeamChunkCapPatch.CLAIM_METHOD, team));
 
-            TeamChunkCap.configure(true, true, 1500, 500);
-            assertEquals(1500, call(patched, TeamChunkCapPatch.CLAIM_METHOD));
+            TeamChunkCap.configure(true, true);
+            assertEquals(1500, call(patched, TeamChunkCapPatch.CLAIM_METHOD, team));
         } finally {
-            TeamChunkCap.configure(true, true, 1500, 500);
+            TeamChunkCap.configure(true, true);
         }
+    }
+
+    /** A stand-in team; the injected hooks read {@code getMembers()} by reflection. */
+    public static final class FakeTeam {
+
+        final List<FakeMember> members = new ArrayList<FakeMember>();
+
+        public List<FakeMember> getMembers() {
+            return members;
+        }
+    }
+
+    /** A stand-in member; {@code getRankConfig} answers the per-rank numbers. */
+    public static final class FakeMember {
+
+        private final int claims;
+        private final int loads;
+
+        private FakeMember(int claims, int loads) {
+            this.claims = claims;
+            this.loads = loads;
+        }
+
+        public FakeValue getRankConfig(String node) {
+            return new FakeValue(TeamChunkCap.CLAIMS_NODE.equals(node) ? claims : loads);
+        }
+    }
+
+    /** A stand-in rank config value; the hooks call {@code getInt()}. */
+    public static final class FakeValue {
+
+        private final int value;
+
+        private FakeValue(int value) {
+            this.value = value;
+        }
+
+        public int getInt() {
+            return value;
+        }
+    }
+
+    /** A team of {@code members} identical members, each worth the given numbers. */
+    private static FakeTeam team(int members, int claimsEach, int loadsEach) {
+        FakeTeam team = new FakeTeam();
+        for (int i = 0; i < members; i++) {
+            team.members.add(new FakeMember(claimsEach, loadsEach));
+        }
+        return team;
     }
 
     /** Loads the bytes into a fresh class loader (one class name per loader). */
@@ -284,9 +358,13 @@ class TeamChunkCapPatchTest {
         }
     }
 
-    private static int call(Class<?> type, String method) throws Exception {
+    private static int call(Class<?> type, String method, Object team) throws Exception {
         Object instance = type.getDeclaredConstructor()
             .newInstance();
+        if (team != null) {
+            type.getField("team")
+                .set(instance, team);
+        }
         return ((Integer) type.getMethod(method)
             .invoke(instance)).intValue();
     }

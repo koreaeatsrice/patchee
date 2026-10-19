@@ -51,9 +51,12 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  *
  * <p>
  * 7. <b>ServerUtilities team chunk limits.</b> ServerUtilities adds a team's
- * members' limits together, so a bigger team is allowed more land; Patchee caps
- * the whole team at the single-player numbers, 1500 claimed and 500 loaded
- * chunks, and leaves a solo player alone
+ * members' limits together, so a bigger team would be allowed more land than
+ * any one member; Patchee reads a team's limit from its members' per-rank
+ * settings instead — the best member's own limit becomes the team max, member
+ * limits are never added up — so a team of ordinary players gets one player's
+ * total and a member whose rank carries higher numbers (the admin rank) keeps
+ * them; a solo player is untouched
  * ({@link com.jointspaceforce.patchee.features.TeamChunkCapFeature}).
  *
  * <p>

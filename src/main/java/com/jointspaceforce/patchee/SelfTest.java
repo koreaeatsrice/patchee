@@ -452,20 +452,21 @@ public final class SelfTest {
 
     // ---- 7. TeamChunkCap (ServerUtilities team chunk limits) --------------
 
-    /** ServerUtilities' own team-limit class and the two permission nodes it sums. */
+    /** ServerUtilities' own team-limit class and the two per-rank permission nodes it sums. */
     private static final String SU_DATA_CLASS = "serverutils.data.ServerUtilitiesTeamData";
     private static final String SU_CLAIMS_NODE = "serverutilities.claims.max_chunks";
     private static final String SU_LOADS_NODE = "serverutilities.chunkloader.max_chunks";
 
-    /** Enough members that their per-player limits sum past Patchee's default caps. */
+    /** Enough members that their per-player limits sum past one member's own number. */
     private static final int CAP_TEST_MEMBERS = 16;
 
     /**
-     * The team cap, checked against ServerUtilities' own live objects: a team big
-     * enough to be over the cap must be answered the cap, a single-player team
-     * must be answered its own number, and the same server-side code that refuses
-     * a claim must refuse claims past the cap — with the cap switched off, the raw
-     * per-member sum must come back untouched.
+     * The team-limit rule, checked against ServerUtilities' own live objects: a
+     * multi-member team must be answered its best member's own per-rank limit (not
+     * the members' sum), a single-player team must be answered its own number, and
+     * the same server-side code that refuses a claim must refuse claims past that
+     * number — with the feature switched off, the raw per-member sum must come
+     * back untouched.
      *
      * <p>
      * Everything is reached by reflection (Patchee keeps no dependency on
@@ -480,7 +481,7 @@ public final class SelfTest {
         }
         if (!toggles.featureEnabled(TeamChunkCapFeature.ID)) {
             Patchee.LOG.info(
-                "[SelfTest] teamchunkcap — feature disabled in config, so nothing clamps; ServerUtilities' own totals stand (see the line below)");
+                "[SelfTest] teamchunkcap — feature disabled in config, so nothing applies; ServerUtilities' own totals stand (see the line below)");
         }
         Class<?> claimedChunks;
         try {
@@ -536,11 +537,8 @@ public final class SelfTest {
             java.lang.reflect.Method claimChunk = claimedChunks
                 .getMethod("claimChunk", playerClass, posClass, boolean.class);
 
-            int capClaims = toggles.teamChunkCapMaxClaims();
-            int capLoads = toggles.teamChunkCapMaxLoaded();
-
             // a lone player, and a team big enough that ServerUtilities' per-member
-            // sum is past the cap
+            // sum is past one member's own number
             ForgeTeamProbe solo = team(
                 teamClass,
                 teamCtor,
@@ -572,6 +570,9 @@ public final class SelfTest {
             int soloRawClaims = rankValue(rankConfig, solo.firstMember, SU_CLAIMS_NODE);
             int bigRawClaims = rankValue(rankConfig, big.firstMember, SU_CLAIMS_NODE) * CAP_TEST_MEMBERS;
             int bigRawLoads = rankValue(rankConfig, big.firstMember, SU_LOADS_NODE) * CAP_TEST_MEMBERS;
+            // the rule's answer for the big team: its best member's own per-rank limit
+            int bestClaims = rankValue(rankConfig, big.firstMember, SU_CLAIMS_NODE);
+            int bestLoads = rankValue(rankConfig, big.firstMember, SU_LOADS_NODE);
 
             if (soloClaims < 0) {
                 Patchee.LOG.info(
@@ -581,61 +582,59 @@ public final class SelfTest {
             }
 
             Patchee.LOG.info(
-                "[SelfTest] teamchunkcap observed: 1-member team raw {} claims, {}-member team raw {} claims / {} loaded, caps {} / {}",
+                "[SelfTest] teamchunkcap observed: 1-member team raw {} claims, {}-member team raw {} claims / {} loaded, best member {} / {}",
                 soloRawClaims,
                 CAP_TEST_MEMBERS,
                 bigRawClaims,
                 bigRawLoads,
-                capClaims,
-                capLoads);
+                bestClaims,
+                bestLoads);
 
             if (!toggles.featureEnabled(TeamChunkCapFeature.ID)) {
                 // Switched off means the class was not patched at all: the raw,
                 // per-member totals are what ServerUtilities serves.
                 Patchee.LOG.info(
-                    "[SelfTest] SKIP teamchunkcap checks — feature off: the {}-member team is served ServerUtilities' own {} claims / {} loaded (cap {} / {} not applied)",
+                    "[SelfTest] SKIP teamchunkcap checks — feature off: the {}-member team is served ServerUtilities' own {} claims / {} loaded (the sums stand)",
                     CAP_TEST_MEMBERS,
                     bigClaims,
-                    bigLoads,
-                    capClaims,
-                    capLoads);
+                    bigLoads);
                 return;
             }
 
-            // (c) a solo team: the sum already is the per-player number
+            // (c) a solo team: the sum already is the member's own number
             check(
-                "teamchunkcap solo team not clamped: raw " + soloRawClaims + " claims -> " + soloClaims + " claims",
+                "teamchunkcap solo team untouched: raw " + soloRawClaims + " claims -> " + soloClaims + " claims",
                 soloClaims == soloRawClaims);
             check(
-                "teamchunkcap solo team not clamped: raw " + rankValue(rankConfig, solo.firstMember, SU_LOADS_NODE)
+                "teamchunkcap solo team untouched: raw " + rankValue(rankConfig, solo.firstMember, SU_LOADS_NODE)
                     + " loaded -> "
                     + soloLoads,
                 soloLoads == rankValue(rankConfig, solo.firstMember, SU_LOADS_NODE));
 
-            // (b) the multi-member team is answered the capped number
+            // (b) the multi-member team is answered its best member's own number
             check(
                 "teamchunkcap " + CAP_TEST_MEMBERS
-                    + "-member team capped: raw "
+                    + "-member team gets its best member: raw "
                     + bigRawClaims
                     + " claims -> "
                     + bigClaims
-                    + " claims (cap "
-                    + capClaims
+                    + " claims (best member "
+                    + bestClaims
                     + ")",
-                bigClaims == expected(bigRawClaims, capClaims));
+                bigClaims == bestClaims);
             check(
                 "teamchunkcap " + CAP_TEST_MEMBERS
-                    + "-member team capped: raw "
+                    + "-member team gets its best member: raw "
                     + bigRawLoads
                     + " loaded -> "
                     + bigLoads
-                    + " loaded (cap "
-                    + capLoads
+                    + " loaded (best member "
+                    + bestLoads
                     + ")",
-                bigLoads == expected(bigRawLoads, capLoads));
+                bigLoads == bestLoads);
 
-            // (a) the server's own claim code refuses past the cap
-            ClaimSweep sweep = sweepClaims(claimChunk, posCtor, instance, big, expected(bigRawClaims, capClaims));
+            // (a) the server's own claim code refuses past the team's number
+            ClaimSweep sweep = sweepClaims(claimChunk, posCtor, instance, big, bestClaims);
             if (sweep.dimensionBlocked) {
                 Patchee.LOG.info(
                     "[SelfTest] SKIP teamchunkcap claim sweep — claiming is blocked in the dimensions this check tried");
@@ -644,10 +643,10 @@ public final class SelfTest {
                     "teamchunkcap claim sweep: " + sweep.accepted
                         + " claim(s) accepted, then "
                         + sweep.refusal
-                        + " (cap "
-                        + expected(bigRawClaims, capClaims)
+                        + " (best member "
+                        + bestClaims
                         + ")",
-                    sweep.accepted == expected(bigRawClaims, capClaims) && "NO_POWER".equals(sweep.refusal));
+                    sweep.accepted == bestClaims && "NO_POWER".equals(sweep.refusal));
             }
         } catch (Exception | LinkageError broken) {
             failed++;
@@ -711,11 +710,6 @@ public final class SelfTest {
         return (Integer) value.getClass()
             .getMethod("getInt")
             .invoke(value);
-    }
-
-    /** What Patchee should answer: the cap when the sum is over it, the sum otherwise. */
-    private static int expected(int raw, int cap) {
-        return cap > 0 && raw > cap ? cap : raw;
     }
 
     /**

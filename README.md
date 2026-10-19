@@ -31,7 +31,10 @@ nothing to join.
   The behaviour change takes effect on the server; the break speed is seen on a
   client that has Patchee.
 - **ServerUtilities team chunk limits** — ServerUtilities adds a team's members'
-  limits together. Patchee caps every team at the single-player numbers. Server-side.
+  limits together; Patchee gives a team its best member's own per-rank limit
+  instead — never the sum, so a team of ordinary players gets one player's total
+  and a member whose rank carries higher numbers (an admin) is never capped
+  away. Server-side.
 
 Each feature has its own switch in `config/patchee.cfg`, the Twilight Forest
 break speeds have one per rule, and a master switch turns the whole mod off.
