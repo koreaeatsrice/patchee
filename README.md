@@ -1,15 +1,9 @@
 # Patchee
 
-> [!WARNING]
-> The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod.
-
-> [!NOTE]
-> Constructive criticism is desired and greatly appreciated. I make no claims to be a bona fide Software Engineer nor pretend that this project makes me one.
-
-A small server-side add-on for GT:NH (Minecraft 1.7.10) that patches a handful of
-cross-mod annoyances. It never edits another mod's jar — it adjusts their runtime
-state at load, so a pack update cannot quietly revert the fixes. Clients need
-nothing to join.
+A server-side add-on for GT:NH (Minecraft 1.7.10) that fixes a handful of
+cross-mod annoyances without editing a single third-party jar. Every change is
+made to another mod's runtime state as it loads, so a pack update cannot quietly
+revert it. Clients need nothing installed to join.
 
 ## What it changes
 
@@ -21,20 +15,18 @@ nothing to join.
 - **VeinMiner** — limited to sand, clay and gravel, 64 blocks per vein.
 - **NEI F7 light overlay** — marks only pitch-dark blocks instead of NEI's
   over-broad light levels. Client-side.
-- **Twilight Forest break speeds** — once the Glacier progression (the Snow
-  Queen) is earned, aurora blocks break in 10 ticks, and
-  shears break arctic fur blocks in 5 ticks.
-- **Twilight Forest Final Castle** — once the Glacier progression (the Snow
-  Queen) is earned, the castle bricks, the castle magic blocks and the thorn
-  wall break in 10 ticks, the castle bricks no longer drain the pickaxe 16x, and
-  the thorn wall can be broken for good instead of growing back and multiplying.
-  The behaviour change takes effect on the server; the break speed is seen on a
-  client that has Patchee.
+- **Twilight Forest** — once the Glacier progression (the Snow Queen) is earned,
+  aurora blocks break in 10 ticks, shears break arctic fur blocks in 5 ticks, the
+  castle bricks, the castle magic blocks and the thorn wall break in 10 ticks,
+  the castle bricks no longer drain the pickaxe 16x, and the thorn wall can be
+  broken for good instead of growing back and multiplying. The behaviour change
+  takes effect on the server; the break speed is seen on a client that has
+  Patchee.
 - **ServerUtilities team chunk limits** — ServerUtilities adds a team's members'
   limits together; Patchee gives a team its best member's own per-rank limit
   instead — never the sum, so a team of ordinary players gets one player's total
-  and a member whose rank carries higher numbers (an admin) is never capped
-  away. Server-side.
+  and a member whose rank carries higher numbers (an admin) is never capped away.
+  Server-side.
 
 Each feature has its own switch in `config/patchee.cfg`, the Twilight Forest
 break speeds have one per rule, and a master switch turns the whole mod off.
@@ -81,9 +73,9 @@ nothing looks wrong to that player. What each optional client mod does:
   hand.
 - The F7 tweak is applied as NEI loads, so restart the game after changing
   `lightOverlay.maxLightNormal`.
-- Modern Twilight Forest speeds up the aurora block only. Patchee also covers the
-  aurora blocks (block, pillar, slab and double slab) on purpose — same material,
-  one consistent speed while mining the palace.
+- Modern Twilight Forest speeds up the aurora block only. Patchee covers the
+  aurora blocks (block, pillar, slab and double slab) on purpose — same
+  material, one consistent speed while mining the palace.
 
 ## Troubleshooting
 
