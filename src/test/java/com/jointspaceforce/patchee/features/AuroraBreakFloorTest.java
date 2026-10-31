@@ -5,15 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.api.Test;
 
 /**
- * The pure break-floor arithmetic both Twilight break-speed features share, no
+ * The pure break-floor arithmetic the Twilight break-speed features share, no
  * game required.
  *
  * <p>
  * The vanilla result is {@code speed / hardness / divisor}, so setting the speed
  * to {@code floor * hardness * divisor} makes the player break the block at
- * exactly {@code floor} progress per tick — 0.1 (10 ticks) for the aurora blocks
- * and 0.2 (5 ticks) for arctic fur. These tests pin that arithmetic and the tick
- * counts the feature promises.
+ * exactly {@code floor} progress per tick — 0.5 (2 ticks) for the aurora blocks,
+ * 0.2 (5 ticks) for arctic fur and 0.1 (10 ticks) for the castle blocks. These
+ * tests pin that arithmetic and the tick counts the features promise.
  */
 class AuroraBreakFloorTest {
 
@@ -31,10 +31,10 @@ class AuroraBreakFloorTest {
     }
 
     @Test
-    void modernAuroraRateIsTenTicks() {
+    void modernAuroraRateIsTwoTicks() {
         float speed = AuroraBreakFeature.floorSpeed(2.0F, false, AuroraBreakFeature.FLOOR);
-        assertEquals(20.0F, speed, EPS);
-        assertEquals(10, ticks(progress(speed, 2.0F, false)));
+        assertEquals(100.0F, speed, EPS);
+        assertEquals(2, ticks(progress(speed, 2.0F, false)));
     }
 
     @Test
@@ -46,10 +46,18 @@ class AuroraBreakFloorTest {
     }
 
     @Test
+    void modernCastleRateIsTenTicks() {
+        // A castle brick is hardness 100; 0.1/tick is already dramatic.
+        float speed = AuroraBreakFeature.floorSpeed(100.0F, false, FinalCastleBreakFeature.FLOOR);
+        assertEquals(1000.0F, speed, 1.0e-1F);
+        assertEquals(10, ticks(progress(speed, 100.0F, false)));
+    }
+
+    @Test
     void canHarvestUsesTheThirtyDivisor() {
         float speed = AuroraBreakFeature.floorSpeed(2.0F, true, AuroraBreakFeature.FLOOR);
-        assertEquals(6.0F, speed, EPS);
-        assertEquals(10, ticks(progress(speed, 2.0F, true)));
+        assertEquals(30.0F, speed, EPS);
+        assertEquals(2, ticks(progress(speed, 2.0F, true)));
     }
 
     @Test
