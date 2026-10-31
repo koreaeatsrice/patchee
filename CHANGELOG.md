@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.0] - 2026-10-31
+
+### Features
+- **enrichedfertilizer**: keep the old enriched fertilizer recipe (#12) ([`ca6dc39`](https://github.com/koreaeatsrice/patchee/commit/ca6dc39cbf015289e23b5a86bf517bee795d025c))
+
+### Bug Fixes
+- **tf-breakspeed**: make the Twilight Forest break-speed floors actually apply (#13) ([`31769af`](https://github.com/koreaeatsrice/patchee/commit/31769af4233f060a039497bd0de332e02f32e59e))
+
+### Documentation & Wiki
+- **readme**: one short line per feature (#11) ([`f195b63`](https://github.com/koreaeatsrice/patchee/commit/f195b6350a76329fdb969d43533fc8b7b643cfbd))
+- **readme**: drop the LLM disclaimer; one Twilight Forest entry (#10) ([`aabf131`](https://github.com/koreaeatsrice/patchee/commit/aabf1318d8ccefeefab09eabd3a7b1eb3ce3506f))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.6.1...v1.7.0
+
 ## [1.6.1] - 2026-10-19
 
 ### Bug Fixes
