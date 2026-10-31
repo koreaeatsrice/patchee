@@ -10,7 +10,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 
 /**
- * Patchee — a small GTNH 1.7.10 addon that fixes six cross-mod annoyances
+ * Patchee — a small GTNH 1.7.10 addon that fixes eight cross-mod annoyances
  * without editing any other mod's jar. The fixes are registered in one place,
  * {@link com.jointspaceforce.patchee.features.PatcheeFeatures}.
  *
@@ -58,6 +58,12 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * total and a member whose rank carries higher numbers (the admin rank) keeps
  * them; a solo player is untouched
  * ({@link com.jointspaceforce.patchee.features.TeamChunkCapFeature}).
+ *
+ * <p>
+ * 8. <b>CropsNH enriched fertilizer.</b> The old 4-fertilizer recipe for
+ * enriched fertilizer was dropped from the pack; Patchee adds it back next to
+ * the pack's newer one, in the Chemical Reactor and the Large Chemical Reactor
+ * ({@link com.jointspaceforce.patchee.features.EnrichedFertilizerRecipeFeature}).
  *
  * <p>
  * Most fixes are reflection-based against verified runtime names. Two of them

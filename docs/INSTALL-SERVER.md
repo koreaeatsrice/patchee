@@ -48,10 +48,12 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [VeinConfig] wrote config/veinminer/general.cfg + tools-and-blocks.json (blocks=4, cap=64, radius=20, autodetect=off)
 [TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits clamped to 1500 claimed / 500 loaded chunks (4 return sites; …)
 [TeamChunkCap] armed — every team is capped at 1500 claimed / 500 loaded chunks in total (…)
+[EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks)
 ```
 
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
+- The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`not installed - skipped` otherwise). The recipe it adds is added on the **server** only, so it does **not** appear in a player's NEI list — but it still works in the machine.
 
 - A line that says **`not installed — skipped`** is fine — it just means that mod is not in your pack.
 - A line that says **`failed — … left unchanged`** means the other mod changed shape. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
@@ -59,10 +61,10 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 **Extra check (optional):** in the settings file set `runSelfTest=true`, restart once and look for:
 
 ```
-[SelfTest] result: 19 passed, 0 failed
+[SelfTest] result: 20 passed, 0 failed
 ```
 
-19 checks with VeinMiner installed; **14** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Four of them check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed.
+20 checks with VeinMiner installed; **15** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Four of them check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed.
 
 Then set it back to `false`. Settings explained: [SETTINGS.md](SETTINGS.md).
 
