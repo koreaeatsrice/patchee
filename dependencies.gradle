@@ -34,6 +34,18 @@
  * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
 dependencies {
+    // ---- GT5-Unofficial: compile-time only ----
+    // EnrichedFertilizerRecipe (the only class that links GregTech) needs GT's
+    // recipe API to compile, so it is on the compile classpath. It is
+    // compileOnly, never bundled or published: Patchee must start on a server
+    // with no GregTech, and that class is loaded only when the recipe step
+    // actually runs, behind a missing-target gate. `transitive = false` keeps
+    // GT's own dependencies off the classpath, since nothing outside GT's jar is
+    // referenced.
+    compileOnly("com.github.GTNewHorizons:GT5-Unofficial:5.09.54.265:dev") {
+        transitive = false
+    }
+
     // ---- No NEI dependency at all ----
     // LightOverlay patches NEI's WorldOverlayRenderer from a coremod class
     // transformer working on raw class bytes (two comparison operands), so
