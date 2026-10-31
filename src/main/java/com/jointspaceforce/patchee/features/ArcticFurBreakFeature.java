@@ -19,8 +19,8 @@ import com.jointspaceforce.patchee.core.Steps;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
 /**
- * Backports the modern Twilight Forest "earned" break speed for the arctic fur
- * block while shears are held.
+ * Backports the modern Twilight Forest break speed for the arctic fur block
+ * while shears are held.
  *
  * <p>
  * Modern Twilight Forest ({@code 1.20.1}, {@code ArcticFurBlock}) returns a flat
@@ -28,19 +28,20 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * ({@code ShearsItem}) — {@code ItemShears} is checked by type because shears do
  * not advertise {@code IShearable}. The 1.7.10 pack has no such rule. This
  * feature adds it as a <b>floor</b>, never a slowdown, sharing the arithmetic of
- * {@link AuroraBreakFeature#raiseBreakFloor}.
+ * {@link AuroraBreakFeature#raiseBreakFloor}. There is no progression gate here —
+ * only the shears matter — and the held tool is checked per player on every break.
  *
  * <p>
  * The legacy block is {@code twilightforest.block.TFBlocks.arcticFurStorage}, a
- * {@code BlockTFCompressed} of hardness {@code 0.8F}. Note (correcting the
- * spec's premise): the storage types are <b>separate block instances</b>, not
- * metadata variants — {@code TFBlocks} holds one {@code BlockTFCompressed} per
- * type, each built with its own {@code BlockType} field, and
- * {@code BlockTFCompressed} overrides no {@code getSubBlocks}/{@code
- * damageDropped}/{@code getDamageValue}. The metadata of a placed arctic fur
- * block is therefore always {@code 0} and is not the discriminator; the block
- * <b>identity</b> is. The feature matches on identity, so no metadata check is
- * used or needed.
+ * {@code BlockTFCompressed} of hardness {@code 0.8F}. Note: the storage types are
+ * <b>separate block instances</b>, not metadata variants — {@code TFBlocks} holds
+ * one {@code BlockTFCompressed} per type (arctic fur, iron, gold…), each built
+ * with its own {@code BlockType} field, and {@code BlockTFCompressed} overrides
+ * no {@code getSubBlocks}/{@code damageDropped}/{@code getDamageValue}. The
+ * metadata of a placed arctic fur block is therefore always {@code 0} and is not
+ * the discriminator; the block <b>identity</b> is, and the class
+ * ({@code BlockTFCompressed}) is shared with every other storage type, so this
+ * feature must keep matching on identity, never on class.
  *
  * <p>
  * The floor is applied on <b>both sides</b>, because in 1.7.10 the client is the
@@ -125,7 +126,10 @@ public final class ArcticFurBreakFeature implements Feature {
             }
             fur[0] = block;
             ctx.log()
-                .info("[ArcticFurBreak] resolved the Twilight Forest arctic fur block");
+                .info(
+                    "[ArcticFurBreak] resolved the Twilight Forest arctic fur block (class {})",
+                    block.getClass()
+                        .getName());
             return Outcome.APPLIED;
         };
     }
@@ -140,10 +144,16 @@ public final class ArcticFurBreakFeature implements Feature {
         };
     }
 
-    /** The Forge-bus listener; the floor is applied on both sides (the client is the clock). */
+    /**
+     * The Forge-bus listener; the floor is applied on both sides (the client is
+     * the clock). It matches the arctic fur block by identity (its class is shared
+     * with every other storage type), checks the held shears per player on every
+     * break, and writes one proof line per player the first time the floor fires.
+     */
     public static final class Handler {
 
         private final Block fur;
+        private final FloorNotices notices = new FloorNotices(ID);
 
         /** Log the first handler failure only — a broken environment must not spam. */
         private volatile boolean warned = false;
@@ -160,8 +170,23 @@ public final class ArcticFurBreakFeature implements Feature {
                 if (event.y < 0) return; // unknown location: hardness cannot be read
                 if (fur == null || event.block != fur) return; // fast path
                 ItemStack held = player.inventory.getCurrentItem();
-                if (held == null || !(held.getItem() instanceof ItemShears)) return;
+                if (held == null || !(held.getItem() instanceof ItemShears)) {
+                    notices.deniedOnce(player.getCommandSenderName(), "no shears in hand");
+                    return;
+                }
+                float before = event.newSpeed;
                 AuroraBreakFeature.raiseBreakFloor(event, FLOOR);
+                if (event.newSpeed > before) {
+                    notices.appliedOnce(
+                        player.getCommandSenderName(),
+                        fur.getClass()
+                            .getName(),
+                        before,
+                        event.newSpeed,
+                        event.x,
+                        event.y,
+                        event.z);
+                }
             } catch (Exception | LinkageError failure) {
                 // Never break a block-break over this; the floor simply does nothing.
                 if (!warned) {

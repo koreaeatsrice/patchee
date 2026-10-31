@@ -1,11 +1,7 @@
 package com.jointspaceforce.patchee.features;
 
-import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.stats.Achievement;
-import net.minecraft.stats.StatFileWriter;
-import net.minecraft.stats.StatisticsFile;
 
 /**
  * The FinalCastleBreak decision: the live switches the injected hooks read, the
@@ -218,33 +214,14 @@ public final class FinalCastleBreak {
     }
 
     /**
-     * The Glacier progression, read from the side-appropriate stats object — the
-     * pack's own two-sided idiom: {@code EntityPlayerMP.func_147099_x()} on the
-     * server, {@code EntityClientPlayerMP.getStatFileWriter()} on the client. A
-     * non-MP player on the logical server (a Forge {@code FakePlayer}, say) is
-     * answered {@code false} before the client branch, because touching the
-     * {@code @SideOnly(Side.CLIENT)} class there would throw on a dedicated
-     * server. A gate that cannot be read must not grant the bypass, so anything
-     * else — including a null achievement — is false.
+     * The Glacier progression, read per player through {@link GlacierGate}: the
+     * server reads {@code EntityPlayerMP.func_147099_x()}, the client reads its own
+     * stat writer and falls back to the local player's, and an unreadable gate is
+     * logged once rather than silently answered false. A gate that cannot be read
+     * must not grant the bypass, so anything else — including a null achievement —
+     * is false.
      */
     public static boolean earnedGlacier(EntityPlayer player) {
-        Achievement achievement = glacier;
-        if (achievement == null || player == null) {
-            return false;
-        }
-        if (player instanceof EntityPlayerMP) {
-            StatisticsFile stats = ((EntityPlayerMP) player).func_147099_x();
-            return stats != null && stats.hasAchievementUnlocked(achievement);
-        }
-        if (player.worldObj != null && !player.worldObj.isRemote) {
-            // A non-MP player on the logical server: nothing to read, and the
-            // client class must stay untouched.
-            return false;
-        }
-        if (player instanceof EntityClientPlayerMP) {
-            StatFileWriter stats = ((EntityClientPlayerMP) player).getStatFileWriter();
-            return stats != null && stats.hasAchievementUnlocked(achievement);
-        }
-        return false;
+        return GlacierGate.earned(player, glacier);
     }
 }

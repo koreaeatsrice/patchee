@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
@@ -70,7 +71,7 @@ public final class FinalCastleBreakFeature implements Feature {
     public static final String[] BLOCK_FIELDS = { "castleBlock", "castleMagic", "thorns" };
 
     /** Modern Twilight Forest's flat break rate for the castle blocks (0.1/tick -> 10 ticks). */
-    static final float FLOOR = AuroraBreakFeature.FLOOR;
+    static final float FLOOR = 0.1F;
 
     @Override
     public String id() {
@@ -90,11 +91,11 @@ public final class FinalCastleBreakFeature implements Feature {
     @Override
     public String description() {
         return "Feature: once a player has earned the Twilight Forest Glacier progress (the Snow Queen), the Final "
-            + "Castle stops fighting back — the castle bricks, the castle magic blocks and the thorn wall break at "
-            + "the modern speed, the bricks deal the pickaxe no extra durability damage (stock 1.7.10 drains it 16x), "
-            + "and the thorn wall can be broken for good instead of growing back and multiplying. Players without the "
-            + "achievement keep the stock behaviour. The behaviour change takes effect on the server; the break speed "
-            + "is seen on a client that has Patchee.";
+            + "Castle stops fighting back — the castle bricks, the castle magic blocks and the thorn wall break in "
+            + "at most 10 ticks (a floor of 0.1 per tick, per player), the bricks deal the pickaxe no extra "
+            + "durability damage (stock 1.7.10 drains it 16x), and the thorn wall can be broken for good instead "
+            + "of growing back and multiplying. Players without the achievement keep the stock behaviour. The "
+            + "behaviour change takes effect on the server; the break speed is seen on a client that has Patchee.";
     }
 
     @Override
@@ -195,7 +196,10 @@ public final class FinalCastleBreakFeature implements Feature {
                 }
             }
             ctx.log()
-                .info("[FinalCastleBreak] resolved {}/3 Twilight Forest castle blocks", found);
+                .info(
+                    "[FinalCastleBreak] resolved {}/3 Twilight Forest castle blocks, matched by class: {}",
+                    found,
+                    BlockClassMatcher.classNames(castle));
 
             Class<?> pageClass = ctx.reflect()
                 .find(ACHIEVEMENT_CLASS);
@@ -251,7 +255,7 @@ public final class FinalCastleBreakFeature implements Feature {
         return ctx -> {
             Toggles toggles = ctx.toggles();
             FinalCastleBreak.configure(toggles.masterEnabled(), toggles.featureEnabled(ID));
-            MinecraftForge.EVENT_BUS.register(new Handler(castle));
+            MinecraftForge.EVENT_BUS.register(new Handler(castle, BlockClassMatcher.classNames(castle)));
             if (FMLCommonHandler.instance()
                 .getSide() != Side.SERVER) {
                 ctx.log()
@@ -297,18 +301,25 @@ public final class FinalCastleBreakFeature implements Feature {
     /**
      * The Forge-bus listener; the floor is applied on both sides (the client is the
      * clock), to the castle bricks, the castle magic blocks and the thorn wall,
-     * and only for a player who has earned the Glacier progress. The floor
-     * arithmetic and the raise are the ones shared with {@link AuroraBreakFeature}.
+     * and only for a player who has earned the Glacier progress — the gate is read
+     * per player on every break, so an unearned player keeps the stock speed. The
+     * block is matched by <b>class</b> (with the resolved instances as an OR
+     * fallback), so a metadata variant, a GT:NH re-registration or a slab's double
+     * variant still hits the floor. The floor arithmetic and the raise are the ones
+     * shared with {@link AuroraBreakFeature}.
      */
     public static final class Handler {
 
         private final List<Block> castle;
+        private final Set<String> classes;
+        private final FloorNotices notices = new FloorNotices(ID);
 
         /** Log the first handler failure only — a broken environment must not spam. */
         private volatile boolean warned = false;
 
-        Handler(List<Block> castle) {
+        Handler(List<Block> castle, Set<String> classes) {
             this.castle = castle;
+            this.classes = classes;
         }
 
         @SubscribeEvent
@@ -317,9 +328,28 @@ public final class FinalCastleBreakFeature implements Feature {
                 EntityPlayer player = event.entityPlayer;
                 if (player == null || player.worldObj == null) return;
                 if (event.y < 0) return; // unknown location: hardness cannot be read
-                if (!castle.contains(event.block)) return; // fast path
-                if (!FinalCastleBreak.earnedGlacier(player)) return;
+                Block block = event.block;
+                if (block == null) return;
+                // Class match first (survives variants / re-registrations); the
+                // resolved instances stay as an OR fallback so nothing regresses.
+                if (!BlockClassMatcher.matchesClass(classes, block.getClass()) && !castle.contains(block)) return;
+                if (!FinalCastleBreak.earnedGlacier(player)) {
+                    notices.deniedOnce(player.getCommandSenderName(), "Glacier not earned");
+                    return;
+                }
+                float before = event.newSpeed;
                 AuroraBreakFeature.raiseBreakFloor(event, FLOOR);
+                if (event.newSpeed > before) {
+                    notices.appliedOnce(
+                        player.getCommandSenderName(),
+                        block.getClass()
+                            .getName(),
+                        before,
+                        event.newSpeed,
+                        event.x,
+                        event.y,
+                        event.z);
+                }
             } catch (Exception | LinkageError failure) {
                 // Never break a block-break over this; the floor simply does nothing.
                 if (!warned) {
