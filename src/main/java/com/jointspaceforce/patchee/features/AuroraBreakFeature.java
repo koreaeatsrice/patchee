@@ -4,14 +4,11 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import net.minecraft.block.Block;
-import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.stats.Achievement;
-import net.minecraft.stats.StatFileWriter;
-import net.minecraft.stats.StatisticsFile;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -31,11 +28,14 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  *
  * <p>
  * Modern Twilight Forest ({@code 1.20.1}, {@code AuroraBrickBlock}) returns a
- * flat {@code 0.1F} destroy progress per tick once the player has the Glacier
- * progression ({@code progress_glacier}). The 1.7.10 pack has no such rule.
- * This feature adds it as a <b>floor</b> — never a slowdown: the vanilla speed
- * is kept and only raised when it is slower than the modern one, exactly the
- * owner's rule ("keep today's speed, add the fast version on top").
+ * flat destroy progress per tick once the player has the Glacier progression
+ * ({@code progress_glacier}). The 1.7.10 pack has no such rule. This feature adds
+ * it as a <b>floor</b> — never a slowdown: the vanilla speed is kept and only
+ * raised when it is slower than the modern one, exactly the owner's rule ("keep
+ * today's speed, add the fast version on top"). The floor is {@code 0.5} progress
+ * per tick (2 ticks), raised above the vanilla rate so the tweak is always felt.
+ * It is gated <b>per player</b>: only a player who has earned the Glacier
+ * progression sees it, evaluated on every break.
  *
  * <p>
  * The 1.7.10 equivalent of the Glacier progression is the achievement
@@ -45,7 +45,10 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * in {@code twilightforest.block.TFBlocks} as {@code auroraBlock},
  * {@code auroraPillar}, {@code auroraSlab} and {@code auroraDoubleSlab}, all
  * hardness {@code 2.0F} with no break-speed override; they are read by
- * reflection so Patchee keeps no hard dependency on Twilight Forest.
+ * reflection so Patchee keeps no hard dependency on Twilight Forest. The break is
+ * matched by the block's <b>class</b> (with the resolved instances kept as an OR
+ * fallback), so a metadata variant, a GT:NH re-registration or a slab's double
+ * variant still hits the floor.
  *
  * <p>
  * The floor is applied on <b>both sides</b>, because in 1.7.10 the client is the
@@ -56,21 +59,14 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * breaks only when the elapsed progress is at least {@code 0.7F}. So a floor applied
  * only on the server changes nothing a real player feels. It is applied by listening
  * for {@code PlayerEvent.BreakSpeed} on the Forge bus (not the FML bus, which only
- * carries tick events) and rewriting {@code newSpeed} so the resulting progress is
- * exactly {@code 0.1} per tick (10 ticks). The {@link #raiseBreakFloor} helper is
- * shared with {@link ArcticFurBreakFeature}.
+ * carries tick events) and rewriting {@code newSpeed}. The {@link #raiseBreakFloor}
+ * helper is shared with {@link ArcticFurBreakFeature}.
  *
  * <p>
  * The speed-up is therefore seen by players who have Patchee <b>on their client</b>,
  * the same deal as Patchee's NEI F7 light overlay; the server half is what keeps the
  * two sides in step (it stops the server's own {@code 0.7F} validation from rejecting
- * a fast client). The Glacier gate is read from the side-appropriate stats object —
- * the pack's own two-sided idiom ({@code TFBiomeBase.doesPlayerHaveRequiredAchievement}):
- * {@code EntityPlayerMP.func_147099_x()} on the server and
- * {@code EntityClientPlayerMP.getStatFileWriter()} on the client. A player that is
- * neither — a Forge {@code FakePlayer} on the logical server, say — is answered
- * {@code false} before the client branch is reached, so the
- * {@code @SideOnly(Side.CLIENT)} stats class is never touched on a dedicated server.
+ * a fast client). The Glacier gate is read per player through {@link GlacierGate}.
  */
 public final class AuroraBreakFeature implements Feature {
 
@@ -83,8 +79,8 @@ public final class AuroraBreakFeature implements Feature {
     /** The four legacy aurora blocks, by their {@code TFBlocks} field names. */
     public static final String[] AURORA_FIELDS = { "auroraBlock", "auroraPillar", "auroraSlab", "auroraDoubleSlab" };
 
-    /** Modern Twilight Forest's flat break rate for aurora blocks (0.1/tick -> 10 ticks). */
-    static final float FLOOR = 0.1F;
+    /** Modern-style aurora break rate: 0.5/tick -> 2 ticks. */
+    static final float FLOOR = 0.5F;
 
     /**
      * {@code ForgeHooks.blockStrength} divides the speed by the hardness and by
@@ -111,9 +107,9 @@ public final class AuroraBreakFeature implements Feature {
 
     @Override
     public String description() {
-        return "Feature: Twilight Forest aurora blocks (block, pillar, slab) break at least as fast as modern "
-            + "Twilight Forest once the player has earned the Glacier progress (the Snow Queen). "
-            + "false = plain 1.7.10 speed.";
+        return "Feature: Twilight Forest aurora blocks (block, pillar, slab and double slab) break in at most "
+            + "2 ticks (a floor of 0.5 per tick) for a player who has earned the Glacier progress (the Snow Queen); "
+            + "a player without it breaks them at the plain 1.7.10 speed. false = the plain speed for everyone.";
     }
 
     @Override
@@ -147,7 +143,8 @@ public final class AuroraBreakFeature implements Feature {
      * Step one: read the four aurora blocks and the Glacier achievement. A
      * missing field is reported loudly and the block is left out; the achievement
      * is the gate, so when it cannot be read the rule cannot be applied honestly
-     * and the whole feature fails.
+     * and the whole feature fails. The resolved block <b>class names</b> are
+     * logged so a mismatch with a placed block is visible in the log.
      */
     private Step resolveAurora(List<Block> aurora, Achievement[] glacier) {
         return ctx -> {
@@ -165,11 +162,13 @@ public final class AuroraBreakFeature implements Feature {
                 }
             }
 
-            ctx.log()
-                .info("[AuroraBreak] resolved {}/4 Twilight Forest aurora blocks", found);
             if (found == 0) {
+                ctx.log()
+                    .error("[AuroraBreak] no aurora blocks resolved — not arming");
                 return Outcome.FAILED;
             }
+            ctx.log()
+                .info("[AuroraBreak] resolved {}/4 aurora blocks, matched by class: {}", found, classNames(aurora));
 
             Class<?> pageClass = ctx.reflect()
                 .find(ACHIEVEMENT_CLASS);
@@ -210,12 +209,18 @@ public final class AuroraBreakFeature implements Feature {
     /** Step two: put the break-speed floor on the Forge bus and report it. */
     private Step armAurora(List<Block> aurora, Achievement[] glacier) {
         return ctx -> {
-            MinecraftForge.EVENT_BUS.register(new Handler(aurora, glacier[0]));
+            MinecraftForge.EVENT_BUS.register(new Handler(aurora, classNames(aurora), glacier[0]));
             ctx.log()
                 .info(
-                    "[AuroraBreak] armed — aurora blocks break at the modern speed once the Glacier progress is earned");
+                    "[AuroraBreak] armed — aurora blocks break in at most 2 ticks (floor 0.5/tick) once the Glacier "
+                        + "progress is earned");
             return Outcome.APPLIED;
         };
+    }
+
+    /** The class names of the resolved blocks, for the class-name matcher. */
+    static Set<String> classNames(List<Block> blocks) {
+        return BlockClassMatcher.classNames(blocks);
     }
 
     /** A declared static {@code Block} field of {@code owner}, or {@code null} when it is not one. */
@@ -265,13 +270,16 @@ public final class AuroraBreakFeature implements Feature {
     public static final class Handler {
 
         private final List<Block> aurora;
+        private final Set<String> classes;
         private final Achievement glacier;
+        private final FloorNotices notices = new FloorNotices(ID);
 
         /** Log the first handler failure only — a broken environment must not spam. */
         private volatile boolean warned = false;
 
-        Handler(List<Block> aurora, Achievement glacier) {
+        Handler(List<Block> aurora, Set<String> classes, Achievement glacier) {
             this.aurora = aurora;
+            this.classes = classes;
             this.glacier = glacier;
         }
 
@@ -281,9 +289,28 @@ public final class AuroraBreakFeature implements Feature {
                 EntityPlayer player = event.entityPlayer;
                 if (player == null || player.worldObj == null) return;
                 if (event.y < 0) return; // unknown location: hardness cannot be read
-                if (!aurora.contains(event.block)) return; // fast path
-                if (!earnedGlacier(player)) return;
+                Block block = event.block;
+                if (block == null) return;
+                // Class match first (survives variants / re-registrations); the
+                // resolved instances stay as an OR fallback so nothing regresses.
+                if (!BlockClassMatcher.matchesClass(classes, block.getClass()) && !aurora.contains(block)) return;
+                if (!GlacierGate.earned(player, glacier)) {
+                    notices.deniedOnce(player.getCommandSenderName(), "Glacier not earned");
+                    return;
+                }
+                float before = event.newSpeed;
                 raiseBreakFloor(event, FLOOR);
+                if (event.newSpeed > before) {
+                    notices.appliedOnce(
+                        player.getCommandSenderName(),
+                        block.getClass()
+                            .getName(),
+                        before,
+                        event.newSpeed,
+                        event.x,
+                        event.y,
+                        event.z);
+                }
             } catch (Exception | LinkageError failure) {
                 // Never break a block-break over this; the floor simply does nothing.
                 if (!warned) {
@@ -292,36 +319,6 @@ public final class AuroraBreakFeature implements Feature {
                         .warn("[AuroraBreak] break-speed handler failed once — the fix will keep trying", failure);
                 }
             }
-        }
-
-        /**
-         * The Glacier progress, read from the side-appropriate stats object — the
-         * pack's own two-sided idiom: {@code EntityPlayerMP.func_147099_x()} on the
-         * server, {@code EntityClientPlayerMP.getStatFileWriter()} on the client. A
-         * non-MP player on the logical server (a Forge {@code FakePlayer}, say) is
-         * answered false before the client branch, because touching the
-         * {@code @SideOnly(Side.CLIENT)} class there would throw on a dedicated
-         * server. A gate that cannot be read must not grant speed, so anything else
-         * is false.
-         */
-        private boolean earnedGlacier(EntityPlayer player) {
-            if (glacier == null) {
-                return false;
-            }
-            if (player instanceof EntityPlayerMP) {
-                StatisticsFile stats = ((EntityPlayerMP) player).func_147099_x();
-                return stats != null && stats.hasAchievementUnlocked(glacier);
-            }
-            if (player.worldObj != null && !player.worldObj.isRemote) {
-                // A non-MP player on the logical server: nothing to read, and the
-                // client class must stay untouched.
-                return false;
-            }
-            if (player instanceof EntityClientPlayerMP) {
-                StatFileWriter stats = ((EntityClientPlayerMP) player).getStatFileWriter();
-                return stats != null && stats.hasAchievementUnlocked(glacier);
-            }
-            return false;
         }
     }
 }
