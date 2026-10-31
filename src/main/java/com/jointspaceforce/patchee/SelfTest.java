@@ -25,6 +25,7 @@ import com.jointspaceforce.patchee.core.Toggles;
 import com.jointspaceforce.patchee.features.ArcticFurBreakFeature;
 import com.jointspaceforce.patchee.features.AuroraBreakFeature;
 import com.jointspaceforce.patchee.features.DollyFeature;
+import com.jointspaceforce.patchee.features.EnrichedFertilizerRecipeFeature;
 import com.jointspaceforce.patchee.features.FinalCastleBreak;
 import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
@@ -120,6 +121,7 @@ public final class SelfTest {
         checkArcticFurBreak(toggles);
         checkTeamChunkCap(toggles);
         checkFinalCastleBreak(toggles);
+        checkEnrichedFertilizerRecipe(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -446,6 +448,40 @@ public final class SelfTest {
                 found == 3 && gateFound && castle && thorns);
         } catch (Exception | LinkageError e) {
             Patchee.LOG.error("[SelfTest] FAIL finalcastlebreak setup crashed", e);
+            failed++;
+        }
+    }
+
+    // ---- 8. EnrichedFertilizerRecipe (old CropsNH fertilizer recipe) ------
+
+    /**
+     * The old enriched fertilizer recipe: CropsNH and GregTech must be present,
+     * the feature must be on, and the holder's own self-check must read the old
+     * recipe back out of both the Chemical Reactor and the Large Chemical Reactor
+     * recipe maps. The holder is reached by reflection so this class keeps no
+     * GregTech linkage; a holder that is absent (GregTech missing) is a skip.
+     */
+    private void checkEnrichedFertilizerRecipe(Toggles toggles) {
+        if (!toggles.featureEnabled(EnrichedFertilizerRecipeFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP enrichedfertilizerrecipe — feature disabled in config");
+            return;
+        }
+        if (!Loader.isModLoaded("cropsnh") || !Loader.isModLoaded("gregtech")) {
+            Patchee.LOG.info("[SelfTest] SKIP enrichedfertilizerrecipe — CropsNH or GregTech is not installed");
+            return;
+        }
+        try {
+            Class<?> holder = Class.forName("com.jointspaceforce.patchee.features.EnrichedFertilizerRecipe");
+            Method selfTest = holder.getMethod("selfTest");
+            Object result = selfTest.invoke(null);
+            if (result == null) {
+                Patchee.LOG.info("[SelfTest] SKIP enrichedfertilizerrecipe — CropsNH is not installed");
+                return;
+            }
+            String line = String.valueOf(result);
+            check(line, line.startsWith("PASS"));
+        } catch (Exception | LinkageError e) {
+            Patchee.LOG.error("[SelfTest] FAIL enrichedfertilizerrecipe setup crashed", e);
             failed++;
         }
     }
