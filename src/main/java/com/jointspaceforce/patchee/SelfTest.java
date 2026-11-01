@@ -439,13 +439,13 @@ public final class SelfTest {
             boolean thorns = FinalCastleBreak.patchedThorns();
             check(
                 "finalcastlebreak: " + found
-                    + "/3 castle blocks, Glacier achievement "
+                    + "/4 fast-break blocks, Glacier achievement "
                     + (gateFound ? "found" : "missing")
                     + ", class-load patch castle "
                     + (castle ? "applied" : "NOT applied")
                     + ", thorns "
                     + (thorns ? "applied" : "NOT applied"),
-                found == 3 && gateFound && castle && thorns);
+                found == 4 && gateFound && castle && thorns);
         } catch (Exception | LinkageError e) {
             Patchee.LOG.error("[SelfTest] FAIL finalcastlebreak setup crashed", e);
             failed++;

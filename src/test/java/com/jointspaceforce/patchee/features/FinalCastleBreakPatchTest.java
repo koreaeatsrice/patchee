@@ -328,10 +328,11 @@ class FinalCastleBreakPatchTest {
     }
 
     @Test
-    void theLiveTfBlocksHasTheThreePublicStaticBlockFields() throws Exception {
-        // The docs promise the floor on three blocks; the bytes of the live build
-        // (pulled read-only, sha in the resources README) prove all three field
-        // names exist as public static Block fields.
+    void theLiveTfBlocksHasTheFourPublicStaticBlockFields() throws Exception {
+        // The docs promise the floor on the castle bricks, the castle magic, the
+        // thorn wall and Weathered Deadrock; the bytes of the live build (pulled
+        // read-only, sha in the resources README) prove all four field names
+        // exist as public static Block fields.
         ClassNode node = read(resource(LIVE + "TFBlocks.class"));
         for (String name : FinalCastleBreakFeature.BLOCK_FIELDS) {
             assertTrue(

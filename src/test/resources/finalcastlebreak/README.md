@@ -23,17 +23,18 @@ over the REAL shapes, not over a synthetic look-alike.
 back byte-identical.
 
 `TFBlocks.class` is the **field-presence** evidence: `javap -p` of these live
-bytes shows all three fields the docs promise exist on the live build as
+bytes shows all four fields the docs promise exist on the live build as
 `public static net.minecraft.block.Block` fields —
 
 ```
 public static net.minecraft.block.Block thorns;
 public static net.minecraft.block.Block castleBlock;
 public static net.minecraft.block.Block castleMagic;
+public static net.minecraft.block.Block deadrock;
 ```
 
-and `FinalCastleBreakPatchTest.theLiveTfBlocksHasTheThreePublicStaticBlockFields`
-parses these stored bytes and asserts the same, so the three-block claim is not
+and `FinalCastleBreakPatchTest.theLiveTfBlocksHasTheFourPublicStaticBlockFields`
+parses these stored bytes and asserts the same, so the four-block claim is not
 just a warn-if-missing hope.
 
 In this jar the vanilla member names are SRG (`func_150894_a`,

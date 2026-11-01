@@ -32,10 +32,27 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * ({@code progress_glacier}). The 1.7.10 pack has no such rule. This feature adds
  * it as a <b>floor</b> — never a slowdown: the vanilla speed is kept and only
  * raised when it is slower than the modern one, exactly the owner's rule ("keep
- * today's speed, add the fast version on top"). The floor is {@code 0.5} progress
- * per tick (2 ticks), raised above the vanilla rate so the tweak is always felt.
- * It is gated <b>per player</b>: only a player who has earned the Glacier
- * progression sees it, evaluated on every break.
+ * today's speed, add the fast version on top"). The floor is {@code 0.1} progress
+ * per tick (10 ticks), the same floor {@link FinalCastleBreakFeature} uses, so
+ * the aurora blocks break at the castle's "deepslate speed". It is gated
+ * <b>per player</b>: only a player who has earned the Glacier progression sees
+ * it, evaluated on every break.
+ *
+ * <p>
+ * The arm step also marks each resolved block pickaxe-harvestable with
+ * {@code Block.setHarvestLevel("pickaxe", 0)}. The aurora blocks are
+ * {@code Material.packedIce} and set no harvest tool of their own, so the
+ * Tinkers' Construct hammer's 3x3 pass skipped them: that pass tests
+ * {@code HarvestTool.isEffective(block, meta)}, which is true when
+ * {@code "pickaxe".equals(block.getHarvestTool(meta))} <i>or</i> when the
+ * material is one of the hammer's own list (rock, iron, ice, glass, piston,
+ * anvil). The castle blocks escape the skip only because their material
+ * ({@code Material.rock}) is on that list — not because of any tool. Marking the
+ * aurora blocks with the pickaxe tool makes the hammer's test true, so its 3x3
+ * area-mine works on them. Level {@code 0} accepts any pickaxe and changes the
+ * drop rule nowhere: for every held item that is not a pickaxe the harvest check
+ * falls back to the very same {@code player.canHarvestBlock(block)} the unset
+ * tool took.
  *
  * <p>
  * The 1.7.10 equivalent of the Glacier progression is the achievement
@@ -79,8 +96,14 @@ public final class AuroraBreakFeature implements Feature {
     /** The four legacy aurora blocks, by their {@code TFBlocks} field names. */
     public static final String[] AURORA_FIELDS = { "auroraBlock", "auroraPillar", "auroraSlab", "auroraDoubleSlab" };
 
-    /** Modern-style aurora break rate: 0.5/tick -> 2 ticks. */
-    static final float FLOOR = 0.5F;
+    /** The aurora break rate, matching the castle: 0.1/tick -> 10 ticks. */
+    static final float FLOOR = 0.1F;
+
+    /** The harvest tool the Tinkers' Construct hammer's 3x3 pass tests for. */
+    static final String PICKAXE = "pickaxe";
+
+    /** Any pickaxe qualifies; the level only has to exist so the tool is reported. */
+    static final int PICKAXE_LEVEL = 0;
 
     /**
      * {@code ForgeHooks.blockStrength} divides the speed by the hardness and by
@@ -108,8 +131,10 @@ public final class AuroraBreakFeature implements Feature {
     @Override
     public String description() {
         return "Feature: Twilight Forest aurora blocks (block, pillar, slab and double slab) break in at most "
-            + "2 ticks (a floor of 0.5 per tick) for a player who has earned the Glacier progress (the Snow Queen); "
-            + "a player without it breaks them at the plain 1.7.10 speed. false = the plain speed for everyone.";
+            + "10 ticks (a floor of 0.1 per tick, the same as the Final Castle) for a player who has earned the "
+            + "Glacier progress (the Snow Queen), and are marked pickaxe-harvestable so the Tinkers' Construct "
+            + "hammer's 3x3 area-mine works on them; a player without the progress breaks them at the plain "
+            + "1.7.10 speed. false = the plain speed for everyone.";
     }
 
     @Override
@@ -206,16 +231,57 @@ public final class AuroraBreakFeature implements Feature {
         };
     }
 
-    /** Step two: put the break-speed floor on the Forge bus and report it. */
+    /**
+     * Step two: mark each block pickaxe-harvestable (so the Tinkers' Construct
+     * hammer's 3x3 pass includes it), put the break-speed floor on the Forge bus
+     * and report both.
+     */
     private Step armAurora(List<Block> aurora, Achievement[] glacier) {
         return ctx -> {
+            int pickaxed = 0;
+            for (Block block : aurora) {
+                if (markPickaxeHarvestable(block)) {
+                    pickaxed++;
+                } else {
+                    ctx.log()
+                        .warn(
+                            "[AuroraBreak] could not mark {} pickaxe-harvestable — the Tinkers' hammer will not "
+                                + "area-mine it",
+                            block.getClass()
+                                .getName());
+                }
+            }
             MinecraftForge.EVENT_BUS.register(new Handler(aurora, classNames(aurora), glacier[0]));
             ctx.log()
                 .info(
-                    "[AuroraBreak] armed — aurora blocks break in at most 2 ticks (floor 0.5/tick) once the Glacier "
-                        + "progress is earned");
+                    "[AuroraBreak] armed — {}/{} aurora blocks marked pickaxe-harvestable (TiC hammer 3x3 works) and "
+                        + "they break in at most 10 ticks (floor 0.1/tick, same as the castle) once the Glacier "
+                        + "progress is earned",
+                    pickaxed,
+                    aurora.size());
             return Outcome.APPLIED;
         };
+    }
+
+    /**
+     * Marks one block pickaxe-harvestable so the Tinkers' Construct hammer's 3x3
+     * pass includes it. {@code Block.setHarvestLevel} is a Forge addition to
+     * {@link Block} that writes the harvest-tool/level arrays; it is safe to call
+     * at arm time and, with level {@code 0}, changes the drop rule for no held
+     * item that is not a pickaxe (the harvest check falls back to the same
+     * {@code player.canHarvestBlock(block)} an unset tool takes). A failure — an
+     * older {@code Block} without the method — is reported, never thrown.
+     */
+    static boolean markPickaxeHarvestable(Block block) {
+        if (block == null) {
+            return false;
+        }
+        try {
+            block.setHarvestLevel(PICKAXE, PICKAXE_LEVEL);
+            return true;
+        } catch (Throwable unsupported) {
+            return false;
+        }
     }
 
     /** The class names of the resolved blocks, for the class-name matcher. */

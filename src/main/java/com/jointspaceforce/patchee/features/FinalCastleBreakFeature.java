@@ -44,7 +44,8 @@ import cpw.mods.fml.relauncher.Side;
  * There are two halves. The <b>break speed</b> half is the same flat
  * {@code 0.1}-per-tick floor {@link AuroraBreakFeature} uses, applied to the
  * castle bricks ({@code castleBlock}), the castle magic blocks
- * ({@code castleMagic}) and the thorn wall ({@code thorns}) on <b>both sides</b>
+ * ({@code castleMagic}), the thorn wall ({@code thorns}) and Weathered Deadrock
+ * ({@code deadrock}) on <b>both sides</b>
  * (in 1.7.10 the client is the clock), by a {@code PlayerEvent.BreakSpeed}
  * listener on the Forge bus — it only ever raises the speed, never slows a block
  * down. The <b>behaviour</b> half is changed by
@@ -67,8 +68,17 @@ public final class FinalCastleBreakFeature implements Feature {
     private static final String ACHIEVEMENT_CLASS = "twilightforest.TFAchievementPage";
     private static final String ACHIEVEMENT_FIELD = "twilightProgressGlacier";
 
-    /** The three Twilight Forest blocks this feature is about, by their field names. */
-    public static final String[] BLOCK_FIELDS = { "castleBlock", "castleMagic", "thorns" };
+    /**
+     * The Twilight Forest blocks this feature's break-speed floor covers, by
+     * their {@code TFBlocks} field names: the castle bricks, the castle magic
+     * blocks, the thorn wall and Weathered Deadrock ({@code deadrock}). Each is
+     * matched by its <b>class</b>, so a metadata variant or a different instance
+     * of the same class still hits the floor — Weathered Deadrock is one block
+     * ({@code twilightforest.block.BlockTFDeadrock}) whose meta 0 is "Weathered
+     * Deadrock", meta 1 "Cracked Deadrock" and meta 2 "Deadrock", and the class
+     * match covers all three.
+     */
+    public static final String[] BLOCK_FIELDS = { "castleBlock", "castleMagic", "thorns", "deadrock" };
 
     /** Modern Twilight Forest's flat break rate for the castle blocks (0.1/tick -> 10 ticks). */
     static final float FLOOR = 0.1F;
@@ -91,11 +101,12 @@ public final class FinalCastleBreakFeature implements Feature {
     @Override
     public String description() {
         return "Feature: once a player has earned the Twilight Forest Glacier progress (the Snow Queen), the Final "
-            + "Castle stops fighting back — the castle bricks, the castle magic blocks and the thorn wall break in "
-            + "at most 10 ticks (a floor of 0.1 per tick, per player), the bricks deal the pickaxe no extra "
-            + "durability damage (stock 1.7.10 drains it 16x), and the thorn wall can be broken for good instead "
-            + "of growing back and multiplying. Players without the achievement keep the stock behaviour. The "
-            + "behaviour change takes effect on the server; the break speed is seen on a client that has Patchee.";
+            + "Castle stops fighting back — the castle bricks, the castle magic blocks, the thorn wall and "
+            + "Weathered Deadrock break in at most 10 ticks (a floor of 0.1 per tick, per player), the bricks deal "
+            + "the pickaxe no extra durability damage (stock 1.7.10 drains it 16x), and the thorn wall can be "
+            + "broken for good instead of growing back and multiplying. Players without the achievement keep the "
+            + "stock behaviour. The behaviour change takes effect on the server; the break speed is seen on a "
+            + "client that has Patchee.";
     }
 
     @Override
@@ -197,7 +208,8 @@ public final class FinalCastleBreakFeature implements Feature {
             }
             ctx.log()
                 .info(
-                    "[FinalCastleBreak] resolved {}/3 Twilight Forest castle blocks, matched by class: {}",
+                    "[FinalCastleBreak] resolved {}/4 Twilight Forest fast-break blocks (castle bricks, castle magic, "
+                        + "thorn wall, Weathered Deadrock), matched by class: {}",
                     found,
                     BlockClassMatcher.classNames(castle));
 
