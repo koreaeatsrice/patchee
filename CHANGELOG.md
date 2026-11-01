@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.1] - 2026-11-01
+
+### Bug Fixes
+- **enrichedfertilizer**: resolve the cropsnh fluids case-insensitively (#14) ([`689d77e`](https://github.com/koreaeatsrice/patchee/commit/689d77e50333a779f09452166bb3cea9d7f409ce))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.0...v1.7.1
+
 ## [1.7.0] - 2026-10-31
 
 ### Features
