@@ -11,9 +11,9 @@ import org.junit.jupiter.api.Test;
  * <p>
  * The vanilla result is {@code speed / hardness / divisor}, so setting the speed
  * to {@code floor * hardness * divisor} makes the player break the block at
- * exactly {@code floor} progress per tick — 0.5 (2 ticks) for the aurora blocks,
- * 0.2 (5 ticks) for arctic fur and 0.1 (10 ticks) for the castle blocks. These
- * tests pin that arithmetic and the tick counts the features promise.
+ * exactly {@code floor} progress per tick — 0.1 (10 ticks) for the aurora blocks
+ * and the castle blocks, and 0.2 (5 ticks) for arctic fur. These tests pin that
+ * arithmetic and the tick counts the features promise.
  */
 class AuroraBreakFloorTest {
 
@@ -31,10 +31,11 @@ class AuroraBreakFloorTest {
     }
 
     @Test
-    void modernAuroraRateIsTwoTicks() {
+    void modernAuroraRateMatchesTheCastleAtTenTicks() {
+        // Aurora follows the castle exactly: 0.1/tick -> 10 ticks.
         float speed = AuroraBreakFeature.floorSpeed(2.0F, false, AuroraBreakFeature.FLOOR);
-        assertEquals(100.0F, speed, EPS);
-        assertEquals(2, ticks(progress(speed, 2.0F, false)));
+        assertEquals(20.0F, speed, EPS);
+        assertEquals(10, ticks(progress(speed, 2.0F, false)));
     }
 
     @Test
@@ -56,8 +57,8 @@ class AuroraBreakFloorTest {
     @Test
     void canHarvestUsesTheThirtyDivisor() {
         float speed = AuroraBreakFeature.floorSpeed(2.0F, true, AuroraBreakFeature.FLOOR);
-        assertEquals(30.0F, speed, EPS);
-        assertEquals(2, ticks(progress(speed, 2.0F, true)));
+        assertEquals(6.0F, speed, EPS);
+        assertEquals(10, ticks(progress(speed, 2.0F, true)));
     }
 
     @Test
