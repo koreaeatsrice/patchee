@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.2] - 2026-11-01
+
+### Features
+- **tf**: match aurora break to the castle and add Weathered Deadrock (#15) ([`27ca7af`](https://github.com/koreaeatsrice/patchee/commit/27ca7af7437821fc38923d5d0c9bf422e77a4183))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.1...v1.7.2
+
 ## [1.7.1] - 2026-11-01
 
 ### Bug Fixes
