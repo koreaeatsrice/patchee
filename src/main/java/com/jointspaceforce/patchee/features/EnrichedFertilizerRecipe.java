@@ -75,6 +75,77 @@ public final class EnrichedFertilizerRecipe {
     private EnrichedFertilizerRecipe() {}
 
     /**
+     * Looks a fluid up by its registry name, tolerating case differences.
+     *
+     * <p>
+     * {@link FluidRegistry#getFluid(String)} is an exact-name map lookup, and
+     * registration can store a name with different case than the constant we
+     * look for (CropsNH registers {@code cropsnh.enrichedFertilizer}, while the
+     * registry's own stored name may be lower-cased). When the exact lookup
+     * misses we scan every registered fluid and take the first whose
+     * {@link Fluid#getName() name} matches case-insensitively; when that also
+     * misses we return {@code null} so the caller reports the failure.
+     */
+    private static Fluid findFluid(String wanted) {
+        Fluid exact = FluidRegistry.getFluid(wanted);
+        if (exact != null) {
+            return exact;
+        }
+        for (Fluid fluid : FluidRegistry.getRegisteredFluids()
+            .values()) {
+            if (fluid != null && nameMatches(fluid.getName(), wanted)) {
+                return fluid;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * True when a registered fluid name equals the wanted name, ignoring case.
+     * Pure and free of any registry access, so it is unit-testable on its own.
+     */
+    static boolean nameMatches(String registered, String wanted) {
+        return registered != null && wanted != null && registered.equalsIgnoreCase(wanted);
+    }
+
+    /**
+     * One line naming every registered fluid whose name contains {@code "fert"}
+     * (name plus class), so a future lookup failure shows what the registry
+     * actually holds. Never throws and never returns {@code null}.
+     */
+    private static String describeFertFluids() {
+        try {
+            StringBuilder sb = new StringBuilder("[");
+            boolean first = true;
+            for (Fluid fluid : FluidRegistry.getRegisteredFluids()
+                .values()) {
+                if (fluid == null || fluid.getName() == null
+                    || !fluid.getName()
+                        .toLowerCase(java.util.Locale.ROOT)
+                        .contains("fert")) {
+                    continue;
+                }
+                if (!first) {
+                    sb.append(", ");
+                }
+                first = false;
+                sb.append(fluid.getName())
+                    .append('=')
+                    .append(
+                        fluid.getClass()
+                            .getName());
+            }
+            if (first) {
+                sb.append("none");
+            }
+            return sb.append(']')
+                .toString();
+        } catch (Exception | LinkageError failure) {
+            return "[<could not list registered fert fluids: " + failure + ">]";
+        }
+    }
+
+    /**
      * Adds the old recipe to the Chemical Reactor and the Large Chemical
      * Reactor. CropsNH being absent is not an error (Patchee starts without it):
      * the old recipe is simply skipped with an INFO line.
@@ -86,15 +157,16 @@ public final class EnrichedFertilizerRecipe {
             return Outcome.SKIPPED;
         }
         Item item = GameRegistry.findItem(CROP_MODID, FERTILIZER_ITEM);
-        Fluid fert = FluidRegistry.getFluid(FLUID_NAME);
-        Fluid enriched = FluidRegistry.getFluid(ENRICHED_FLUID_NAME);
+        Fluid fert = findFluid(FLUID_NAME);
+        Fluid enriched = findFluid(ENRICHED_FLUID_NAME);
         if (item == null || fert == null || enriched == null) {
             ctx.log()
                 .error(
-                    "[EnrichedFertilizerRecipe] cannot add the old recipe: item={} fertilizer={} enriched={}",
+                    "[EnrichedFertilizerRecipe] cannot add the old recipe: item={} fertilizer={} enriched={} registered-fert-fluids={}",
                     item,
                     fert,
-                    enriched);
+                    enriched,
+                    describeFertFluids());
             return Outcome.FAILED;
         }
         Collection<GTRecipe> added = GTValues.RA.stdBuilder()
@@ -128,14 +200,16 @@ public final class EnrichedFertilizerRecipe {
                 return null;
             }
             Item item = GameRegistry.findItem(CROP_MODID, FERTILIZER_ITEM);
-            Fluid fert = FluidRegistry.getFluid(FLUID_NAME);
-            Fluid enriched = FluidRegistry.getFluid(ENRICHED_FLUID_NAME);
+            Fluid fert = findFluid(FLUID_NAME);
+            Fluid enriched = findFluid(ENRICHED_FLUID_NAME);
             if (item == null || fert == null || enriched == null) {
                 return "FAIL the old enriched fertilizer recipe cannot be checked: item=" + item
                     + " fertilizer="
                     + fert
                     + " enriched="
-                    + enriched;
+                    + enriched
+                    + " registered-fert-fluids="
+                    + describeFertFluids();
             }
             int reactor = countMatches(RecipeMaps.chemicalReactorRecipes.getAllRecipes(), item, fert, enriched);
             int lcr = countMatches(RecipeMaps.multiblockChemicalReactorRecipes.getAllRecipes(), item, fert, enriched);
