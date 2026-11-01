@@ -11,8 +11,10 @@ import net.minecraftforge.fluids.FluidStack;
 import com.jointspaceforce.patchee.core.Outcome;
 import com.jointspaceforce.patchee.core.PatchContext;
 
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.registry.GameRegistry;
+import cpw.mods.fml.relauncher.Side;
 import gregtech.api.enums.GTValues;
 import gregtech.api.enums.TierEU;
 import gregtech.api.recipe.RecipeMaps;
@@ -176,15 +178,89 @@ public final class EnrichedFertilizerRecipe {
             .duration(DURATION_TICKS)
             .eut(TierEU.RECIPE_LV)
             .addTo(GTRecipeConstants.UniversalChemical);
-        if (added == null || added.isEmpty()) {
+        boolean addedEntries = added != null && !added.isEmpty();
+        if (!addedEntries) {
             ctx.log()
                 .error("[EnrichedFertilizerRecipe] the old recipe produced no entries - old recipe NOT added");
             return Outcome.FAILED;
         }
+        boolean clientSide = FMLCommonHandler.instance()
+            .getSide() == Side.CLIENT;
         ctx.log()
             .info(
-                "[EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks)");
+                "[EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks) "
+                    + sideLabel(clientSide));
+        // On a physical client the recipe is in the maps but NEI may already have
+        // built and cached its Chemical Reactor / LCR pages, so the new recipe
+        // never shows until GT's NEI cache is dropped. Patchee adds the recipe at
+        // postInit, after NEI's first page build, which is exactly that case.
+        if (shouldRequestNeiReload(clientSide, addedEntries)) {
+            requestNeiCacheReload(ctx);
+        }
         return Outcome.APPLIED;
+    }
+
+    /**
+     * The side tag the armed line carries, so a client log makes it obvious the
+     * feature ran there. Pure and free of any game type, so it is unit-testable.
+     */
+    static String sideLabel(boolean clientSide) {
+        return clientSide ? "(client)" : "(server)";
+    }
+
+    /**
+     * True when GT's NEI recipe cache must be dropped: only when the recipe was
+     * really added and only on the physical client, where NEI builds and caches
+     * the Chemical Reactor pages. On a server NEI is absent, so nothing is asked.
+     * Pure and free of any game type, so it is unit-testable.
+     */
+    static boolean shouldRequestNeiReload(boolean clientSide, boolean addedEntries) {
+        return clientSide && addedEntries;
+    }
+
+    /**
+     * Asks GregTech to drop its NEI recipe cache so the pages it already built
+     * are rebuilt and pick the old recipe up.
+     *
+     * <p>
+     * Done reflectively on purpose, to keep Patchee's no-compile-linkage
+     * discipline: no GregTech type appears in a field, a parameter or a return
+     * value here. {@code gregtech.GTMod.proxy} is the running side's proxy (a
+     * {@code GTClient} on a client), and {@code reloadNEICache()} is the counter
+     * bump GT's handlers watch. Never throws: any failure logs one INFO line and
+     * the recipe step still succeeds.
+     */
+    private static void requestNeiCacheReload(PatchContext ctx) {
+        try {
+            Class<?> gtMod = ctx.reflect()
+                .find("gregtech.GTMod");
+            if (gtMod == null) {
+                ctx.log()
+                    .info(
+                        "[EnrichedFertilizerRecipe] could not ask GregTech to reload its NEI recipe cache: gregtech.GTMod is absent");
+                return;
+            }
+            Object proxy = ctx.reflect()
+                .staticValue(
+                    ctx.reflect()
+                        .staticField(gtMod, "proxy"));
+            if (proxy == null) {
+                ctx.log()
+                    .info(
+                        "[EnrichedFertilizerRecipe] could not ask GregTech to reload its NEI recipe cache: gregtech.GTMod.proxy is not set yet");
+                return;
+            }
+            proxy.getClass()
+                .getMethod("reloadNEICache")
+                .invoke(proxy);
+            ctx.log()
+                .info("[EnrichedFertilizerRecipe] NEI cache reload requested so the page picks the recipe up");
+        } catch (Throwable failure) {
+            ctx.log()
+                .info(
+                    "[EnrichedFertilizerRecipe] could not ask GregTech to reload its NEI recipe cache: {}",
+                    failure.toString());
+        }
     }
 
     /**
