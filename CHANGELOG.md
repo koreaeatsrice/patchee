@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.7.3] - 2026-11-01
+
+### Bug Fixes
+- **enrichedfertilizer**: drop GregTech's NEI recipe cache on the client (#16) ([`da2526b`](https://github.com/koreaeatsrice/patchee/commit/da2526b37f6bfade1c6ba2e5ddfdb6322306245a))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.2...v1.7.3
+
 ## [1.7.2] - 2026-11-01
 
 ### Features
