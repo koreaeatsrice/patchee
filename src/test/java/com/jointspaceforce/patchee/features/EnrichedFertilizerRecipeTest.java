@@ -1,5 +1,6 @@
 package com.jointspaceforce.patchee.features;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,5 +51,24 @@ class EnrichedFertilizerRecipeTest {
         assertFalse(EnrichedFertilizerRecipe.nameMatches(null, "cropsnh.fertilizer"));
         assertFalse(EnrichedFertilizerRecipe.nameMatches("cropsnh.fertilizer", null));
         assertFalse(EnrichedFertilizerRecipe.nameMatches(null, null));
+    }
+
+    /** The armed line's side tag names the running side, so a client log is obvious. */
+    @Test
+    void sideLabelNamesTheSide() {
+        assertEquals("(client)", EnrichedFertilizerRecipe.sideLabel(true));
+        assertEquals("(server)", EnrichedFertilizerRecipe.sideLabel(false));
+    }
+
+    /**
+     * GT's NEI cache is dropped only on a physical client that really added the recipe: a server
+     * has no NEI, and a failed add must not trigger anything.
+     */
+    @Test
+    void neiReloadOnlyOnAClientWithAnAddedRecipe() {
+        assertTrue(EnrichedFertilizerRecipe.shouldRequestNeiReload(true, true));
+        assertFalse(EnrichedFertilizerRecipe.shouldRequestNeiReload(false, true));
+        assertFalse(EnrichedFertilizerRecipe.shouldRequestNeiReload(true, false));
+        assertFalse(EnrichedFertilizerRecipe.shouldRequestNeiReload(false, false));
     }
 }
