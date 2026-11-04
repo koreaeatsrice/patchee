@@ -1,5 +1,8 @@
 # Patchee
 
+> [!WARNING]
+> The majority of this project was written by a Large Language Model (LLM). While prompted, built, and tested for reliability, please take note of this before downloading and using this mod.
+
 [![Release](https://img.shields.io/github/v/release/koreaeatsrice/patchee?label=release)](https://github.com/koreaeatsrice/patchee/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/koreaeatsrice/patchee/ci.yml?branch=main&label=build)](https://github.com/koreaeatsrice/patchee/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/koreaeatsrice/patchee)](LICENSE)
