@@ -1,6 +1,6 @@
 # Patchee
 
-Server-side GT:NH (1.7.10) addon that fixes other mods at runtime without touching their jars, so clients need nothing to join.
+A helper mod for GT:NH (1.7.10) that fixes your other mods on the server without editing them, so players join with nothing extra.
 
 ## What it changes
 
@@ -9,9 +9,9 @@ Server-side GT:NH (1.7.10) addon that fixes other mods at runtime without touchi
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
 - **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — lights pitch-dark blocks only. Client-side.
-- **Twilight Forest** — after the Snow Queen, aurora blocks, Weathered Deadrock and the Final Castle's bricks, magic blocks and thorn wall break in 10 ticks, bricks stop draining the pickaxe 16x, the thorn wall stays broken, and shears cut arctic fur in 5.
+- **Twilight Forest** — kill the Snow Queen and aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks no longer wear the pickaxe down 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 for anyone.
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum. Server-side.
-- **Enriched fertilizer** — the old recipe is kept next to the pack's newer one: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer in the Chemical Reactor and Large Chemical Reactor.
+- **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
 
 Switches live in `config/patchee.cfg`; defaults in [docs/SETTINGS.md](docs/SETTINGS.md).
 Install, client notes and troubleshooting: [docs/](docs/).
