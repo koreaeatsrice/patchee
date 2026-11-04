@@ -9,7 +9,7 @@ A helper mod for GT:NH (1.7.10) that fixes your other mods on the server without
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
 - **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — lights pitch-dark blocks only (client-side).
-- **Twilight Forest** — after the Snow Queen, aurora blocks, Weathered Deadrock and the Final Castle's blocks break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 for anyone.
+- **Twilight Forest** — after the Snow Queen, aurora blocks, Weathered Deadrock and the Final Castle's blocks break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone.
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum (server-side).
 - **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
 
