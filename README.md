@@ -1,28 +1,55 @@
 # Patchee
 
-A helper mod for GT:NH (1.7.10) that fixes your other mods on the server without editing them, so players join with nothing extra.
+[![Release](https://img.shields.io/github/v/release/koreaeatsrice/patchee?label=release)](https://github.com/koreaeatsrice/patchee/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/koreaeatsrice/patchee/ci.yml?branch=main&label=build)](https://github.com/koreaeatsrice/patchee/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/koreaeatsrice/patchee)](LICENSE)
+![Minecraft](https://img.shields.io/badge/Minecraft-1.7.10-3f9d3f)
+![GTNH](https://img.shields.io/badge/GT%3ANH-server--side-2f6f9f)
 
-## What it changes
+A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touching their jars, so clients need nothing to join.
+
+## Features
 
 - **JABBA Dolly** — moves Forestry, Gendustry and MagicBees bee housings with their bees.
 - **Tinkers' mattock** — digs sand and snow at shovel speed, with drops.
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
 - **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — lights pitch-dark blocks only (client-side).
-- **Twilight Forest** — after the Snow Queen, aurora blocks, Weathered Deadrock and the Final Castle's blocks break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone.
+- **Twilight Forest** — after the Snow Queen: aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone.
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum (server-side).
 - **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
 
-Switches live in `config/patchee.cfg`; defaults in [docs/SETTINGS.md](docs/SETTINGS.md).
-Install, client notes and troubleshooting: [docs/](docs/).
+## Install
+
+1. Download `patchee-<version>.jar` from [Releases](https://github.com/koreaeatsrice/patchee/releases). Take the plain jar, not `-dev`.
+2. Drop it into the server's `mods` folder.
+3. Restart the server.
+
+Full steps and the log lines to expect: [docs/INSTALL-SERVER.md](docs/INSTALL-SERVER.md).
+
+## Client (optional)
+
+Players join with nothing. Without the jar a client still sees the tank debuffs and the old Twilight Forest break speed; the F7 overlay only works with the jar installed. Per-mod detail: [docs/CLIENT-MODS.md](docs/CLIENT-MODS.md).
+
+## Config
+
+Each feature has its own switch in `config/patchee.cfg`, plus a master switch. Keys, defaults and caveats: [docs/SETTINGS.md](docs/SETTINGS.md).
+
+## Docs
+
+- [Settings](docs/SETTINGS.md)
+- [Server install](docs/INSTALL-SERVER.md)
+- [Client mods](docs/CLIENT-MODS.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ## Build
 
 ```sh
-./gradlew build
+./gradlew build    # -> build/libs/patchee-<version>.jar
 ```
 
-## Licence
+## License
 
-MIT. Twilight Forest numbers were re-implemented from its published source; no
-TF code, art or sound is shipped.
+MIT — see [LICENSE](LICENSE).
+
+Twilight Forest break speeds were re-implemented from its published source; no Twilight Forest code, art or sound is shipped.
