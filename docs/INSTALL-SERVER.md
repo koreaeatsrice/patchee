@@ -49,8 +49,10 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits clamped to 1500 claimed / 500 loaded chunks (4 return sites; …)
 [TeamChunkCap] armed — every team is capped at 1500 claimed / 500 loaded chunks in total (…)
 [EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks) (server)
+[FishTrapMoves] armed - Fish Trap is sortable (outputs 0-17, 6 per row); move hotkeys accept bait into slot 18
 ```
 
+- The `[FishTrapMoves]` line appears only when **Pam's HarvestCraft + InventoryBogoSorter** are installed. Without HarvestCraft the gate logs `[FishTrapMoves] Pam's HarvestCraft is not installed - Fish Trap moves skipped`; with HarvestCraft but no InventoryBogoSorter the feature logs `[FishTrapMoves] InventoryBogoSorter is not installed - skipped`. It runs on both sides; the move hotkeys (space/alt/ctrl-click) work from the server jar alone, while sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too.
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
 - The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`not installed - skipped` otherwise). It ends with the side it ran on. On the **server** the recipe just works in the machine. On a **client that has Patchee** the line reads `(client)` and Patchee also asks GregTech to drop NEI's cached recipe pages, so the old recipe **shows up in NEI** too; a client without Patchee does not see it.
@@ -61,10 +63,10 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 **Extra check (optional):** in the settings file set `runSelfTest=true`, restart once and look for:
 
 ```
-[SelfTest] result: 20 passed, 0 failed
+[SelfTest] result: 26 passed, 0 failed
 ```
 
-20 checks with VeinMiner installed; **15** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Four of them check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed.
+The exact total depends on which mods are installed. On this pack it is **26** with VeinMiner and **21** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Six of the checks are the Fish Trap: 2 need HarvestCraft, and 4 more need InventoryBogoSorter. Four check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed. A missing mod is a **SKIP**, never a FAIL.
 
 Then set it back to `false`. Settings explained: [SETTINGS.md](SETTINGS.md).
 
