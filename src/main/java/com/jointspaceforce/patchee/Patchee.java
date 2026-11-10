@@ -10,7 +10,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 
 /**
- * Patchee — a small GTNH 1.7.10 addon that fixes eight cross-mod annoyances
+ * Patchee — a small GTNH 1.7.10 addon that fixes nine cross-mod annoyances
  * without editing any other mod's jar. The fixes are registered in one place,
  * {@link com.jointspaceforce.patchee.features.PatcheeFeatures}.
  *
@@ -66,14 +66,25 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * ({@link com.jointspaceforce.patchee.features.EnrichedFertilizerRecipeFeature}).
  *
  * <p>
+ * 9. <b>Pam's HarvestCraft Fish Trap.</b> InventoryBogoSorter's hotkeys only
+ * work in containers it knows by exact class, and the Fish Trap is not one of
+ * them, so space/alt/ctrl-click and middle-click sort did nothing there; Patchee
+ * registers the trap's output grid as one sort group and sends bait into slot 18
+ * on a move ({@link com.jointspaceforce.patchee.features.FishTrapMovesFeature}).
+ * The move hotkeys (space/alt/ctrl-click) work from the server jar alone;
+ * sorting the trap's output with middle-click (and the sorter's sort button in
+ * that GUI) needs Patchee on the client too. Plain shift-click already works.
+ *
+ * <p>
  * Most fixes are reflection-based against verified runtime names. Two of them
  * cannot be: the F7 overlay comparison constant and ServerUtilities' team-limit
  * return value live inside another mod's compiled method with no hook and no
  * config key, so Patchee's coremod rewrites those class bytes as they load —
  * see {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
- * {@code tools/matcher-check}. Two fixes are seen on the client (the F7 overlay
- * and the break speeds); the rest run on the server, so clients need nothing
- * installed to join ({@code acceptableRemoteVersions = "*"}).
+ * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
+ * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest run
+ * on the server, so clients need nothing installed to join
+ * ({@code acceptableRemoteVersions = "*"}).
  */
 @Mod(
     modid = Patchee.MODID,

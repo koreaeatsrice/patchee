@@ -20,6 +20,7 @@ Find what you see in the left column. Do what the right column says.
 | Log: `[TeamChunkCap] … does not have the shape this patch knows` | ServerUtilities is a different build than the one this Patchee was verified against, so Patchee left it exactly as it ships (nothing applies). | Update Patchee to the newest release; the log line lists the shape it found. |
 | Log: `[TeamChunkCap] ServerUtilities is not installed — team chunk limits skipped` | ServerUtilities is not in the pack. | Nothing — there are no team limits to apply. |
 | Two `patchee-…` files in `mods` | It got installed twice. | Delete the older one. Keep only the newest. |
+| The sorter hotkeys do nothing in the Fish Trap | The Fish Trap fix is off, or InventoryBogoSorter is missing. | Check `enableFishTrapMoves=true` and make sure the pack has InventoryBogoSorter. The move hotkeys (space/alt/ctrl-click) work from the server jar alone; sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too. Plain shift-click already works. |
 | The server will not start after installing | Wrong file or wrong pack version. | Delete the `patchee` jar and start again — the server will come back. Then tell an admin what happened. |
 | It worked, then a pack update broke it | A pack update replaces the `mods` folder. | Install the newest Patchee again. Still broken? Send the log. |
 
