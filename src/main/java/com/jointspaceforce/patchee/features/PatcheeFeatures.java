@@ -24,7 +24,8 @@ public final class PatcheeFeatures {
             .register(new ArcticFurBreakFeature())
             .register(new TeamChunkCapFeature())
             .register(new FinalCastleBreakFeature())
-            .register(new EnrichedFertilizerRecipeFeature());
+            .register(new EnrichedFertilizerRecipeFeature())
+            .register(new FishTrapMovesFeature());
         registry.freeze();
         return registry;
     }

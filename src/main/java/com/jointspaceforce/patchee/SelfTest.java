@@ -15,7 +15,13 @@ import java.util.Map;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.init.Items;
+import net.minecraft.inventory.Container;
+import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.stats.Achievement;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
@@ -28,6 +34,7 @@ import com.jointspaceforce.patchee.features.DollyFeature;
 import com.jointspaceforce.patchee.features.EnrichedFertilizerRecipeFeature;
 import com.jointspaceforce.patchee.features.FinalCastleBreak;
 import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
+import com.jointspaceforce.patchee.features.FishTrapMovesFeature;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -122,6 +129,7 @@ public final class SelfTest {
         checkTeamChunkCap(toggles);
         checkFinalCastleBreak(toggles);
         checkEnrichedFertilizerRecipe(toggles);
+        checkFishTrapMoves(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -790,6 +798,138 @@ public final class SelfTest {
             }
         }
         return sweep;
+    }
+
+    /**
+     * The Fish Trap fix: plain shift-click both ways must move bait into slot 18
+     * and fish out to the player (shift-click is unchanged vanilla behaviour, and
+     * this covers it). When the sorter is installed the trap must be a valid
+     * sortable container with exactly the 18 output slots as its one group, and
+     * the sorter's own insert path must route bait into slot 18 and refuse
+     * anything else. Reflection only: neither mod is a compile dependency.
+     */
+    private void checkFishTrapMoves(Toggles toggles) {
+        if (!toggles.featureEnabled(FishTrapMovesFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP fishtrapmoves - feature disabled in config");
+            return;
+        }
+        Class<?> tileClass;
+        try {
+            tileClass = Class.forName("com.pam.harvestcraft.TileEntityPamFishTrap");
+        } catch (ClassNotFoundException | LinkageError absent) {
+            Patchee.LOG.info("[SelfTest] SKIP fishtrapmoves - Pam's HarvestCraft is not installed");
+            return;
+        }
+
+        try {
+            Object tile = tileClass.getDeclaredConstructor()
+                .newInstance();
+            Class<?> containerClass = Class.forName("com.pam.harvestcraft.ContainerPamFishTrap");
+            InventoryPlayer inv = new InventoryPlayer((EntityPlayer) null);
+            Container container = (Container) containerClass.getConstructor(InventoryPlayer.class, tileClass)
+                .newInstance(inv, tile);
+
+            Class<?> registry = Class.forName("com.pam.harvestcraft.ItemRegistry");
+            Object rawBait = registry.getField("fishtrapbaitItem")
+                .get(null);
+            if (!(rawBait instanceof Item)) {
+                check("fishtrap bait item resolves", false);
+                return;
+            }
+            Item bait = (Item) rawBait;
+            IInventory trapInventory = (IInventory) tile;
+
+            // (a) shift-click bait from player main index 9 (slot 19) into slot 18
+            inv.mainInventory[9] = new ItemStack(bait, 2);
+            container.transferStackInSlot(null, 19);
+            ItemStack baitSlot = trapInventory.getStackInSlot(18);
+            check(
+                "fishtrap shift-click puts bait in slot 18",
+                baitSlot != null && baitSlot.getItem() == bait && baitSlot.stackSize == 2);
+
+            // (b) shift-click fish (slot 0) out to the player inventory
+            trapInventory.setInventorySlotContents(0, new ItemStack(Items.apple, 3));
+            container.transferStackInSlot(null, 0);
+            int apples = 0;
+            for (ItemStack stack : inv.mainInventory) {
+                if (stack != null && stack.getItem() == Items.apple) {
+                    apples += stack.stackSize;
+                }
+            }
+            check(
+                "fishtrap shift-click moves results to the player",
+                trapInventory.getStackInSlot(0) == null && apples == 3);
+
+            // (c) the sorter half, only when InventoryBogoSorter is installed
+            Class<?> bogoApi;
+            try {
+                bogoApi = Class.forName("com.cleanroommc.bogosorter.BogoSortAPI");
+            } catch (ClassNotFoundException | LinkageError absent) {
+                Patchee.LOG.info("[SelfTest] SKIP fishtrapmoves sorter half - InventoryBogoSorter is not installed");
+                return;
+            }
+            boolean sortable = (Boolean) bogoApi.getMethod("isValidSortable", Container.class)
+                .invoke(null, container);
+            Class<?> contextClass = Class.forName("com.cleanroommc.bogosorter.common.sort.GuiSortingContext");
+            Object sortingContext = contextClass.getMethod("create", Container.class)
+                .invoke(null, container);
+            Object group = contextClass.getMethod("getNonPlayerSlotGroup")
+                .invoke(sortingContext);
+            int groupSize = -1;
+            List<?> groupSlots = null;
+            if (group != null) {
+                Object slots = group.getClass()
+                    .getMethod("getSlots")
+                    .invoke(group);
+                if (slots instanceof List) {
+                    groupSlots = (List<?>) slots;
+                    groupSize = groupSlots.size();
+                }
+            }
+            check("fishtrap is sortable", sortable);
+            check("fishtrap sort group has the 18 outputs", groupSize == 18);
+
+            // The headline behaviour: BogoSorter's own static insert path must
+            // route bait into slot 18 even though it is outside the sort group.
+            // If the custom insertable is not registered, this check fails.
+            if (groupSlots == null) {
+                check("fishtrap sorter insert puts bait in slot 18", false);
+                check("fishtrap sorter insert refuses non-bait", false);
+                return;
+            }
+            Method insert = bogoApi.getMethod("insert", Container.class, List.class, ItemStack.class);
+
+            trapInventory.setInventorySlotContents(18, null);
+            Object remainder = insert.invoke(null, container, groupSlots, new ItemStack(bait, 2));
+            ItemStack insertedBait = trapInventory.getStackInSlot(18);
+            boolean outputsEmpty = true;
+            for (int i = 0; i < 18; i++) {
+                if (trapInventory.getStackInSlot(i) != null) {
+                    outputsEmpty = false;
+                    break;
+                }
+            }
+            check(
+                "fishtrap sorter insert puts bait in slot 18",
+                remainder == null && insertedBait != null
+                    && insertedBait.getItem() == bait
+                    && insertedBait.stackSize == 2
+                    && outputsEmpty);
+
+            // Negative case: the insertable must refuse a non-bait stack and
+            // leave the outputs alone.
+            trapInventory.setInventorySlotContents(18, null);
+            ItemStack refusedApples = new ItemStack(Items.apple, 2);
+            Object refused = insert.invoke(null, container, groupSlots, refusedApples);
+            check(
+                "fishtrap sorter insert refuses non-bait",
+                trapInventory.getStackInSlot(18) == null && refused instanceof ItemStack
+                    && ((ItemStack) refused).getItem() == Items.apple
+                    && ((ItemStack) refused).stackSize == 2);
+        } catch (Exception | LinkageError failure) {
+            Patchee.LOG.error("[SelfTest] FAIL fishtrapmoves check crashed", failure);
+            failed++;
+        }
     }
 
     /** One enum constant by name, or {@code null}. */
