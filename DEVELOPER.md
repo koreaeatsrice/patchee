@@ -86,6 +86,15 @@ banner field and pipeline steps all follow from it.
   a floor applied only on the server changes nothing a real player feels. Apply
   `AuroraBreak` and `ArcticFurBreak` on both sides; the faster break is what a
   player sees on a client that has Patchee installed.
+- **Wrapper coverage is implicit — do not add per-wrapper unwrapping code.**
+  Every block-wrapper mod (Forge Multipart, ArchitectureCraft, Carpenter's
+  Blocks, LittleTiles) computes break progress from the block it wraps, so
+  `PlayerEvent.BreakSpeed` already carries the Twilight Forest block and needs
+  no adapter; `features/WrapperCoverage.java` is the researched table plus the
+  boot-log wording, not a hook. Corollary: a `BreakSpeed` event may arrive with
+  `y < 0` — Forge Multipart reports its wrapped block at `(0,-1,0)` — and in
+  that case the floor must read the block's own hardness, never the world
+  (see `BreakHardness`).
 
 ## CI / CD
 

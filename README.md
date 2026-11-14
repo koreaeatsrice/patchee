@@ -21,7 +21,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
 - **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — lights pitch-dark blocks only (client-side).
-- **Twilight Forest** — after the Snow Queen: aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone.
+- **Twilight Forest** — after the Snow Queen: aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone. The same 10-tick rate applies when the block is built into Forge Multipart microblocks, ArchitectureCraft shapes, Carpenter's Blocks covers or LittleTiles tiles; ArchitectureCraft shapes also area-mine with the Tinkers' hammer, the other three keep their own tool.
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum (server-side).
 - **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
 - **Fish Trap** — the HarvestCraft trap takes the inventory sorter's move and sort hotkeys. The move hotkeys (space/alt/ctrl-click) work from the server jar alone; sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too. Plain shift-click already works.

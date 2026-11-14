@@ -43,15 +43,21 @@ final class FloorNotices {
         }
         if (applied.add(player)) {
             Patchee.LOG.info(
-                "[{}] {} floor applied on {} (speed {} -> {}) at {},{},{}",
+                "[{}] {} floor applied on {} (speed {} -> {}) at {}",
                 feature,
                 player,
                 blockClass,
                 before,
                 after,
-                x,
-                y,
-                z);
+                site(x, y, z));
         }
+    }
+
+    /** Where the floor fired: real coordinates, or the honest "no position" wording. */
+    static String site(int x, int y, int z) {
+        if (y < 0) {
+            return "a wrapped block (no position reported)";
+        }
+        return x + "," + y + "," + z;
     }
 }

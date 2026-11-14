@@ -373,8 +373,12 @@ public final class SelfTest {
             field.setAccessible(true);
             boolean gateFound = field.get(null) instanceof Achievement;
             check(
-                "aurora break floor: " + found + "/4 blocks, Glacier achievement " + (gateFound ? "found" : "missing"),
-                found == 4 && gateFound);
+                "aurora break floor: " + found
+                    + "/"
+                    + AuroraBreakFeature.AURORA_FIELDS.length
+                    + " blocks, Glacier achievement "
+                    + (gateFound ? "found" : "missing"),
+                found == AuroraBreakFeature.AURORA_FIELDS.length && gateFound);
         } catch (Exception | LinkageError e) {
             Patchee.LOG.error("[SelfTest] FAIL aurora break floor setup crashed", e);
             failed++;
@@ -447,13 +451,15 @@ public final class SelfTest {
             boolean thorns = FinalCastleBreak.patchedThorns();
             check(
                 "finalcastlebreak: " + found
-                    + "/4 fast-break blocks, Glacier achievement "
+                    + "/"
+                    + FinalCastleBreakFeature.BLOCK_FIELDS.length
+                    + " fast-break blocks, Glacier achievement "
                     + (gateFound ? "found" : "missing")
                     + ", class-load patch castle "
                     + (castle ? "applied" : "NOT applied")
                     + ", thorns "
                     + (thorns ? "applied" : "NOT applied"),
-                found == 4 && gateFound && castle && thorns);
+                found == FinalCastleBreakFeature.BLOCK_FIELDS.length && gateFound && castle && thorns);
         } catch (Exception | LinkageError e) {
             Patchee.LOG.error("[SelfTest] FAIL finalcastlebreak setup crashed", e);
             failed++;

@@ -71,14 +71,29 @@ public final class FinalCastleBreakFeature implements Feature {
     /**
      * The Twilight Forest blocks this feature's break-speed floor covers, by
      * their {@code TFBlocks} field names: the castle bricks, the castle magic
-     * blocks, the thorn wall and Weathered Deadrock ({@code deadrock}). Each is
-     * matched by its <b>class</b>, so a metadata variant or a different instance
-     * of the same class still hits the floor — Weathered Deadrock is one block
+     * blocks, the two castle doors ({@code castleDoor} and its vanished twin),
+     * the castle unlock block, the thorn wall, burnt thorns, the thorn rose and
+     * Weathered Deadrock ({@code deadrock}). Each is matched by its <b>class</b>,
+     * so a metadata variant or a different instance of the same class still hits
+     * the floor — Weathered Deadrock is one block
      * ({@code twilightforest.block.BlockTFDeadrock}) whose meta 0 is "Weathered
      * Deadrock", meta 1 "Cracked Deadrock" and meta 2 "Deadrock", and the class
      * match covers all three.
+     *
+     * <p>
+     * Three of the nine fields deliberately share a class or a lineage, which is
+     * why the floor is applied by class and not by field: {@code castleDoor} and
+     * {@code castleDoorVanished} are both {@code BlockTFCastleDoor} (a
+     * {@code vanished} flag apart), and {@code burntThorns} is
+     * {@code BlockTFBurntThorns extends BlockTFThorns}, so one thorn rule covers
+     * both walls. {@code thornRose} is its own class
+     * ({@code BlockTFThornRose}, a plant, not a pillar). No class here is shared
+     * with a block outside the castle/thorn family, so a class match cannot catch
+     * an unrelated block. All nine are real {@code Block} fields in Twilight
+     * Forest 2.7.45 (verified with {@code javap} against the jar).
      */
-    public static final String[] BLOCK_FIELDS = { "castleBlock", "castleMagic", "thorns", "deadrock" };
+    public static final String[] BLOCK_FIELDS = { "castleBlock", "castleMagic", "castleDoor", "castleDoorVanished",
+        "castleUnlock", "thorns", "burntThorns", "thornRose", "deadrock" };
 
     /** Modern Twilight Forest's flat break rate for the castle blocks (0.1/tick -> 10 ticks). */
     static final float FLOOR = 0.1F;
@@ -101,8 +116,9 @@ public final class FinalCastleBreakFeature implements Feature {
     @Override
     public String description() {
         return "Feature: once a player has earned the Twilight Forest Glacier progress (the Snow Queen), the Final "
-            + "Castle stops fighting back — the castle bricks, the castle magic blocks, the thorn wall and "
-            + "Weathered Deadrock break in at most 10 ticks (a floor of 0.1 per tick, per player), the bricks deal "
+            + "Castle stops fighting back — the castle bricks, the castle magic blocks, the two castle doors, the "
+            + "castle unlock block, the thorn wall, burnt thorns, the thorn rose and Weathered Deadrock break in at "
+            + "most 10 ticks (a floor of 0.1 per tick, per player), the bricks deal "
             + "the pickaxe no extra durability damage (stock 1.7.10 drains it 16x), and the thorn wall can be "
             + "broken for good instead of growing back and multiplying. Players without the achievement keep the "
             + "stock behaviour. The behaviour change takes effect on the server; the break speed is seen on a "
@@ -208,9 +224,11 @@ public final class FinalCastleBreakFeature implements Feature {
             }
             ctx.log()
                 .info(
-                    "[FinalCastleBreak] resolved {}/4 Twilight Forest fast-break blocks (castle bricks, castle magic, "
-                        + "thorn wall, Weathered Deadrock), matched by class: {}",
+                    "[FinalCastleBreak] resolved {}/{} Twilight Forest fast-break blocks (castle bricks, castle "
+                        + "magic, the two castle doors, the castle unlock block, the thorn wall, burnt thorns, the "
+                        + "thorn rose and Weathered Deadrock), matched by class: {}",
                     found,
+                    BLOCK_FIELDS.length,
                     BlockClassMatcher.classNames(castle));
 
             Class<?> pageClass = ctx.reflect()
@@ -268,6 +286,7 @@ public final class FinalCastleBreakFeature implements Feature {
             Toggles toggles = ctx.toggles();
             FinalCastleBreak.configure(toggles.masterEnabled(), toggles.featureEnabled(ID));
             MinecraftForge.EVENT_BUS.register(new Handler(castle, BlockClassMatcher.classNames(castle)));
+            WrapperCoverage.report(ctx, ID);
             if (FMLCommonHandler.instance()
                 .getSide() != Side.SERVER) {
                 ctx.log()
@@ -318,7 +337,10 @@ public final class FinalCastleBreakFeature implements Feature {
      * block is matched by <b>class</b> (with the resolved instances as an OR
      * fallback), so a metadata variant, a GT:NH re-registration or a slab's double
      * variant still hits the floor. The floor arithmetic and the raise are the ones
-     * shared with {@link AuroraBreakFeature}.
+     * shared with {@link AuroraBreakFeature}. A block that arrives without a
+     * position — a wrapper reporting the covered block from a synthetic coordinate,
+     * which is what Forge Multipart does for a microblock at {@code 0,-1,0} — is
+     * floored using the block's own hardness instead of being skipped.
      */
     public static final class Handler {
 
@@ -339,7 +361,6 @@ public final class FinalCastleBreakFeature implements Feature {
             try {
                 EntityPlayer player = event.entityPlayer;
                 if (player == null || player.worldObj == null) return;
-                if (event.y < 0) return; // unknown location: hardness cannot be read
                 Block block = event.block;
                 if (block == null) return;
                 // Class match first (survives variants / re-registrations); the

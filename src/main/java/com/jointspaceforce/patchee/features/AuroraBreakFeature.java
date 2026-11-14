@@ -9,6 +9,7 @@ import java.util.Set;
 import net.minecraft.block.Block;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.stats.Achievement;
+import net.minecraft.world.World;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -52,7 +53,12 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * area-mine works on them. Level {@code 0} accepts any pickaxe and changes the
  * drop rule nowhere: for every held item that is not a pickaxe the harvest check
  * falls back to the very same {@code player.canHarvestBlock(block)} the unset
- * tool took.
+ * tool took. That mark is what makes the hammer work for the <b>native</b> aurora
+ * blocks; a wrapped block keeps the wrapper's own harvest tool, because the
+ * hammer tests the wrapper (ArchitectureCraft shapes are {@code Material.rock}
+ * and already work, Forge Multipart microblocks carry the multipart Material and
+ * cannot be marked per material). The per-wrapper verdicts are in
+ * {@link WrapperCoverage}.
  *
  * <p>
  * The 1.7.10 equivalent of the Glacier progression is the achievement
@@ -84,6 +90,24 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
  * the same deal as Patchee's NEI F7 light overlay; the server half is what keeps the
  * two sides in step (it stops the server's own {@code 0.7F} validation from rejecting
  * a fast client). The Glacier gate is read per player through {@link GlacierGate}.
+ *
+ * <p>
+ * <b>Wrapped blocks.</b> A Twilight Forest block can also be hidden inside a
+ * block-wrapper mod: Forge Multipart microblocks, ArchitectureCraft shapes,
+ * Carpenter's Blocks covers and LittleTiles tiles. Each of those wrappers
+ * computes its break progress by calling the <i>wrapped</i> block's own speed, so
+ * {@code event.block} is already the Twilight Forest block and no unwrapping code
+ * exists — see {@link WrapperCoverage} for the per-wrapper evidence (Forge
+ * Multipart entry point {@code BlockMultipart.scala:280}, actual call at
+ * {@code BlockMicroMaterial.scala:133-141}; ArchitectureCraft
+ * {@code BlockShape.java:250-265} -> {@code BlockCompatUtils.java:109-112};
+ * Carpenter's Blocks {@code BlockCoverable.java:1173-1200}, LittleTiles
+ * {@code BlockTile.java:155-163}).
+ * The one place that broke was the position: Forge Multipart reports the wrapped
+ * block at {@code (0,-1,0)}, because a microblock has no block position of its
+ * own, and the handler used to bail out on {@code event.y < 0}. It now floors such
+ * a block with the block's own constant hardness ({@link BreakHardness}), so an
+ * aurora microblock breaks at the same 10-tick floor as the full block.
  */
 public final class AuroraBreakFeature implements Feature {
 
@@ -252,6 +276,7 @@ public final class AuroraBreakFeature implements Feature {
                 }
             }
             MinecraftForge.EVENT_BUS.register(new Handler(aurora, classNames(aurora), glacier[0]));
+            WrapperCoverage.report(ctx, ID);
             ctx.log()
                 .info(
                     "[AuroraBreak] armed — {}/{} aurora blocks marked pickaxe-harvestable (TiC hammer 3x3 works) and "
@@ -319,20 +344,55 @@ public final class AuroraBreakFeature implements Feature {
      * Raises {@code event.newSpeed} so the block cannot break slower than
      * {@code floor} progress per tick. It only ever raises the speed — the
      * vanilla value is kept when it is already fast enough.
+     *
+     * <p>
+     * The hardness is read at the event's position when it has one; a wrapper that
+     * reports the covered block with no position (Forge Multipart microblocks at
+     * {@code 0,-1,0}) gets the block's own constant hardness instead, so it is
+     * floored like the full block rather than skipped.
      */
     static void raiseBreakFloor(PlayerEvent.BreakSpeed event, float floor) {
-        float hardness = event.block.getBlockHardness(event.entityPlayer.worldObj, event.x, event.y, event.z);
-        if (hardness <= 0.0F) {
+        BreakHardness hardness = BreakHardness.hasPosition(event.y)
+            ? BreakHardness
+                .atPosition(readHardness(event.block, event.entityPlayer.worldObj, event.x, event.y, event.z))
+            : BreakHardness.withoutPosition(readHardness(event.block, null, 0, 0, 0));
+        if (!hardness.readable()) {
             return; // unbreakable, or no block there
         }
         boolean canHarvest = ForgeHooks.canHarvestBlock(event.block, event.entityPlayer, event.metadata);
-        float needed = floorSpeed(hardness, canHarvest, floor);
+        float needed = floorSpeed(hardness.value(), canHarvest, floor);
         if (event.newSpeed < needed) {
             event.newSpeed = needed;
         }
     }
 
-    /** The Forge-bus listener; the floor is applied on both sides (the client is the clock). */
+    /**
+     * {@code block.getBlockHardness(world, x, y, z)}, with any failure turned into
+     * {@code -1.0F} ("unknown"). A block-break event must never see a throw, and
+     * {@code -1} already means "no usable hardness" to {@link BreakHardness}, so the
+     * floor simply does nothing for that block. A {@code null} world is the
+     * no-position read: a block that needs the world to answer cannot be floored,
+     * which is the same safe outcome.
+     */
+    static float readHardness(Block block, World world, int x, int y, int z) {
+        if (block == null) {
+            return -1.0F;
+        }
+        try {
+            return block.getBlockHardness(world, x, y, z);
+        } catch (Throwable unreadable) {
+            return -1.0F;
+        }
+    }
+
+    /**
+     * The Forge-bus listener; the floor is applied on both sides (the client is the
+     * clock). A block that arrives without a position — a wrapper reporting the
+     * covered block from a synthetic coordinate, which is what Forge Multipart does
+     * for a microblock at {@code 0,-1,0} — is floored using the block's own
+     * hardness instead of being skipped, because a microblock has no block position
+     * of its own.
+     */
     public static final class Handler {
 
         private final List<Block> aurora;
@@ -354,7 +414,6 @@ public final class AuroraBreakFeature implements Feature {
             try {
                 EntityPlayer player = event.entityPlayer;
                 if (player == null || player.worldObj == null) return;
-                if (event.y < 0) return; // unknown location: hardness cannot be read
                 Block block = event.block;
                 if (block == null) return;
                 // Class match first (survives variants / re-registrations); the

@@ -9,7 +9,8 @@
 > game.
 > A client copy is also what brings NEI's F7 light overlay and the Twilight
 > Forest break speeds to your own game; without it you just keep the plain
-> 1.7.10 break speeds for those blocks, with no mismatch.
+> 1.7.10 break speeds for those blocks, with no mismatch. Blocks built into
+> microblocks, shapes, covers or tiles follow the same rule.
 > Everything here is optional.
 
 ## The optional list
