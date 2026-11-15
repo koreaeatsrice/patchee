@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.0] - 2026-11-15
+
+### Features
+- **flight**: faster IC2 hover climb, hold altitude on sneak+jump, grounded guard ([`cce98af`](https://github.com/koreaeatsrice/patchee/commit/cce98af3ee5545913f9fa27b2badb00590262553))
+- **tf**: floor wrapped aurora/castle blocks and cover the whole family (#21) ([`ccc5b19`](https://github.com/koreaeatsrice/patchee/commit/ccc5b193b7bc5d0ae8cd15e523dbe097f2e13a6e))
+- **fishtrap**: make the Fish Trap sortable for BogoSorter ([`d4dc011`](https://github.com/koreaeatsrice/patchee/commit/d4dc0111797c71cd453f71af28192b062582907d))
+
+### Bug Fixes
+- **glassbreak**: stop Blood Arsenal cutting players on Chisel non-glass technical blocks (#23) ([`4f68cdf`](https://github.com/koreaeatsrice/patchee/commit/4f68cdfdbbc3e3f3c8f2cebe5b71fc3d77b3fd01))
+
+### Documentation & Wiki
+- **readme**: restore the AI disclaimer (#19) ([`8a67826`](https://github.com/koreaeatsrice/patchee/commit/8a6782678e2e204394d5abc0abf9520108e19707))
+- **readme**: rebuild the front page (#18) ([`c4be489`](https://github.com/koreaeatsrice/patchee/commit/c4be4894bf4e638f82c46d80509ea87ccc03f609))
+- **readme**: one sentence per feature (#17) ([`fdbc532`](https://github.com/koreaeatsrice/patchee/commit/fdbc5320c803b637cb3ccb25f6328146dae621fc))
+
+### Other Changes
+- Update README.md ([`67f1c92`](https://github.com/koreaeatsrice/patchee/commit/67f1c92a9fd6da3dee9b9c1b497d1f935bb1cd5f))
+
+### Contributors
+
+- @uriel-runner[bot]
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.3...v1.8.0
+
 ## [1.7.3] - 2026-11-01
 
 ### Bug Fixes
