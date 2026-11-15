@@ -18,6 +18,7 @@ public final class PatcheeFeatures {
         registry.register(new DollyFeature())
             .register(new MattockFeature())
             .register(new SuperTankFeature())
+            .register(new GlassBreakFeature())
             .register(new VeinConfigFeature())
             .register(new LightOverlayFeature())
             .register(new AuroraBreakFeature())

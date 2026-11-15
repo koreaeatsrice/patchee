@@ -35,6 +35,8 @@ import com.jointspaceforce.patchee.features.EnrichedFertilizerRecipeFeature;
 import com.jointspaceforce.patchee.features.FinalCastleBreak;
 import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
 import com.jointspaceforce.patchee.features.FishTrapMovesFeature;
+import com.jointspaceforce.patchee.features.GlassBreak;
+import com.jointspaceforce.patchee.features.GlassBreakFeature;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -130,6 +132,7 @@ public final class SelfTest {
         checkFinalCastleBreak(toggles);
         checkEnrichedFertilizerRecipe(toggles);
         checkFishTrapMoves(toggles);
+        checkGlassBreak(toggles);
 
         Patchee.LOG.info("[SelfTest] result: {} passed, {} failed", passed, failed);
     }
@@ -934,6 +937,43 @@ public final class SelfTest {
                     && ((ItemStack) refused).stackSize == 2);
         } catch (Exception | LinkageError failure) {
             Patchee.LOG.error("[SelfTest] FAIL fishtrapmoves check crashed", failure);
+            failed++;
+        }
+    }
+
+    /**
+     * The glass-cut fix: Blood Arsenal's own potion must have been read (the
+     * feature is ARMED), vanilla glass must still read as glass, the armour rule
+     * must both allow a bare player and suppress an armoured one, and — when
+     * Chisel is installed — {@code chisel:technical2} must be a {@code BlockGlass}
+     * that the rule names as non-glass. That last half is the whole point of the
+     * fix, so a missing Chisel is reported as a skip instead of a pass.
+     */
+    private void checkGlassBreak(Toggles toggles) {
+        if (!toggles.featureEnabled(GlassBreakFeature.ID)) {
+            Patchee.LOG.info("[SelfTest] SKIP glassbreak - feature disabled in config");
+            return;
+        }
+        if (FMLCommonHandler.instance()
+            .getSide() != Side.SERVER) {
+            Patchee.LOG.info("[SelfTest] SKIP glassbreak - server-side feature, this is a client");
+            return;
+        }
+        if (!Loader.isModLoaded("BloodArsenal")) {
+            Patchee.LOG.info("[SelfTest] SKIP glassbreak - Blood Arsenal is not installed");
+            return;
+        }
+        try {
+            String line = GlassBreak.selfCheck();
+            String detail = line.indexOf(' ') >= 0 ? line.substring(line.indexOf(' ') + 1)
+                .trim() : line;
+            boolean ok = line.startsWith("PASS") && GlassBreak.active();
+            if (line.startsWith("PASS") && !GlassBreak.active()) {
+                detail = "the rule is right but the fix is not armed - " + detail;
+            }
+            check("glassbreak - " + detail, ok);
+        } catch (Exception | LinkageError failure) {
+            Patchee.LOG.error("[SelfTest] FAIL glassbreak - the check crashed", failure);
             failed++;
         }
     }

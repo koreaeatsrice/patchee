@@ -12,6 +12,7 @@ import net.minecraftforge.common.config.Configuration;
 import com.jointspaceforce.patchee.core.Feature;
 import com.jointspaceforce.patchee.core.FeatureRegistry;
 import com.jointspaceforce.patchee.core.Toggles;
+import com.jointspaceforce.patchee.features.GlassBreak;
 import com.jointspaceforce.patchee.features.LightOverlaySettings;
 
 /**
@@ -60,6 +61,11 @@ public class Config {
     private static final String VEIN_EXTRA_TOOLS_COMMENT = "VeinConfig: extra item names (mod:item) to accept as shovels for vein mining, "
         + "separated by commas. Added on top of the built-in shovel list.";
 
+    private static final String GLASS_BREAK_MIN_ARMOUR_COMMENT = "GlassBreak: how many filled armour slots count as protected when a player mines real glass. "
+        + "0 = no one is protected (every cut bleeds and blinds), 1 = one piece anywhere is enough "
+        + "(a helmet alone), 4 = a full set. Values outside 0..4 are clamped. "
+        + "Chisel's Transparent Technical Block is never glass, so it never cuts whatever this is set to.";
+
     private static final String LIGHT_OVERLAY_NORMAL_COMMENT = "LightOverlay: the light level at which NEI's F7 overlay draws an X, in every dimension "
         + "(the Nether included; it has no separate value). 0 = only pitch-dark blocks get an X (the default). "
         + "7 = NEI's own default. Client-side only: it changes anything only on a client that has Patchee installed.";
@@ -72,6 +78,7 @@ public class Config {
     public static String veinBlocks = "minecraft:sand/0,minecraft:sand/1,minecraft:clay,minecraft:gravel";
     public static String veinExtraTools = "";
     public static int lightOverlayMaxNormal = 0;
+    public static int glassBreakMinArmourPieces = 1;
 
     /** The snapshot the pipeline reads; replaced by every load. */
     private static Toggles toggles = new Snapshot(
@@ -83,7 +90,8 @@ public class Config {
         20,
         new String[] { "minecraft:sand/0", "minecraft:sand/1", "minecraft:clay", "minecraft:gravel" },
         new String[0],
-        0);
+        0,
+        1);
 
     /** The immutable config snapshot the features read. */
     public static Toggles toggles() {
@@ -124,6 +132,10 @@ public class Config {
                 .get(CATEGORY, LightOverlaySettings.MAX_LIGHT_KEY, lightOverlayMaxNormal, LIGHT_OVERLAY_NORMAL_COMMENT)
                 .getInt(lightOverlayMaxNormal);
 
+            glassBreakMinArmourPieces = configuration
+                .get(CATEGORY, GlassBreak.MIN_ARMOUR_KEY, glassBreakMinArmourPieces, GLASS_BREAK_MIN_ARMOUR_COMMENT)
+                .getInt(glassBreakMinArmourPieces);
+
             toggles = new Snapshot(
                 enabled,
                 featureSwitches,
@@ -133,7 +145,8 @@ public class Config {
                 veinRadius,
                 splitList(veinBlocks),
                 splitList(veinExtraTools),
-                lightOverlayMaxNormal);
+                lightOverlayMaxNormal,
+                glassBreakMinArmourPieces);
         } finally {
             if (configuration.hasChanged()) {
                 configuration.save();
@@ -153,10 +166,11 @@ public class Config {
         private final String[] veinBlocks;
         private final String[] veinExtraTools;
         private final int lightOverlayMaxNormal;
+        private final int glassBreakMinArmourPieces;
 
         private Snapshot(boolean master, Map<String, Boolean> features, boolean selfTest, String[] extraDolly,
-            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools,
-            int lightOverlayMaxNormal) {
+            int veinBlockLimit, int veinRadius, String[] veinBlocks, String[] veinExtraTools, int lightOverlayMaxNormal,
+            int glassBreakMinArmourPieces) {
             this.master = master;
             this.features = Collections.unmodifiableMap(features);
             this.selfTest = selfTest;
@@ -166,6 +180,7 @@ public class Config {
             this.veinBlocks = veinBlocks;
             this.veinExtraTools = veinExtraTools;
             this.lightOverlayMaxNormal = lightOverlayMaxNormal;
+            this.glassBreakMinArmourPieces = glassBreakMinArmourPieces;
         }
 
         @Override
@@ -212,6 +227,11 @@ public class Config {
         @Override
         public int lightOverlayMaxNormal() {
             return lightOverlayMaxNormal;
+        }
+
+        @Override
+        public int glassBreakMinArmourPieces() {
+            return glassBreakMinArmourPieces;
         }
     }
 

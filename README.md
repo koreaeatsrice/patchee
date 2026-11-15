@@ -19,6 +19,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **JABBA Dolly** — moves Forestry, Gendustry and MagicBees bee housings with their bees.
 - **Tinkers' mattock** — digs sand and snow at shovel speed, with drops.
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
+- **Glass cuts** — Chisel's Transparent Technical Block is metal, not glass, so breaking it no longer causes Blood Arsenal's Bleeding and Blindness; real glass still cuts an unarmoured player, and armour protects.
 - **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — lights pitch-dark blocks only (client-side).
 - **Twilight Forest** — after the Snow Queen: aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken, and shears cut arctic fur in 5 ticks for anyone. The same 10-tick rate applies when the block is built into Forge Multipart microblocks, ArchitectureCraft shapes, Carpenter's Blocks covers or LittleTiles tiles; ArchitectureCraft shapes also area-mine with the Tinkers' hammer, the other three keep their own tool.

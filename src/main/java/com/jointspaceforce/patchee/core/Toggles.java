@@ -40,4 +40,12 @@ public interface Toggles {
      * is this value + 1.
      */
     int lightOverlayMaxNormal();
+
+    /**
+     * GlassBreak: how many filled armour slots count as protected from being cut
+     * by real glass. 0 = never protected (a bare-handed rule for everyone),
+     * 1 = any single piece is enough, 4 = a full set. Clamped to 0..4 by the
+     * rule itself.
+     */
+    int glassBreakMinArmourPieces();
 }
