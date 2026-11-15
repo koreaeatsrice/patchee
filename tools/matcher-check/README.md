@@ -111,3 +111,50 @@ Expected: `RESULT: 10/10 PASS`. Both the flat layout
 directory argument, and either a jar or a directory is accepted, so the same tool
 runs over the pulled live bytes and straight out of the Gradle cache jar. The
 patched classes are written next to the tool for `javap -p -c` inspection.
+
+## The ChestplateFlight variant (`ChestplateCheck.java`)
+
+The same idea for the IC2 Quantum Chestplate patch: run the REAL
+`com.jointspaceforce.patchee.asm.ChestplateFlightTransformer` over the REAL
+`ic2/core/item/armor/ItemArmorQuantumSuit` that GTNH ships and assert the result.
+IC2 ships closed source, so the jar is never copied into the repo — this tool is
+how the synthetic unit-test shape is checked against the real class.
+
+It checks, on the live bytes:
+
+1. the class is patched: exactly one `0.6f` hover clamp, no `0.1f` left, and the
+   `-0.025f` / `-0.1f` descent constants untouched;
+2. the ground guard is the first seven instructions (hover-flag `ILOAD 2` test,
+   hook-call test, `iconst_0; ireturn`) and its join point carries an `F_SAME`
+   frame;
+3. the method grew by exactly thirteen instructions (guard seven, hold branch six)
+   and no other method moved;
+4. a second pass is idempotent;
+5. the Hodgepodge-simulated bytes (`-0.025f` rewritten to `0.0f`, which is what
+   `mixins.late.ic2.MixinIc2QuantumSuitHoverMode` does) are still patched and
+   both edits survive — the two patches are order-independent;
+6. a non-target class of the same jar (`ItemArmorJetpack`) passes through
+   byte-identical;
+7. a class of any other shape is refused with a reason and returned
+   byte-identical.
+
+```sh
+WT=/path/to/patchee            # the worktree, after ./gradlew build
+IC2=/root/research/chestplate-flight/pack/ic2   # the extracted IC2 jar
+OUT=/tmp/cflight
+
+ASM=.../org.ow2.asm/asm/9.8/.../asm-9.8.jar
+ASMT=.../org.ow2.asm/asm-tree/9.8/.../asm-tree-9.8.jar
+LW=.../net.minecraft/launchwrapper/1.12/.../launchwrapper-1.12.jar
+LOG4J=.../org.apache.logging.log4j/log4j-api/2.0-beta9-fixed/.../log4j-api-2.0-beta9-fixed.jar
+MC=$WT/build/classes/java/main
+
+mkdir -p "$OUT"
+javac -d "$OUT" -cp "$ASM:$ASMT:$LW:$LOG4J:$MC" "$WT/tools/matcher-check/ChestplateCheck.java"
+java -cp "$OUT:$ASM:$ASMT:$LW:$LOG4J:$MC" ChestplateCheck "$IC2" "$OUT"
+javap -p -c "$OUT/ItemArmorQuantumSuit.patched.class" | sed -n '/useJetpack/,/^$/p'
+```
+
+Expected: `RESULT: 17/17 PASS`, and the `javap` output shows `ldc 0.6` where the
+shipped class has `ldc_w 0.1` and an `ifeq` past an `iconst_0; ireturn` at the top
+of `useJetpack`.

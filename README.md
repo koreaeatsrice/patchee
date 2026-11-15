@@ -25,6 +25,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum (server-side).
 - **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
 - **Fish Trap** — the HarvestCraft trap takes the inventory sorter's move and sort hotkeys. The move hotkeys (space/alt/ctrl-click) work from the server jar alone; sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too. Plain shift-click already works.
+- **IC2 and GraviSuite jetpacks** - hover mode climbs at the normal jetpack speed instead of a crawl, holding sneak and jump together holds your height (it no longer climbs on IC2 or sinks on GraviSuite), and standing on the ground with hover on is not counted as flying. Both mods send your key state to the server, so both sides apply it; the same jar everywhere keeps them in step.
 
 ## Install
 
