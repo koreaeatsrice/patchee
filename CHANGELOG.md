@@ -23,7 +23,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.3...v1.8.0
@@ -35,7 +34,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.2...v1.7.3
@@ -47,7 +45,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.1...v1.7.2
@@ -59,7 +56,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.7.0...v1.7.1
@@ -78,7 +74,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.6.1...v1.7.0
@@ -90,7 +85,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.6.0...v1.6.1
@@ -102,7 +96,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.5.1...v1.6.0
@@ -128,7 +121,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.4.0...v1.5.0
@@ -143,7 +135,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.3.1...v1.4.0
@@ -163,7 +154,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- @uriel-runner[bot]
 - @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.3.0...v1.3.1
@@ -194,8 +184,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- uriel-runner[bot]
-- koreaeatsrice
+- @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.2.0...v1.3.0
 
@@ -213,6 +202,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/) and this 
 
 ### Contributors
 
-- uriel-runner[bot]
+- @koreaeatsrice
 
 **Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.1.0...v1.2.0

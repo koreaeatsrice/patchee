@@ -34,6 +34,22 @@ CONVENTIONAL_PATTERN = re.compile(
 
 DEFAULT_CONTRIBUTOR = "koreaeatsrice"
 
+# WHY: a real, unrelated GitHub user who owns the uriel@ addresses must never be
+# credited in our notes, so those retired identities fold onto the owner. Only
+# hard evidence does that: a retired legacy email domain, or a GitHub noreply
+# username that is one of our retired accounts. A display name is never proof --
+# anyone can be called Uriel -- which is also why every bot is not folded: doing
+# that would credit the owner with dependabot's work, the same miscrediting bug
+# in reverse. Every other account keeps its own handle. Matching uses lowercase
+# sets so casing variants cannot slip in.
+LEGACY_AGENT_USERNAMES = frozenset({"uriel", "uriel-runner", "uriel-runner[bot]"})
+LEGACY_DOMAINS = frozenset({"jointspaceforce.local", "jointspaceforce.com"})
+
+NOREPLY_PATTERN = re.compile(
+    r"^(?:\d+\+)?([^@+]+)@users\.noreply\.github\.com$",
+    re.IGNORECASE,
+)
+
 CATEGORY_MAPPING = {
     "feat": "Features",
     "fix": "Bug Fixes",
@@ -170,17 +186,44 @@ def categorize_commits(commits: List[Commit]) -> Dict[str, List[Commit]]:
 def contributor_handle(name: str, email: str) -> str:
     """The GitHub @handle for a commit identity.
 
-    GitHub noreply addresses embed the username; fall back to the display
-    name so no contributor is dropped.
+    A retired identity folds onto the owner only on hard evidence: its email
+    domain is a retired legacy domain, or its GitHub noreply username is one of
+    the retired accounts. That is what keeps the unrelated person who owns the
+    uriel@ addresses from being credited. Everything else -- a bot such as
+    dependabot, a genuine outside GitHub user, or an outside human whose display
+    name happens to be Uriel -- keeps its own handle or display name, because a
+    name alone proves nothing.
+
+    A mailbox local part is not an identity at all. Only a GitHub noreply
+    username is compared against our identity lists, so an outside human whose
+    ordinary mailbox happens to be `ops@corp.example` is still credited to
+    themselves.
     """
-    m = re.match(
-        r"^(?:\d+\+)?([^@+]+)@users\.noreply\.github\.com$",
-        (email or "").strip(),
-        re.IGNORECASE,
-    )
-    if m:
-        return "@" + m.group(1)
-    return "@" + (name or "").strip()
+    display = (name or "").strip()
+    addr = (email or "").strip()
+    owner = "@" + DEFAULT_CONTRIBUTOR
+
+    if not display and not addr:
+        return "@"
+
+    _, _, domain = addr.rpartition("@")
+
+    if domain.lower() in LEGACY_DOMAINS:
+        return owner
+
+    noreply = NOREPLY_PATTERN.match(addr)
+    if noreply:
+        # Only a noreply username can name one of our own accounts. Every other
+        # GitHub account keeps its own handle, and a non-noreply local part is
+        # never treated as an identity at all.
+        username = noreply.group(1).lower()
+        if username in LEGACY_AGENT_USERNAMES:
+            return owner
+        return "@" + username
+
+    if display:
+        return "@" + display
+    return "@"
 
 
 def _commit_line(c: Commit, repo: str) -> str:
