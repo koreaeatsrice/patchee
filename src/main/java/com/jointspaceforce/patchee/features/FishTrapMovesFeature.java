@@ -29,7 +29,10 @@ import com.jointspaceforce.patchee.core.Step;
  * server. Middle-click sort is different: it runs in the client's own sorting
  * context, so sorting the trap's output (and the sorter's sort button in that
  * GUI) needs Patchee on the client too. The move hotkeys work from the server
- * jar alone; plain shift-click already works and is unchanged.
+ * jar alone. Shift-click is not part of this feature: vanilla shift-click
+ * already moves the clicked stack in or out of the trap (bait into slot 18,
+ * fish out to the player), and Patchee's self-test checks that same
+ * Container.slotClick path.
  *
  * <p>
  * The slot group is the <b>output grid only</b> (slots 0-17, 6 per row), never a
@@ -79,7 +82,8 @@ public final class FishTrapMovesFeature implements Feature {
         return "Fish Trap: the inventory sorter's move hotkeys (space+click move all, alt+click move same, "
             + "ctrl+click move one) work from the server jar alone. The server also routes bait into the trap's "
             + "bait slot. Sorting the trap's output with middle-click (and the sorter's sort button in that GUI) "
-            + "needs Patchee on the client too. Plain shift-click already works and is unchanged.";
+            + "needs Patchee on the client too. Shift-click is separate: it already moves the clicked stack in or out "
+            + "(bait in, fish out).";
     }
 
     @Override
