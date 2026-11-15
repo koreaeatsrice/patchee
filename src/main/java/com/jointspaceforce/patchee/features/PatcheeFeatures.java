@@ -26,6 +26,7 @@ public final class PatcheeFeatures {
             .register(new TeamChunkCapFeature())
             .register(new FinalCastleBreakFeature())
             .register(new EnrichedFertilizerRecipeFeature())
+            .register(new FishTrapMovesFeature())
             .register(new ChestplateHoverLiftFeature())
             .register(new ChestplateHoldAltitudeFeature())
             .register(new ChestplateGroundGuardFeature());
