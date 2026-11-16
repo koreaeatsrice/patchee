@@ -60,8 +60,11 @@ public final class PollutionNoVisualsFeature implements Feature {
             + "server-side and stay exactly as they were. This does not edit Pollution.cfg, does not lower or "
             + "remove pollution and does not touch the game world. Tradeoff: anything a CLIENT reads from that "
             + "number now reads 0 — a client-side pollution readout or debug display built on GregTech's map shows "
-            + "nothing, while every server-side read is exact. Server-side only; clients need nothing installed. "
-            + "Restart the server after changing this.";
+            + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client is "
+            + "driven entirely by the value the server sends. A client that also runs Patchee applies the same "
+            + "rewrite to its own copy while the packet class loads, so that player keeps the visuals hidden even "
+            + "when this switch is off — remove the client copy, or turn the switch off there too, to give them "
+            + "pollution visuals back. Restart the server after changing this.";
     }
 
     @Override
@@ -107,20 +110,12 @@ public final class PollutionNoVisualsFeature implements Feature {
      * armed and writes no armed line.
      *
      * <p>
-     * A class that loaded while the switches were off is a third case:
-     * {@link PollutionNoVisuals#loadTimeDisabled()} says so, and this step logs
-     * an INFO line telling the operator to restart instead of claiming the shape
-     * was wrong.
+     * A switched-off boot never reaches this step: the transformer hands the
+     * class back untouched, and Forge, which reads the same file, skips this
+     * feature's step entirely.
      */
     private Step configureAndArm() {
         return ctx -> {
-            if (PollutionNoVisuals.loadTimeDisabled()) {
-                ctx.log()
-                    .info(
-                        "[PollutionNoVisuals] switched off when GregTech's packet class loaded — nothing was changed; "
-                            + "restart the server after turning enablePollutionNoVisuals back on");
-                return Outcome.SKIPPED;
-            }
             if (!PollutionNoVisuals.patchApplied()) {
                 ctx.log()
                     .error(

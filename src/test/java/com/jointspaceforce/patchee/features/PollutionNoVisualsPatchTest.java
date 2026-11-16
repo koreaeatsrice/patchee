@@ -43,14 +43,13 @@ class PollutionNoVisualsPatchTest {
     private static final String OWNER = PollutionNoVisualsPatch.TARGET_INTERNAL_NAME;
 
     /**
-     * The two one-way flags live on a static holder, so a test that leaves them
-     * set would change what the next one sees. Reset before every test, not
-     * after, so test order can never matter.
+     * The one-way flag lives on a static holder, so a test that leaves it set
+     * would change what the next one sees. Reset before every test, not after,
+     * so test order can never matter.
      */
     @BeforeEach
     void resetFeatureFlags() {
         PollutionNoVisuals.patchApplied = false;
-        PollutionNoVisuals.loadTimeDisabled = false;
     }
 
     /** How the constructor's pollution store is fed, so a wrong shape can be built. */
@@ -261,9 +260,9 @@ class PollutionNoVisualsPatchTest {
         PollutionNoVisualsTransformer transformer = new PollutionNoVisualsTransformer();
 
         byte[] garbage = new byte[] { 1, 2, 3, 4, 5 };
+        assertSame(garbage, transformer.patch(garbage, null), "no settings: the class comes back untouched");
         assertSame(garbage, transformer.patch(garbage, armedSettings()));
         assertFalse(PollutionNoVisuals.patchApplied(), "garbage must not arm the feature");
-        assertFalse(PollutionNoVisuals.loadTimeDisabled());
 
         byte[] other = syntheticClass(StoreSource.INT_ARGUMENT);
         assertSame(other, transformer.transform("com.example.Other", "com.example.Other", other));
@@ -271,17 +270,15 @@ class PollutionNoVisualsPatchTest {
 
         byte[] patched = transformer.patch(syntheticClass(StoreSource.INT_ARGUMENT), armedSettings());
         assertTrue(PollutionNoVisuals.patchApplied());
-        assertFalse(PollutionNoVisuals.loadTimeDisabled());
         assertTrue(storesZero(patched));
     }
 
     /**
-     * Switched off when the class loaded: the bytes come back untouched, nothing
-     * is armed, and the flag the boot line reads says the switch — not a bad
-     * shape — is why.
+     * Switched off when the class loaded: the bytes come back untouched and
+     * nothing is armed.
      */
     @Test
-    void aClassThatLoadedWhileSwitchedOffIsHandedBackAndReportedAsSuch() {
+    void aClassThatLoadedWhileSwitchedOffIsHandedBackUntouched() {
         PollutionNoVisualsTransformer transformer = new PollutionNoVisualsTransformer();
         byte[] original = syntheticClass(StoreSource.INT_ARGUMENT);
 
@@ -291,7 +288,6 @@ class PollutionNoVisualsPatchTest {
         assertSame(original, untouched, "the class must come back as the same array instance");
         assertFalse(storesZero(original), "the constructor still loads its int argument");
         assertFalse(PollutionNoVisuals.patchApplied(), "a switched-off class must not arm the feature");
-        assertTrue(PollutionNoVisuals.loadTimeDisabled(), "the boot line needs the real reason");
     }
 
     /** Both switches on, from text. */

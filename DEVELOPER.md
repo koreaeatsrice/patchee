@@ -41,14 +41,16 @@ banner field and pipeline steps all follow from it.
   `[VeinConfig] wrote …`, `[AuroraBreak] armed …`, `[ArcticFurBreak] armed …`,
   `[TeamChunkCap] armed …`,
   `[GlassBreak] Blood Arsenal is not installed - skipped` and
-  `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too. (Blood
-  Arsenal is not on the dev runtime, so the dev check sees the skip line — the
-  `[GlassBreak] armed …` line only appears on a server that has it.
-  `PollutionNoVisuals` is deliberately not in this grep list: the dev server
+  `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too — this list
+  is the contract for the strings ops docs quote; a feature absent from CI, such
+  as PollutionNoVisuals, is covered by its own matcher tool and unit tests
+  instead. Blood Arsenal is not on the dev runtime, so the dev check sees the
+  skip line — the `[GlassBreak] armed …` line only appears on a server that has
+  it. `PollutionNoVisuals` is deliberately not in this grep list: the dev server
   does not ship GregTech, so CI can only ever see its `GregTech is not
   installed — pollution visuals left as they are` line. The packet rewrite is
   proven instead by `tools/matcher-check/PollutionCheck` against the real jar
-  and by the unit tests.)
+  and by the unit tests.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
   `enableMattockFix`, `enableSuperTankFix`, `enableGlassBreakFix`,
   `enableVeinConfig`, `enableLightOverlayTweak`, `enableAuroraBreak`,

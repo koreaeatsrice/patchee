@@ -34,6 +34,11 @@ import com.jointspaceforce.patchee.features.PollutionNoVisualsSettings;
  * handed back untouched, and any unexpected {@link Throwable} returns the
  * original bytes. This runs inside the class loader, where throwing would take
  * the game down, so it never throws.
+ *
+ * <p>
+ * A switched-off boot hands the class back untouched, and Patchee's own
+ * pipeline skips this feature's step because Forge read the same file, so a
+ * switch-off never reaches the NOT-armed line.
  */
 public class PollutionNoVisualsTransformer implements IClassTransformer {
 
@@ -73,17 +78,24 @@ public class PollutionNoVisualsTransformer implements IClassTransformer {
      * point reads the file; this method never does). All logging stays here, so
      * a test that runs it prints exactly what a real boot would.
      *
+     * <p>
+     * The seam returns the class untouched when handed no settings; the class
+     * loader path always passes a real object.
+     *
      * @param original the class bytes as the loader handed them over
      * @param settings the switches, already read
      * @return the patched bytes, or {@code original} when nothing was changed
      */
     public byte[] patch(byte[] original, PollutionNoVisualsSettings settings) {
+        if (settings == null) {
+            return original;
+        }
         String source = settings.fromFile() ? settings.path()
             : "the built-in defaults (" + settings.path() + " not read)";
         if (!PollutionNoVisuals.shouldPatch(settings.masterEnabled(), settings.enabled())) {
-            // Publish the real reason: the boot line must not report a shape
-            // mismatch on a class that was deliberately left alone.
-            PollutionNoVisuals.markLoadTimeDisabled();
+            // The bytes go back untouched. The boot line never reports a shape
+            // mismatch here: Forge sees the same file, so its own pipeline skips
+            // this feature's step too.
             if (!settings.masterEnabled()) {
                 LOG.info(
                     "[PollutionNoVisuals] the master switch is off in {} — pollution still sends its real value to clients",

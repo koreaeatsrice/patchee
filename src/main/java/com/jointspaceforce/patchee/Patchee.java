@@ -84,7 +84,9 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * ({@link com.jointspaceforce.patchee.features.PollutionNoVisualsFeature}). Every
  * server-side read — damage, sour rain, vegetation, scanners, the pollution
  * detector, machines — keeps the real numbers; a client-side pollution readout
- * reads 0.
+ * reads 0. A stock client needs nothing installed, but a client that also runs
+ * Patchee applies the same rewrite to its own copy while the packet class loads,
+ * so that player keeps the visuals hidden even when the switch is off.
  *
  * <p>
  * Most fixes are reflection-based against verified runtime names. Six of them
