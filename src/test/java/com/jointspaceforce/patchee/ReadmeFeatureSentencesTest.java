@@ -24,8 +24,8 @@ import org.junit.jupiter.api.Test;
  * dash, or stops using the house bullet shape.
  *
  * <p>
- * A sentence end is a {@code .}, {@code !} or {@code ?} followed, past any closing bracket or quote, by
- * whitespace, end of line, or directly by a letter (a run-on with no space after the dot). Three allowances
+ * A sentence end is a dot, {@code !}, {@code ?}, ellipsis or ideographic stop followed, past any closing
+ * bracket or quote, by whitespace, end of line, or directly by a capital letter (a run-on). Three allowances
  * keep that honest: a dot between two digits (a decimal
  * such as {@code 0.6}, a version such as {@code v1.8.0}); an abbreviation ({@code e.g.}, {@code i.e.},
  * {@code etc.}, {@code vs.}, {@code cf.}) when the next word continues the clause, which means lowercase,
@@ -104,6 +104,8 @@ class ReadmeFeatureSentencesTest {
         assertEquals(1, sentenceCount("tile.chisel.technical2 is metal."));
         assertEquals(2, sentenceCount("caps at 64.Next it runs."));
         assertEquals(2, sentenceCount("caps at 64).Then it runs."));
+        assertEquals(2, sentenceCount("digs sand\u2026 Then it drops items."));
+        assertEquals(2, sentenceCount("digs sand\u3002 Then it drops items."));
     }
 
     @Test
@@ -129,6 +131,8 @@ class ReadmeFeatureSentencesTest {
         assertEquals(0, wordCount("   "));
         assertEquals(19, wordCount(words(19).replace(" ", "\u00A0")));
         assertEquals(19, wordCount(words(19).replace(" ", "\ufeff")));
+        assertEquals(19, wordCount(words(19).replace(" ", "\u2060")));
+        assertEquals(19, wordCount(words(19).replace(" ", "\u180e")));
         String nbsp = "- **Nbsp** \u2014 " + words(19).replace(" ", "\u00A0") + ".";
         List<String> nbspViolations = violations(Arrays.asList("## Features", "", nbsp, ""));
         assertEquals(1, nbspViolations.size(), String.join("\n", nbspViolations));
@@ -283,7 +287,7 @@ class ReadmeFeatureSentencesTest {
         int count = 0;
         for (int i = 0; i < masked.length(); i++) {
             char c = masked.charAt(i);
-            if (c != '.' && c != '!' && c != '?') {
+            if (c != '.' && c != '!' && c != '?' && c != '\u2026' && c != '\u3002') {
                 continue;
             }
             int next = i + 1;
@@ -304,14 +308,13 @@ class ReadmeFeatureSentencesTest {
         return c == ')' || c == ']' || c == '}' || c == '"' || c == '\'' || c == '\u201d' || c == '\u2019';
     }
 
-    /** Whitespace as it arrives from a web page: NBSP, zero-width and soft-hyphen joiners count too. */
+    /** Whitespace and invisible joiners as they arrive from a web page: any Z or Cf character counts. */
     private static boolean isSpace(char c) {
-        return Character.isWhitespace(c) || Character.isSpaceChar(c)
-            || c == '\u200b'
-            || c == '\u200c'
-            || c == '\u200d'
-            || c == '\u00ad'
-            || c == '\ufeff';
+        int type = Character.getType(c);
+        return Character.isWhitespace(c) || type == Character.SPACE_SEPARATOR
+            || type == Character.LINE_SEPARATOR
+            || type == Character.PARAGRAPH_SEPARATOR
+            || type == Character.FORMAT;
     }
 
     /** Blanks the dots that cannot end a sentence, keeping the length so indexes stay put. */
