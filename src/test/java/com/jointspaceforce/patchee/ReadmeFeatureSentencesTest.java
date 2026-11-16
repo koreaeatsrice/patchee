@@ -100,6 +100,10 @@ class ReadmeFeatureSentencesTest {
         assertEquals(2, sentenceCount("Ends in e.g. Next sentence here."));
         assertEquals(2, sentenceCount("one sentence.\u00A0Two sentences."));
         assertEquals(2, sentenceCount("first thing.Second thing here."));
+        assertEquals(1, sentenceCount("config/patchee.cfg is read."));
+        assertEquals(1, sentenceCount("tile.chisel.technical2 is metal."));
+        assertEquals(2, sentenceCount("caps at 64.Next it runs."));
+        assertEquals(2, sentenceCount("caps at 64).Then it runs."));
     }
 
     @Test
@@ -124,6 +128,7 @@ class ReadmeFeatureSentencesTest {
         assertEquals(18, wordCount(words(18) + "."));
         assertEquals(0, wordCount("   "));
         assertEquals(19, wordCount(words(19).replace(" ", "\u00A0")));
+        assertEquals(19, wordCount(words(19).replace(" ", "\ufeff")));
         String nbsp = "- **Nbsp** \u2014 " + words(19).replace(" ", "\u00A0") + ".";
         List<String> nbspViolations = violations(Arrays.asList("## Features", "", nbsp, ""));
         assertEquals(1, nbspViolations.size(), String.join("\n", nbspViolations));
@@ -272,7 +277,7 @@ class ReadmeFeatureSentencesTest {
         return words;
     }
 
-    /** Counts sentence ends, stepping over brackets and quotes; a dot before a letter also ends one. */
+    /** Counts sentence ends, stepping over brackets and quotes; a dot before a capital also ends one. */
     static int sentenceCount(String text) {
         String masked = maskNonSentenceDots(text);
         int count = 0;
@@ -287,10 +292,8 @@ class ReadmeFeatureSentencesTest {
             }
             boolean atEnd = next == masked.length();
             boolean followedBySpace = !atEnd && isSpace(masked.charAt(next));
-            boolean followedByLetter = !atEnd && Character.isLetter(masked.charAt(next))
-                && i > 0
-                && Character.isLetter(masked.charAt(i - 1));
-            if (atEnd || followedBySpace || followedByLetter) {
+            boolean followedByCapital = !atEnd && Character.isUpperCase(masked.charAt(next));
+            if (atEnd || followedBySpace || followedByCapital) {
                 count++;
             }
         }
@@ -301,9 +304,14 @@ class ReadmeFeatureSentencesTest {
         return c == ')' || c == ']' || c == '}' || c == '"' || c == '\'' || c == '\u201d' || c == '\u2019';
     }
 
-    /** Whitespace as it arrives from a web page: NBSP and zero-width space count too. */
+    /** Whitespace as it arrives from a web page: NBSP, zero-width and soft-hyphen joiners count too. */
     private static boolean isSpace(char c) {
-        return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '\u200b';
+        return Character.isWhitespace(c) || Character.isSpaceChar(c)
+            || c == '\u200b'
+            || c == '\u200c'
+            || c == '\u200d'
+            || c == '\u00ad'
+            || c == '\ufeff';
     }
 
     /** Blanks the dots that cannot end a sentence, keeping the length so indexes stay put. */
