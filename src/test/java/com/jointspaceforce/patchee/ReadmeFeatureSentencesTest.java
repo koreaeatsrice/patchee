@@ -25,7 +25,8 @@ import org.junit.jupiter.api.Test;
  *
  * <p>
  * A sentence end is a {@code .}, {@code !} or {@code ?} followed, past any closing bracket or quote, by
- * whitespace or end of line. Three allowances keep that honest: a dot between two digits (a decimal
+ * whitespace, end of line, or directly by a letter (a run-on with no space after the dot). Three allowances
+ * keep that honest: a dot between two digits (a decimal
  * such as {@code 0.6}, a version such as {@code v1.8.0}); an abbreviation ({@code e.g.}, {@code i.e.},
  * {@code etc.}, {@code vs.}, {@code cf.}) when the next word continues the clause, which means lowercase,
  * a number, a short all-caps acronym, or a capitalised word followed by a comma (a capitalised word with
@@ -72,7 +73,8 @@ class ReadmeFeatureSentencesTest {
         List<String> violations = violations(lines);
         assertTrue(
             violations.isEmpty(),
-            "Every README feature bullet must be one sentence. Offending bullets:\n" + String.join("\n", violations));
+            "Every README feature bullet must be one sentence of at most 18 words. Offending bullets:\n"
+                + String.join("\n", violations));
     }
 
     @Test
@@ -97,6 +99,7 @@ class ReadmeFeatureSentencesTest {
         assertEquals(2, sentenceCount("works with IC2, etc. Users see the change."));
         assertEquals(2, sentenceCount("Ends in e.g. Next sentence here."));
         assertEquals(2, sentenceCount("one sentence.\u00A0Two sentences."));
+        assertEquals(2, sentenceCount("first thing.Second thing here."));
     }
 
     @Test
@@ -120,6 +123,14 @@ class ReadmeFeatureSentencesTest {
         assertEquals(17, wordCount(words(17) + "."));
         assertEquals(18, wordCount(words(18) + "."));
         assertEquals(0, wordCount("   "));
+        assertEquals(19, wordCount(words(19).replace(" ", "\u00A0")));
+        String nbsp = "- **Nbsp** \u2014 " + words(19).replace(" ", "\u00A0") + ".";
+        List<String> nbspViolations = violations(Arrays.asList("## Features", "", nbsp, ""));
+        assertEquals(1, nbspViolations.size(), String.join("\n", nbspViolations));
+        assertTrue(
+            nbspViolations.get(0)
+                .contains("19 words"),
+            nbspViolations.get(0));
     }
 
     /** {@code n} distinct words, so the cap test never depends on real prose. */
@@ -246,13 +257,22 @@ class ReadmeFeatureSentencesTest {
         return entries;
     }
 
-    /** Words in the bullet text: whitespace-separated tokens, so punctuation is never a word of its own. */
+    /** Words in the bullet text, using the same whitespace set as the sentence check. */
     static int wordCount(String text) {
-        String trimmed = text.trim();
-        return trimmed.isEmpty() ? 0 : trimmed.split("\s+").length;
+        int words = 0;
+        boolean inWord = false;
+        for (int i = 0; i < text.length(); i++) {
+            if (isSpace(text.charAt(i))) {
+                inWord = false;
+            } else if (!inWord) {
+                inWord = true;
+                words++;
+            }
+        }
+        return words;
     }
 
-    /** Counts sentence ends, stepping over closing brackets and quotes; no end still means one. */
+    /** Counts sentence ends, stepping over brackets and quotes; a dot before a letter also ends one. */
     static int sentenceCount(String text) {
         String masked = maskNonSentenceDots(text);
         int count = 0;
@@ -267,7 +287,10 @@ class ReadmeFeatureSentencesTest {
             }
             boolean atEnd = next == masked.length();
             boolean followedBySpace = !atEnd && isSpace(masked.charAt(next));
-            if (atEnd || followedBySpace) {
+            boolean followedByLetter = !atEnd && Character.isLetter(masked.charAt(next))
+                && i > 0
+                && Character.isLetter(masked.charAt(i - 1));
+            if (atEnd || followedBySpace || followedByLetter) {
                 count++;
             }
         }
