@@ -48,6 +48,8 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [VeinConfig] wrote config/veinminer/general.cfg + tools-and-blocks.json (blocks=4, cap=64, radius=20, autodetect=off)
 [TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits clamped to 1500 claimed / 500 loaded chunks (4 return sites; …)
 [TeamChunkCap] armed — every team is capped at 1500 claimed / 500 loaded chunks in total (…)
+[PollutionNoVisuals] patched gregtech.api.net.GTPacketPollution — every pollution value sent to clients is now 0 (1 constructor site; …)
+[PollutionNoVisuals] armed — every pollution value GregTech sends to clients is now 0, so players see no pollution smog, fog, particles or grass/leaf/water/flower tints; …
 [EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks) (server)
 [FishTrapMoves] armed - Fish Trap is sortable (outputs 0-17, 6 per row); move hotkeys accept bait into slot 18
 [GlassBreak] armed - a player wearing 1 or more armour piece(s) is not cut by glass, and Chisel's Transparent Technical Block never cuts; bleeding potion id 121
@@ -56,6 +58,7 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 - The `[FishTrapMoves]` line appears only when **Pam's HarvestCraft + InventoryBogoSorter** are installed. Without HarvestCraft the gate logs `[FishTrapMoves] Pam's HarvestCraft is not installed - Fish Trap moves skipped`; with HarvestCraft but no InventoryBogoSorter the feature logs `[FishTrapMoves] InventoryBogoSorter is not installed - skipped`. It runs on both sides; the move hotkeys (space/alt/ctrl-click) work from the server jar alone, while sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too.
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
+- The two `[PollutionNoVisuals]` lines appear only when **GregTech** is installed (`GregTech is not installed — pollution visuals left as they are` otherwise). The first says the packet constructor was rewritten, the second that the feature is armed; neither needs anything on a client.
 - The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`not installed - skipped` otherwise). It ends with the side it ran on. On the **server** the recipe just works in the machine. On a **client that has Patchee** the line reads `(client)` and Patchee also asks GregTech to drop NEI's cached recipe pages, so the old recipe **shows up in NEI** too; a client without Patchee does not see it.
 - The `[GlassBreak]` line appears only when **Blood Arsenal** is installed (`[GlassBreak] Blood Arsenal is not installed - skipped` otherwise). It runs on the server only — clients need nothing.
 

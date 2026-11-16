@@ -10,7 +10,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 
 /**
- * Patchee — a small GTNH 1.7.10 addon that fixes nine cross-mod annoyances
+ * Patchee — a small GTNH 1.7.10 addon that fixes ten cross-mod annoyances
  * without editing any other mod's jar. The fixes are registered in one place,
  * {@link com.jointspaceforce.patchee.features.PatcheeFeatures}.
  *
@@ -76,10 +76,21 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * that GUI) needs Patchee on the client too. Plain shift-click already works.
  *
  * <p>
- * Most fixes are reflection-based against verified runtime names. Two of them
- * cannot be: the F7 overlay comparison constant and ServerUtilities' team-limit
- * return value live inside another mod's compiled method with no hook and no
- * config key, so Patchee's coremod rewrites those class bytes as they load —
+ * 10. <b>GregTech pollution visuals.</b> Pollution keeps running in full on the
+ * server, but players see none of it: the single number GregTech sends each
+ * client about a chunk is rewritten to 0 as the packet is built, so the client
+ * draws no smog, no fog, no fog colour shift, no smoke particles and no
+ * grass/leaf/water/flower tints
+ * ({@link com.jointspaceforce.patchee.features.PollutionNoVisualsFeature}). Every
+ * server-side read — damage, sour rain, vegetation, scanners, WAILA, machines —
+ * keeps the real numbers; a client-side pollution readout reads 0.
+ *
+ * <p>
+ * Most fixes are reflection-based against verified runtime names. Three of them
+ * cannot be: the F7 overlay comparison constant, ServerUtilities' team-limit
+ * return value and GregTech's pollution packet constructor live inside another
+ * mod's compiled method with no hook and no config key, so Patchee's coremod
+ * rewrites those class bytes as they load —
  * see {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
  * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
  * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest run
