@@ -15,11 +15,13 @@ import com.jointspaceforce.patchee.features.ChestplateFlightSettings;
  *
  * <p>
  * Three independent edits live in one method
- * ({@code useJetpack(EntityPlayer, boolean)}): the hover+jump climb clamp is
- * raised to the normal ascent ceiling, a shift+space branch holds altitude
- * instead of drifting up, and an early return keeps a player standing on the
- * ground from being treated as flying. See {@link ChestplateFlightPatch} for the
- * byte-level detail and the Hodgepodge interaction.
+ * ({@code useJetpack(EntityPlayer, boolean)}): the hover climb literal is rewritten
+ * to IC2's own hover horizontal speed and a second store is injected after the
+ * stock sneak store so the sink matches it (the stock sink literal itself stays,
+ * for Hodgepodge), a shift+space branch holds altitude instead of drifting up,
+ * and an early return keeps a player standing on the ground from being treated as
+ * flying. See {@link ChestplateFlightPatch} for the byte-level detail and the
+ * Hodgepodge interaction.
  *
  * <p>
  * The switches are read while the class loads, which happens before Forge's
@@ -88,48 +90,63 @@ public class ChestplateFlightTransformer implements IClassTransformer {
         ChestplateFlightPatch.Result result = ChestplateFlightPatch.apply(original, lift, guard, hold);
         switch (result.state()) {
             case PATCHED:
-            case ALREADY_PATCHED:
+            case PARTIAL:
                 // Publish the real outcome before the boot line, so a refusal can
-                // never be reported as "armed".
-                if (lift) {
+                // never be reported as "armed". One line per edit this pass made.
+                if (result.liftApplied()) {
                     ChestplateFlight.markLiftPatched();
-                }
-                if (hold) {
-                    ChestplateFlight.markHoldPatched();
-                }
-                if (guard) {
-                    ChestplateFlight.markGuardPatched();
-                }
-                if (lift) {
                     LOG.info(
-                        "[ChestplateHoverLift] patched {} — holding jump in hover mode climbs at up to {} per tick "
-                            + "(the normal jetpack ceiling; IC2's own hover clamp was {}). Switches from {}",
+                        "[ChestplateHoverLift] patched {} — in hover mode, jump rises and sneak sinks at the same "
+                            + "{} per tick, the speed IC2's hover flight already moves you sideways (IC2's own "
+                            + "clamps were {} and {}). Switches from {}",
                         className,
-                        ChestplateFlight.ASCENT_CEILING,
+                        ChestplateFlight.HOVER_HORIZONTAL_SPEED,
                         ChestplateFlight.IC2_HOVER_JUMP_CLAMP,
+                        ChestplateFlight.IC2_SNEAK_CLAMP,
                         source);
                 }
-                if (hold) {
+                if (result.holdApplied()) {
+                    ChestplateFlight.markHoldPatched();
                     LOG.info(
                         "[ChestplateHoldAltitude] patched {} — in hover mode, sneak + jump holds height at {} instead "
-                            + "of drifting up. Switches from {}",
+                            + "of moving. Switches from {}",
                         className,
                         ChestplateFlight.HOLD_ALTITUDE_TARGET,
                         source);
                 }
-                if (guard) {
+                if (result.guardApplied()) {
+                    ChestplateFlight.markGuardPatched();
                     LOG.info(
                         "[ChestplateGroundGuard] patched {} — on the ground and not rising, the jetpack tick is "
                             + "skipped, so standing still is not counted as flying. Switches from {}",
                         className,
                         source);
                 }
-                return result.state() == ChestplateFlightPatch.State.PATCHED ? result.bytes() : original;
+                if (result.state() == ChestplateFlightPatch.State.PARTIAL) {
+                    LOG.warn("[ChestplateFlight] {} — part of the patch was skipped: {}", className, result.detail());
+                }
+                return result.bytes();
+            case ALREADY_PATCHED:
+                if (result.skipped()) {
+                    LOG.warn("[ChestplateFlight] {} — nothing applied: {}", className, result.detail());
+                } else if (result.detail() != null && result.detail()
+                    .length() > 0) {
+                        LOG.info(
+                            "[ChestplateFlight] {} already carries every requested edit — bytes unchanged ({})",
+                            className,
+                            result.detail());
+                    } else {
+                        LOG.info(
+                            "[ChestplateFlight] {} already carries every requested edit — bytes unchanged",
+                            className);
+                    }
+                return original;
             default:
                 LOG.error(
                     "[ChestplateFlight] {} does not have the shape this patch knows — IC2's Quantum Chestplate left "
                         + "exactly as it ships ({}). "
-                        + "Expected one {} method, one 0.6 ascent ceiling and one hover+jump clamp site.",
+                        + "Expected one {} method, one 0.6 ascent ceiling, one hover+jump clamp site and one "
+                        + "hover+sneak clamp site.",
                     className,
                     result.detail(),
                     ChestplateFlightPatch.METHOD_NAME + ChestplateFlightPatch.METHOD_DESC);

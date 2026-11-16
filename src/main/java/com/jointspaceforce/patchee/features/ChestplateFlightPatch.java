@@ -35,53 +35,85 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <pre>
  * v = -0.025f; // hover, no key
- * if (Keyboard.isSneakKeyDown(player)) v = -0.1f;
- * if (Keyboard.isJumpKeyDown(player)) v = 0.1f; // &lt;- the defect
+ * if (Keyboard.isSneakKeyDown(player)) v = -0.1f; // &lt;- defect: sinks at 0.1
+ * if (Keyboard.isJumpKeyDown(player)) v = 0.1f; // &lt;- defect: climbs at 0.1
  * </pre>
  *
  * followed by {@code if (motionY > v) motionY = v;} and
  * {@code if (oldMotionY > motionY) motionY = oldMotionY;} (offsets 263-294).
- * Holding jump therefore caps the climb at 0.1 a tick, one sixth of the 0.6 the
- * same method already allows when hover mode is off.
  *
  * <p>
- * The fix rewrites <b>only</b> the {@code 0.1f} operand to
- * {@value ChestplateFlight#ASCENT_CEILING}. The descent constants
- * ({@code -0.025f} and {@code -0.1f}) and the whole clamp chain are left exactly
- * as they are, so no-input hover still sinks at 0.025 a tick and sneaking still
- * sinks at 0.1 a tick. The site is found by <i>shape</i>, never by the value of
- * its neighbours:
+ * The fix rewrites <b>the jump clamp only</b>: that {@code 0.1f} becomes
+ * {@code +}{@value ChestplateFlight#HOVER_HORIZONTAL_SPEED}, the speed IC2's own
+ * hover flight already moves the player sideways at
+ * ({@code 0.02f * 0.4f / (1 - 0.91f)}, offsets 306-318 are the
+ * {@code func_70060_a(0.0f, 0.4f, 0.02f)} call, at load factor 1). The descent is
+ * <b>not</b> a rewrite: the stock {@code -0.1f} literal is deliberately kept in
+ * the class (Hodgepodge matches {@code -0.025f} by value on this same method, and
+ * keeping every stock literal is the rule for composing with value-matching
+ * mixins), and the patch <b>injects</b> two instructions right after the stock
+ * sneak store:
+ *
+ * <pre>
+ * if (isSneakKeyDown(player)) {
+ *     v = -0.1f; // stock, untouched
+ *     v = -0.0888889f; // &lt;- inserted: LDC + FSTORE, same local
+ * }
+ * </pre>
+ *
+ * The two writes are one decision: the climb is never raised without the sink
+ * matching it. The no-input {@code -0.025f} literal is never touched either, so
+ * hovering still hovers, and the {@code 0.6d} ceiling is left in place (the patch
+ * does not write it any more; the shape check still requires exactly one).
+ *
+ * <p>
+ * Both sites are found by <i>shape</i>, never by the value of their neighbours:
  *
  * <pre>
  * INVOKEVIRTUAL ic2/core/util/Keyboard.isJumpKeyDown (LEntityPlayer;)Z
  * IFEQ ...
- * LDC &lt;float&gt;        // 0.1f on a stock IC2, 0.6f once this patch has run
- * FSTORE &lt;local&gt;     // the same local the -0.1f sneak clamp writes
+ * LDC &lt;float&gt;        // 0.1f stock, or +0.0888889 once this patch has run
+ * FSTORE &lt;local&gt;     // the local both writes / the sneak store use
  * </pre>
  *
  * <p>
+ * The sneak site, earlier in the method, is an {@code LDC float} of the
+ * <b>stock</b> {@value ChestplateFlight#IC2_SNEAK_CLAMP} immediately followed by an
+ * {@code FSTORE} of that <i>same</i> local. Only the stock value is accepted, so
+ * the injected descent store is never mistaken for a second site: the site count
+ * stays one on a patched class. Presence of the edit is decided separately, by
+ * {@code descentPatched}: the exact sequence {@code LDC -0.1f, FSTORE local,
+ * LDC -0.0888889f, FSTORE local}. A class that already carries it reports
+ * {@link State#ALREADY_PATCHED}; it is never injected twice.
+ *
+ * <p>
+ * A missing sneak site is not a refusal: the lift is then <b>skipped</b> with a
+ * reason, because raising the climb alone is exactly the owner's bug. With
+ * nothing left to apply the bytes are unchanged ({@link State#ALREADY_PATCHED},
+ * {@link Result#skipped()}), and neither value is written.
+ *
+ * <p>
  * <b>2. Hold altitude (shift + space).</b> Because the jump test runs after the
- * sneak test, holding both keys gives {@code v = 0.1f} (or 0.6f once edit 1 is
- * on) and the player drifts upward. Edit 2 inserts one more branch inside the
- * jump-taken block, <i>after</i> the jump-only store and before the block's join
- * label:
+ * sneak test, holding both keys gives the jump target and the player drifts
+ * upward. Edit 2 inserts one more branch inside the jump-taken block, <i>after</i>
+ * the jump-only store and before the block's join label:
  *
  * <pre>
  * if (isJumpKeyDown(player)) {
- *     v = 0.1f; // or 0.6f with edit 1
+ *     v = 0.1f; // or +0.0888889 with edit 1
  *     if (isSneakKeyDown(player)) {
  *         v = 0.0f; // &lt;- inserted, checked last
  *     }
  * } // join label, frame unchanged
  * </pre>
  *
- * so jump alone keeps its stock value and {@code (sneak, jump) = (+, +)}
+ * so jump alone keeps its patched value and {@code (sneak, jump) = (+, +)}
  * overwrites it with {@code 0.0f}; the clamp then targets level flight. IC2 still restores a larger previous motion, so
  * a climb already
- * in progress is damped to a stop over a few ticks, not cut dead. Each key alone keeps its stock
- * meaning ({@code (+,-)} still sinks at 0.1, {@code (-,+)} still uses the ascent
- * path). The keyboard call and the player local are copied from the method's own
- * instructions — no name is guessed.
+ * in progress is damped to a stop over a few ticks, not cut dead. Each key alone keeps its meaning
+ * ({@code (+,-)} sinks at the patched descent speed, {@code (-,+)} climbs at the
+ * patched ascent speed). The keyboard call and the player local are copied from
+ * the method's own instructions — no name is guessed.
  *
  * <p>
  * The branch adds no {@code GOTO}, no new label and no new frame: its
@@ -118,8 +150,12 @@ import org.objectweb.asm.tree.VarInsnNode;
  * gated on the method's own hover flag (local 2), so it runs <i>only</i> while
  * hover mode is on: hover-off jetpack flight keeps stock IC2 behaviour on the
  * ground as well. With hover on, a player standing on the ground no longer looks
- * like they are flying, while a jump (which gives a positive {@code motionY}
- * before the armor tick) leaves the guard inert and lift-off is unchanged.
+ * like they are flying. The armour tick runs <b>before</b> the jump and gravity
+ * step ({@code EntityPlayer.onLivingUpdate} calls {@code inventory.decrementAnimations()}
+ * at {@code EntityPlayer.java:610}, then {@code super.onLivingUpdate()} at
+ * {@code :613}), so on the takeoff tick {@code motionY} is still 0 and the guard
+ * does fire; lift-off comes from vanilla's own 0.42 jump impulse, not from the
+ * jetpack, and the jetpack takes over on the next tick.
  *
  * <p>
  * Skipping the tick also skips that tick's return value, which IC2 stores as
@@ -129,10 +165,16 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <p>
  * Everything is deliberately suspicious: the method must exist with the expected
- * descriptor, the method must carry exactly one 0.6 ascent ceiling, and exactly
- * one jump-clamp site of the shape above. Any other shape is refused with a
- * reason and the class is handed back untouched. Idempotent: a second pass over
- * patched bytes reports {@link State#ALREADY_PATCHED}.
+ * descriptor, the method must carry exactly one 0.6 ascent ceiling, exactly one
+ * jump-clamp site of the shape above, and at most one stock sneak-clamp site
+ * storing to the same local before it. Any other shape is refused with a reason
+ * and the class is handed back untouched. A <i>missing</i> sneak site is not a
+ * refusal: the lift is then skipped (the climb is never written without the
+ * matching sink) and the
+ * result is {@link State#PARTIAL} when the hold or the guard still went in, or
+ * {@link State#ALREADY_PATCHED} with {@link Result#skipped()} when nothing else was
+ * requested. Idempotent: a second pass over patched bytes reports
+ * {@link State#ALREADY_PATCHED}.
  */
 public final class ChestplateFlightPatch {
 
@@ -172,16 +214,25 @@ public final class ChestplateFlightPatch {
     /** IC2's stock hover+jump clamp. */
     public static final float HOVER_JUMP_CLAMP = ChestplateFlight.IC2_HOVER_JUMP_CLAMP;
 
-    /** The value this patch writes in its place. */
-    public static final float HOVER_JUMP_LIFTED = ChestplateFlight.ASCENT_CEILING;
+    /** The value this patch writes at the jump site: IC2's own hover horizontal speed. */
+    public static final float HOVER_JUMP_LIFTED = ChestplateFlight.hoverAscentTarget();
+
+    /** IC2's stock hover+sneak clamp. */
+    public static final float STOCK_SNEAK_CLAMP = ChestplateFlight.IC2_SNEAK_CLAMP;
+
+    /**
+     * The descent value this patch injects right after the stock sneak store: the
+     * exact negation of the jump value, read from the pure decision so the two can
+     * never drift apart.
+     */
+    public static final float SNEAK_LIFTED = ChestplateFlight.hoverDescentTarget();
 
     /**
      * The vertical target for shift + space: hold altitude, no drift either way.
      * Read from the pure decision table, not a second literal, so the float the
      * patch writes is the one the unit tests pin.
      */
-    public static final float HOLD_ALTITUDE_TARGET = ChestplateFlight
-        .hoverVerticalTarget(true, true, ChestplateFlight.ASCENT_CEILING);
+    public static final float HOLD_ALTITUDE_TARGET = ChestplateFlight.hoverVerticalTarget(true, true, true);
 
     /** How many hover-clamp sites a healthy class has. */
     public static final int SITE_COUNT = 1;
@@ -189,14 +240,34 @@ public final class ChestplateFlightPatch {
     /** How many ascent-ceiling literals a healthy class has. */
     public static final int ASCENT_CEILING_SITES = 1;
 
+    /** How many hover+sneak clamp sites a healthy class has. */
+    public static final int SNEAK_SITE_COUNT = 1;
+
+    /** The detail when the lift could not be applied because the sneak site is absent. */
+    static final String LIFT_SKIPPED_ALONE = "the hover+sneak clamp site is not in these bytes, so the climb was left at stock (raising it without the matching sink would put the asymmetry back); nothing else was requested";
+
+    /** Appended to the detail when other edits were made but the lift could not be. */
+    static final String LIFT_SKIPPED_SUFFIX = ", climb and sink left at stock: the hover+sneak clamp site is not in these bytes, so raising the climb alone would put the asymmetry back";
+
     /** What {@link #apply} found and did. */
     public enum State {
 
         /** At least one requested edit was made; {@link Result#bytes()} is the patched class. */
         PATCHED,
 
-        /** Every requested edit was already in place; bytes are unchanged. */
+        /**
+         * No edit was made: either every requested edit was already in place, or
+         * none of them could be placed here. Bytes are unchanged and
+         * {@link Result#detail()} says which.
+         */
         ALREADY_PATCHED,
+
+        /**
+         * At least one requested edit was made, and at least one requested edit
+         * could not be located in these bytes and was skipped with a reason;
+         * {@link Result#bytes()} is the patched class.
+         */
+        PARTIAL,
 
         /** The class is not the shape this patch knows; bytes are unchanged. */
         UNEXPECTED_SHAPE
@@ -208,12 +279,21 @@ public final class ChestplateFlightPatch {
         private final State state;
         private final byte[] bytes;
         private final int sites;
+        private final boolean liftApplied;
+        private final boolean guardApplied;
+        private final boolean holdApplied;
+        private final boolean skipped;
         private final String detail;
 
-        Result(State state, byte[] bytes, int sites, String detail) {
+        Result(State state, byte[] bytes, int sites, boolean liftApplied, boolean guardApplied, boolean holdApplied,
+            boolean skipped, String detail) {
             this.state = state;
             this.bytes = bytes;
             this.sites = sites;
+            this.liftApplied = liftApplied;
+            this.guardApplied = guardApplied;
+            this.holdApplied = holdApplied;
+            this.skipped = skipped;
             this.detail = detail;
         }
 
@@ -229,6 +309,26 @@ public final class ChestplateFlightPatch {
         /** How many edits this pass made (0 for an already-patched class). */
         public int sites() {
             return sites;
+        }
+
+        /** True when this pass rewrote the hover+jump clamp and injected the descent store. */
+        public boolean liftApplied() {
+            return liftApplied;
+        }
+
+        /** True when this pass injected the ground guard. */
+        public boolean guardApplied() {
+            return guardApplied;
+        }
+
+        /** True when this pass injected the shift+space hold. */
+        public boolean holdApplied() {
+            return holdApplied;
+        }
+
+        /** True when a requested edit was skipped because its site is absent. */
+        public boolean skipped() {
+            return skipped;
         }
 
         /** What was wrong, or what was done, in one line. */
@@ -248,49 +348,38 @@ public final class ChestplateFlightPatch {
      * Apply the requested edits.
      *
      * @param original the class bytes as the loader sees them
-     * @param lift     rewrite the hover+jump clamp to the normal ascent ceiling
+     * @param lift     rewrite <b>both</b> hover clamps: jump to
+     *                 {@link #HOVER_JUMP_LIFTED}, sneak to {@link #SNEAK_LIFTED}
      * @param guard    inject the on-the-ground early return
      * @param hold     inject the shift + space hold-altitude branch
      */
     public static Result apply(byte[] original, boolean lift, boolean guard, boolean hold) {
         if (original == null || original.length == 0) {
-            return new Result(State.UNEXPECTED_SHAPE, original, 0, "the class bytes are empty");
+            return fail(original, "the class bytes are empty");
         }
         ClassNode node;
         try {
             node = read(original);
         } catch (RuntimeException unreadable) {
-            return new Result(State.UNEXPECTED_SHAPE, original, 0, "the class bytes could not be read: " + unreadable);
+            return fail(original, "the class bytes could not be read: " + unreadable);
         }
         if (!TARGET_INTERNAL_NAME.equals(node.name)) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
-                original,
-                0,
-                "this is " + node.name + ", not " + TARGET_INTERNAL_NAME);
+            return fail(original, "this is " + node.name + ", not " + TARGET_INTERNAL_NAME);
         }
         MethodNode method = findTarget(node);
         if (method == null) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
-                original,
-                0,
-                "no " + METHOD_NAME + METHOD_DESC + " method in " + TARGET_CLASS);
+            return fail(original, "no " + METHOD_NAME + METHOD_DESC + " method in " + TARGET_CLASS);
         }
         if ((method.access & Opcodes.ACC_STATIC) != 0) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
+            return fail(
                 original,
-                0,
                 METHOD_NAME + " is static, so local 1 is not the player and this patch cannot locate it");
         }
 
         int ceilings = countAscentCeilings(method);
         if (ceilings != ASCENT_CEILING_SITES) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
+            return fail(
                 original,
-                0,
                 "expected exactly " + ASCENT_CEILING_SITES
                     + " ascent ceiling literal ("
                     + ASCENT_CEILING_CONSTANT
@@ -302,10 +391,8 @@ public final class ChestplateFlightPatch {
 
         List<LdcInsnNode> sites = jumpClampSites(method);
         if (sites.size() != SITE_COUNT) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
+            return fail(
                 original,
-                0,
                 "expected exactly " + SITE_COUNT
                     + " hover+jump clamp site (isJumpKeyDown -> ifeq -> ldc float -> fstore), found "
                     + sites.size());
@@ -313,45 +400,79 @@ public final class ChestplateFlightPatch {
         LdcInsnNode clamp = sites.get(0);
         float current = ((Float) clamp.cst).floatValue();
         if (current != HOVER_JUMP_CLAMP && current != HOVER_JUMP_LIFTED) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
+            return fail(
                 original,
-                0,
                 "the hover+jump clamp is " + current + ", expected " + HOVER_JUMP_CLAMP + " or " + HOVER_JUMP_LIFTED);
         }
-
         int clampLocal = storedLocal(clamp);
+
+        List<LdcInsnNode> sneakSites = sneakClampSites(method, clamp, clampLocal);
+        if (sneakSites.size() > SNEAK_SITE_COUNT) {
+            return fail(
+                original,
+                "expected at most " + SNEAK_SITE_COUNT
+                    + " hover+sneak clamp site (ldc float -> fstore to local "
+                    + clampLocal
+                    + ", before the jump clamp), found "
+                    + sneakSites.size());
+        }
+        LdcInsnNode sneak = sneakSites.isEmpty() ? null : sneakSites.get(0);
+
         HoldCode holdCode = hold ? holdCode(method, clamp) : null;
         if (hold && holdCode == null && !hasHoldBranch(method, clamp, clampLocal)) {
-            return new Result(
-                State.UNEXPECTED_SHAPE,
+            return fail(
                 original,
-                0,
                 "cannot find the keyboard field / sneak query / player local around the jump clamp, so the "
                     + "shift+space branch cannot be built");
         }
 
-        boolean liftDone = current == HOVER_JUMP_LIFTED;
+        // The climb and the sink are one decision: the jump clamp plus the injected
+        // descent store. A class without the stock sneak clamp site cannot be made
+        // symmetric, so the lift is skipped rather than writing the ascent value
+        // alone — that is the owner's bug.
+        boolean liftDone = current == HOVER_JUMP_LIFTED && descentPatched(method, clampLocal);
         boolean guardDone = hasGuardHook(method);
         boolean holdDone = hasHoldBranch(method, clamp, clampLocal);
-        boolean needLift = lift && !liftDone;
+        boolean liftApplicable = sneak != null;
+        boolean needLift = lift && liftApplicable && !liftDone;
         boolean needGuard = guard && !guardDone;
+        // Unlike GraviSuite's twin, the hold here does not need the stock sneak
+        // clamp site: it is anchored on the jump store, which is still present. That
+        // is the one place the twins differ - GraviSuite's hold can only sit inside
+        // the sneak-taken block, so it is skipped with the lift there. Same intent,
+        // different geometry; each hold goes in wherever it can be placed in order.
         boolean needHold = hold && !holdDone;
+        boolean skipped = lift && !liftApplicable;
         if (!needLift && !needGuard && !needHold) {
-            return new Result(State.ALREADY_PATCHED, original, 0, "");
+            return new Result(
+                State.ALREADY_PATCHED,
+                original,
+                0,
+                false,
+                false,
+                false,
+                skipped,
+                skipped ? LIFT_SKIPPED_ALONE : "");
         }
 
         int sitesChanged = 0;
         if (needLift) {
+            // The jump clamp is rewritten in place; the descent is an extra store
+            // after the stock sneak store, so the stock -0.1f literal survives for
+            // anything that matches it by value.
             clamp.cst = Float.valueOf(HOVER_JUMP_LIFTED);
+            if (!descentPatched(method, clampLocal) && !insertDescent(method, sneak, clampLocal)) {
+                return fail(
+                    original,
+                    "the stock hover+sneak store is not followed by an FSTORE to the clamp local, so the "
+                        + "descent store cannot be placed");
+            }
             sitesChanged++;
         }
         if (needHold) {
             if (!insertHold(method, clamp, clampLocal, holdCode)) {
-                return new Result(
-                    State.UNEXPECTED_SHAPE,
+                return fail(
                     original,
-                    0,
                     "the jump branch's join label is not the target of exactly one jump, so the shift+space "
                         + "branch cannot be placed");
             }
@@ -361,16 +482,35 @@ public final class ChestplateFlightPatch {
             insertGuard(method);
             sitesChanged++;
         }
-        return new Result(State.PATCHED, write(node), sitesChanged, describe(needLift, needGuard, needHold));
+        String detail = describe(needLift, needGuard, needHold);
+        if (skipped) {
+            return new Result(
+                State.PARTIAL,
+                write(node),
+                sitesChanged,
+                needLift,
+                needGuard,
+                needHold,
+                true,
+                detail + LIFT_SKIPPED_SUFFIX);
+        }
+        return new Result(State.PATCHED, write(node), sitesChanged, needLift, needGuard, needHold, false, detail);
+    }
+
+    private static Result fail(byte[] original, String detail) {
+        return new Result(State.UNEXPECTED_SHAPE, original, 0, false, false, false, false, detail);
     }
 
     private static String describe(boolean lift, boolean guard, boolean hold) {
         StringBuilder text = new StringBuilder();
         if (lift) {
-            text.append("hover+jump clamp ")
+            text.append("hover vertical +/-")
+                .append(HOVER_JUMP_LIFTED)
+                .append(" (jump up, sneak down; was ")
                 .append(HOVER_JUMP_CLAMP)
-                .append(" -> ")
-                .append(HOVER_JUMP_LIFTED);
+                .append(" / ")
+                .append(STOCK_SNEAK_CLAMP)
+                .append(')');
         }
         if (hold) {
             if (text.length() > 0) {
@@ -413,9 +553,10 @@ public final class ChestplateFlightPatch {
     }
 
     /**
-     * The hover+jump clamp constants: a {@code ldc} float that is the value stored
-     * to the same local the {@code -0.1f} sneak clamp writes, immediately after
-     * an {@code IFEQ} on {@code Keyboard.isJumpKeyDown}.
+     * The hover+jump clamp constant: a {@code ldc} float immediately after an
+     * {@code IFEQ} on {@code Keyboard.isJumpKeyDown}, stored straight into a local
+     * by {@code FSTORE}. The <i>value</i> is checked by the caller, so the shape
+     * survives a class that already carries this patch's number.
      */
     private static List<LdcInsnNode> jumpClampSites(MethodNode method) {
         List<LdcInsnNode> sites = new ArrayList<LdcInsnNode>();
@@ -435,34 +576,115 @@ public final class ChestplateFlightPatch {
             if (store == null || store.getOpcode() != Opcodes.FSTORE) {
                 continue;
             }
-            int local = ((VarInsnNode) store).var;
-            if (!hasSneakClampBefore(method, value, local)) {
-                continue;
-            }
             sites.add((LdcInsnNode) value);
         }
         return sites;
     }
 
-    /** True when the same local already carries the {@code -0.1f} sneak clamp. */
-    private static boolean hasSneakClampBefore(MethodNode method, AbstractInsnNode before, int local) {
+    /**
+     * The stock hover+sneak clamp constant before the jump clamp: an {@code ldc}
+     * float of exactly {@value #STOCK_SNEAK_CLAMP}, stored straight into the
+     * <i>same</i> local the jump clamp writes.
+     *
+     * <p>
+     * Only the stock value is accepted. The patched class keeps that literal and
+     * carries one extra store after it, so accepting the patched value too would
+     * double-count the site; the injected store has no {@code IFEQ} in front of it
+     * anyway. Whether the edit is present is a separate question, asked by
+     * {@link #descentPatched}.
+     *
+     * <p>
+     * The list is empty for a class that has no sneak clamp at all. That is not a
+     * refusal; the caller skips the lift, because the climb and the sink have to
+     * move together.
+     */
+    private static List<LdcInsnNode> sneakClampSites(MethodNode method, AbstractInsnNode jumpClamp, int local) {
+        List<LdcInsnNode> sites = new ArrayList<LdcInsnNode>();
         for (AbstractInsnNode insn : method.instructions.toArray()) {
-            if (insn == before) {
-                return false;
+            if (insn == jumpClamp) {
+                return sites;
             }
-            if (!(insn instanceof LdcInsnNode)) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
                 continue;
             }
-            Object cst = ((LdcInsnNode) insn).cst;
-            if (!(cst instanceof Float) || ((Float) cst).floatValue() != -0.1f) {
+            float constant = ((Float) ((LdcInsnNode) insn).cst).floatValue();
+            if (constant != STOCK_SNEAK_CLAMP) {
                 continue;
             }
             AbstractInsnNode store = nextReal(insn.getNext());
-            if (store != null && store.getOpcode() == Opcodes.FSTORE && ((VarInsnNode) store).var == local) {
+            if (store == null || store.getOpcode() != Opcodes.FSTORE || ((VarInsnNode) store).var != local) {
+                continue;
+            }
+            sites.add((LdcInsnNode) insn);
+        }
+        return sites;
+    }
+
+    /**
+     * True when the descent edit is already in these bytes: the exact sequence
+     * {@code LDC float -0.1f, FSTORE local, LDC float -0.0888889f, FSTORE local},
+     * with labels and line numbers allowed in between.
+     *
+     * <p>
+     * This is what makes a second pass idempotent: the stock literal stays, so the
+     * site is still found, and this check is what stops the store being injected
+     * twice.
+     */
+    static boolean descentPatched(MethodNode method, int local) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) insn).cst).floatValue() != STOCK_SNEAK_CLAMP) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store == null || store.getOpcode() != Opcodes.FSTORE || ((VarInsnNode) store).var != local) {
+                continue;
+            }
+            AbstractInsnNode value = nextReal(store.getNext());
+            if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) value).cst).floatValue() != SNEAK_LIFTED) {
+                continue;
+            }
+            AbstractInsnNode again = nextReal(value.getNext());
+            if (again != null && again.getOpcode() == Opcodes.FSTORE && ((VarInsnNode) again).var == local) {
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Insert the descent target right after the stock sneak store, inside the
+     * sneak-taken block:
+     *
+     * <pre>
+     * v = -0.1f; // stock, left alone
+     * v = -0.0888889f; // &lt;- LDC + FSTORE, same local
+     * </pre>
+     *
+     * No label, no jump, no frame: the store is a plain overwrite in a straight
+     * line, so the block's join label and its frame are untouched. That is why
+     * {@code COMPUTE_MAXS} is enough.
+     *
+     * @return true when the two instructions were inserted
+     */
+    private static boolean insertDescent(MethodNode method, LdcInsnNode sneak, int local) {
+        if (sneak == null) {
+            return false;
+        }
+        AbstractInsnNode store = nextReal(sneak.getNext());
+        if (store == null || store.getOpcode() != Opcodes.FSTORE || ((VarInsnNode) store).var != local) {
+            return false;
+        }
+        InsnList inserted = new InsnList();
+        inserted.add(new LdcInsnNode(Float.valueOf(SNEAK_LIFTED)));
+        inserted.add(new VarInsnNode(Opcodes.FSTORE, local));
+        method.instructions.insert(store, inserted);
+        return true;
     }
 
     private static boolean isJumpKeyCall(AbstractInsnNode insn) {
@@ -623,7 +845,7 @@ public final class ChestplateFlightPatch {
      * jump-taken block:
      *
      * <pre>
-     * v = 0.1f; // or 0.6f with edit 1
+     * v = 0.1f; // or +0.0888889 with edit 1
      * if (isSneakKeyDown(player)) v = 0.0f;
      * </pre>
      *

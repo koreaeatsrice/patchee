@@ -16,10 +16,11 @@ import com.jointspaceforce.patchee.features.GraviSuiteFlightPatch;
  *
  * <p>
  * The edits live in {@code ItemAdvancedJetPack.useJetpack(EntityPlayer,
- * boolean)}: the hover+jump climb clamp is raised to the method's own ascent
- * ceiling, a shift+space branch holds altitude instead of sinking, and an early
- * return keeps a player standing on the ground from being treated as flying.
- * See {@link GraviSuiteFlightPatch} for the byte-level detail.
+ * boolean)}: the two hover key clamps are rewritten so jump rises and sneak
+ * sinks at GraviSuite's own hover sideways speed, a shift+space branch holds
+ * altitude instead of sinking, and an early return keeps a player standing on
+ * the ground from being treated as flying. See {@link GraviSuiteFlightPatch} for
+ * the byte-level detail.
  *
  * <p>
  * The two keyboard-driven edits are applied on <b>both</b> sides, because
@@ -97,11 +98,15 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 // switches fired without reading the detail string.
                 if (result.liftApplied()) {
                     LOG.info(
-                        "[GraviSuiteFlight] {} — holding jump in hover mode climbs at up to {} per tick (the normal "
-                            + "jetpack ceiling; GraviSuite's own hover clamp was {}). Switches from {}",
+                        "[GraviSuiteFlight] {} — in hover mode, jump rises at {} and sneak sinks at {} per tick — "
+                            + "the same speed GraviSuite's own hover flight moves the player sideways (stock "
+                            + "GraviSuite was {} up / {} down with sneak, and the previous Patchee release climbed "
+                            + "at 0.6; no key still sinks at the stock hover fall speed). Switches from {}",
                         className,
-                        GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT,
+                        GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
+                        GraviSuiteFlightPatch.SNEAK_LIFTED,
                         GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
+                        GraviSuiteFlightPatch.SNEAK_CLAMP,
                         source);
                 }
                 if (result.holdApplied()) {
@@ -121,7 +126,7 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 }
                 if (result.state() == GraviSuiteFlightPatch.State.PARTIAL) {
                     LOG.warn(
-                        "[GraviSuiteFlight] {} — climb and shift+space edits skipped together: {} (another mixin may already handle shift+space, and raising the climb alone would turn its hold into a climb)",
+                        "[GraviSuiteFlight] {} — rise, sink and shift+space were skipped together: {} (another mixin may already handle shift+space, and raising the rise alone would put the asymmetry back)",
                         className,
                         result.detail());
                 }
@@ -145,10 +150,14 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 LOG.error(
                     "[GraviSuiteFlight] {} does not have the shape this patch knows — GraviSuite's jetpack left "
                         + "exactly as it ships ({}). "
-                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site.",
+                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site (jump {} or {}, "
+                        + "next to one sneak {}).",
                     className,
                     result.detail(),
-                    GraviSuiteFlightPatch.METHOD_NAME + GraviSuiteFlightPatch.METHOD_DESC);
+                    GraviSuiteFlightPatch.METHOD_NAME + GraviSuiteFlightPatch.METHOD_DESC,
+                    GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
+                    GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
+                    GraviSuiteFlightPatch.SNEAK_CLAMP);
                 LOG.error("[GraviSuiteFlight] observed shape: {}", GraviSuiteFlightPatch.dump(original));
                 return original;
         }
