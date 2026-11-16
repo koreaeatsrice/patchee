@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.8.1] - 2026-11-16
+
+### Bug Fixes
+- **flight**: vertical hover speed now matches horizontal flight speed, up and down ([`1fdf27d`](https://github.com/koreaeatsrice/patchee/commit/1fdf27d8d54c2c207596c4cc5553d50e839882e0))
+- **credits**: stop crediting the unrelated uriel GitHub account (#24) ([`0c07376`](https://github.com/koreaeatsrice/patchee/commit/0c073762f860111478a1331c24eb1c95eb32511c))
+
+### Documentation & Wiki
+- **readme**: keep every feature bullet to one sentence ([`5a30699`](https://github.com/koreaeatsrice/patchee/commit/5a30699b71f90a667f3c3b8656010a4349c27c1c))
+
+### Contributors
+
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.8.0...v1.8.1
+
 ## [1.8.0] - 2026-11-15
 
 ### Features
