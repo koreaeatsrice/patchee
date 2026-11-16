@@ -25,18 +25,35 @@ import org.junit.jupiter.api.Test;
  * <p>
  * A sentence end is a {@code .}, {@code !} or {@code ?} followed, past any closing bracket or quote, by
  * whitespace or end of line. Three allowances keep that honest: a dot between two digits (a decimal
- * such as {@code 0.6}, a version such as {@code v1.8.0}); {@code e.g.} or {@code i.e.} when the next
- * word continues the clause rather than starting a new sentence; and text with no terminal punctuation
- * (counted as one sentence, not zero). The checker itself is unit-tested against synthetic bullets so
- * it cannot quietly pass everything.
+ * such as {@code 0.6}, a version such as {@code v1.8.0}); an abbreviation ({@code e.g.}, {@code i.e.},
+ * {@code etc.}, {@code vs.}, {@code cf.}) when the next word continues the clause, which means lowercase,
+ * a number, a short all-caps acronym, or a capitalised word followed by a comma (a capitalised word with
+ * no comma after it reads as a new sentence, which is deliberately strict); and text with no terminal
+ * punctuation, counted as one sentence rather than zero. The checker itself is unit-tested against
+ * synthetic bullets so it cannot quietly pass everything.
  */
 class ReadmeFeatureSentencesTest {
 
-    /** Abbreviations whose final dot may be part of the word, never a sentence end on its own. */
-    private static final List<String> ABBREVIATIONS = Arrays.asList("e.g.", "i.e.");
+    /** Abbreviations whose final dot may be part of the word rather than a sentence end. */
+    private static final List<String> ABBREVIATIONS = Arrays.asList("e.g.", "i.e.", "etc.", "vs.", "cf.");
 
     /** {@code - **Name** — text} with an em dash as the separator, exactly as the site renders it. */
     private static final Pattern FEATURE_BULLET = Pattern.compile("^- \\*\\*(.+?)\\*\\* — (.+)$");
+
+    /** Any list marker, so an asterisk, plus or indented bullet is reported instead of skipped. */
+    private static final Pattern BULLET_START = Pattern.compile("^\\s*[-*+]\\s");
+
+    /** A bullet plus its indented continuation lines, with the 1-based line number it starts on. */
+    private static final class FeatureLine {
+
+        private final int number;
+        private String text;
+
+        FeatureLine(int number, String text) {
+            this.number = number;
+            this.text = text;
+        }
+    }
 
     @Test
     void everyFeatureBulletInTheReadmeIsOneSentence() throws IOException {
@@ -60,8 +77,11 @@ class ReadmeFeatureSentencesTest {
         assertEquals(1, sentenceCount("runs at 0.6 speed."));
         assertEquals(1, sentenceCount("needs v1.8.0 or newer."));
         assertEquals(1, sentenceCount("all mods, e.g. jetpacks, work."));
+        assertEquals(1, sentenceCount("all mods, e.g. Patchee, work."));
         assertEquals(1, sentenceCount("all mods, i.e. every one of them, work."));
         assertEquals(1, sentenceCount("such as E.g. IC2 work."));
+        assertEquals(1, sentenceCount("covers Forestry, IC2, etc. and more."));
+        assertEquals(1, sentenceCount("the mod, cf. the docs, works."));
         assertEquals(1, sentenceCount("one thing; another thing."));
         assertEquals(1, sentenceCount("no terminal punctuation"));
         assertEquals(1, sentenceCount(""));
@@ -72,10 +92,11 @@ class ReadmeFeatureSentencesTest {
         assertEquals(2, sentenceCount("he said \"stop.\" Then left."));
         assertEquals(2, sentenceCount("works with IC2, etc. Users see the change."));
         assertEquals(2, sentenceCount("Ends in e.g. Next sentence here."));
+        assertEquals(2, sentenceCount("one sentence.\u00A0Two sentences."));
     }
 
     @Test
-    void rejectsAMultiSentenceBulletAndAMalformedBulletUnderFeaturesOnly() {
+    void rejectsBadShapedOrMultiSentenceFeatureLinesOnly() {
         List<String> lines = Arrays.asList(
             "# Title",
             "",
@@ -84,14 +105,18 @@ class ReadmeFeatureSentencesTest {
             "- **Good** — one sentence only.",
             "- **Bad** — first sentence. second sentence.",
             "- **Wrong shape**: first sentence. second sentence.",
+            "- **Wrapped** — first sentence here.",
+            "  second sentence wraps.",
+            "",
+            "* **Star** — first sentence. second sentence.",
             "",
             "## Install",
             "",
             "- **Not a feature** — first sentence. second sentence.");
 
-        assertEquals(2, featureBullets(lines).size());
+        assertEquals(3, featureBullets(lines).size());
         List<String> violations = violations(lines);
-        assertEquals(2, violations.size(), String.join("\n", violations));
+        assertEquals(4, violations.size(), String.join("\n", violations));
         assertTrue(
             violations.get(0)
                 .contains("**Bad**"),
@@ -100,51 +125,80 @@ class ReadmeFeatureSentencesTest {
             violations.get(1)
                 .contains("not in"),
             violations.get(1));
+        assertTrue(
+            violations.get(2)
+                .contains("2 sentences"),
+            violations.get(2));
+        assertTrue(
+            violations.get(3)
+                .contains("not in"),
+            violations.get(3));
     }
 
-    /** Bullets inside the {@code ## Features} section, up to the next {@code ## } heading. */
+    /** Bullets in the {@code ## Features} section, with indented continuation lines joined on. */
     static List<String> featureBullets(List<String> lines) {
         List<String> bullets = new ArrayList<>();
-        boolean inFeatures = false;
-        for (String line : lines) {
-            if (line.startsWith("## ")) {
-                inFeatures = line.trim()
-                    .equals("## Features");
-                continue;
-            }
-            if (inFeatures && FEATURE_BULLET.matcher(line)
+        for (FeatureLine line : featureLines(lines)) {
+            if (FEATURE_BULLET.matcher(line.text)
                 .matches()) {
-                bullets.add(line);
+                bullets.add(line.text);
             }
         }
         return bullets;
     }
 
-    /** One message per bad bullet: more than one sentence, or not in the house bullet shape. */
+    /** One message per bad feature line: more than one sentence, or not in the house bullet shape. */
     static List<String> violations(List<String> lines) {
         List<String> violations = new ArrayList<>();
+        for (FeatureLine line : featureLines(lines)) {
+            Matcher matcher = FEATURE_BULLET.matcher(line.text);
+            if (!matcher.matches() || matcher.group(2)
+                .trim()
+                .isEmpty()) {
+                violations.add("line " + line.number + ": not in `- **Name** — text` form: " + line.text);
+                continue;
+            }
+            int sentences = sentenceCount(matcher.group(2));
+            if (sentences > 1) {
+                violations.add("line " + line.number + ": " + sentences + " sentences: " + line.text);
+            }
+        }
+        return violations;
+    }
+
+    /**
+     * Feature lines with continuation lines joined to their bullet. Every non-blank line in the section
+     * becomes part of some entry, so a stray line is reported rather than silently skipped.
+     */
+    static List<FeatureLine> featureLines(List<String> lines) {
+        List<FeatureLine> entries = new ArrayList<>();
         boolean inFeatures = false;
+        FeatureLine current = null;
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
             if (line.startsWith("## ")) {
                 inFeatures = line.trim()
                     .equals("## Features");
+                current = null;
                 continue;
             }
-            if (!inFeatures || !line.startsWith("- ")) {
+            if (!inFeatures) {
                 continue;
             }
-            Matcher matcher = FEATURE_BULLET.matcher(line);
-            if (!matcher.matches()) {
-                violations.add("line " + (i + 1) + ": not in `- **Name** — text` form: " + line);
-                continue;
-            }
-            int sentences = sentenceCount(matcher.group(2));
-            if (sentences > 1) {
-                violations.add("line " + (i + 1) + ": " + sentences + " sentences: " + line);
-            }
+            if (line.trim()
+                .isEmpty() || line.startsWith("#")) {
+                current = null;
+            } else if (BULLET_START.matcher(line)
+                .lookingAt()) {
+                    current = new FeatureLine(i + 1, line.trim());
+                    entries.add(current);
+                } else if (current != null) {
+                    current.text = current.text + " " + line.trim();
+                } else {
+                    entries.add(new FeatureLine(i + 1, line.trim()));
+                }
         }
-        return violations;
+        return entries;
     }
 
     /** Counts sentence ends, stepping over closing brackets and quotes; no end still means one. */
@@ -161,7 +215,7 @@ class ReadmeFeatureSentencesTest {
                 next++;
             }
             boolean atEnd = next == masked.length();
-            boolean followedBySpace = !atEnd && Character.isWhitespace(masked.charAt(next));
+            boolean followedBySpace = !atEnd && isSpace(masked.charAt(next));
             if (atEnd || followedBySpace) {
                 count++;
             }
@@ -171,6 +225,11 @@ class ReadmeFeatureSentencesTest {
 
     private static boolean isClosing(char c) {
         return c == ')' || c == ']' || c == '}' || c == '"' || c == '\'' || c == '\u201d' || c == '\u2019';
+    }
+
+    /** Whitespace as it arrives from a web page: NBSP and zero-width space count too. */
+    private static boolean isSpace(char c) {
+        return Character.isWhitespace(c) || Character.isSpaceChar(c) || c == '\u200b';
     }
 
     /** Blanks the dots that cannot end a sentence, keeping the length so indexes stay put. */
@@ -223,14 +282,11 @@ class ReadmeFeatureSentencesTest {
     }
 
     /**
-     * True when the word after an abbreviation reads as a new sentence: nothing left, or a capitalised
-     * ordinary word. A lowercase word, a number or a short all-caps acronym continues the clause.
+     * True when the word after an abbreviation reads as a new sentence. Nothing left, or a capitalised
+     * ordinary word without a comma after it, starts a sentence; everything else continues the clause.
      */
     private static boolean startsNewSentence(CharSequence text, int from) {
-        int start = from;
-        while (start < text.length() && Character.isWhitespace(text.charAt(start))) {
-            start++;
-        }
+        int start = skipSpaces(text, from);
         if (start >= text.length()) {
             return true;
         }
@@ -238,19 +294,30 @@ class ReadmeFeatureSentencesTest {
             return false;
         }
         int end = start;
-        while (end < text.length() && Character.isLetter(text.charAt(end))) {
+        boolean hasDigit = false;
+        boolean hasLower = false;
+        while (end < text.length() && Character.isLetterOrDigit(text.charAt(end))) {
+            hasDigit = hasDigit || Character.isDigit(text.charAt(end));
+            hasLower = hasLower || Character.isLowerCase(text.charAt(end));
             end++;
         }
         String word = text.subSequence(start, end)
             .toString();
-        if (!Character.isUpperCase(word.charAt(0))) {
+        if (hasDigit || !Character.isUpperCase(word.charAt(0))) {
             return false;
         }
-        for (int i = 1; i < word.length(); i++) {
-            if (!Character.isUpperCase(word.charAt(i))) {
-                return true;
-            }
+        if (!hasLower) {
+            return word.length() == 1;
         }
-        return word.length() == 1;
+        int after = skipSpaces(text, end);
+        return after >= text.length() || text.charAt(after) != ',';
+    }
+
+    private static int skipSpaces(CharSequence text, int from) {
+        int at = from;
+        while (at < text.length() && isSpace(text.charAt(at))) {
+            at++;
+        }
+        return at;
     }
 }
