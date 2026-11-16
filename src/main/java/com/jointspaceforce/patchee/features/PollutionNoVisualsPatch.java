@@ -44,8 +44,8 @@ import org.objectweb.asm.tree.VarInsnNode;
  * makes the field {@code 0} at construction on both sides, and every pollution
  * value the server ever sends is 0. The real server storage was written before
  * the send ({@code setChunkPollution} runs first), so mechanics keep their exact
- * numbers: damage, sour rain, vegetation checks, scanners, WAILA and machines
- * all read storage, never the packet.
+ * numbers: damage, sour rain, vegetation checks, scanners, the pollution
+ * detector and machines all read storage, never the packet.
  *
  * <p>
  * <b>Why this is safe to do in place.</b> It is a value rewrite, not an

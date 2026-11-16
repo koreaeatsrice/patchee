@@ -82,16 +82,19 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * draws no smog, no fog, no fog colour shift, no smoke particles and no
  * grass/leaf/water/flower tints
  * ({@link com.jointspaceforce.patchee.features.PollutionNoVisualsFeature}). Every
- * server-side read — damage, sour rain, vegetation, scanners, WAILA, machines —
- * keeps the real numbers; a client-side pollution readout reads 0.
+ * server-side read — damage, sour rain, vegetation, scanners, the pollution
+ * detector, machines — keeps the real numbers; a client-side pollution readout
+ * reads 0.
  *
  * <p>
- * Most fixes are reflection-based against verified runtime names. Three of them
- * cannot be: the F7 overlay comparison constant, ServerUtilities' team-limit
- * return value and GregTech's pollution packet constructor live inside another
- * mod's compiled method with no hook and no config key, so Patchee's coremod
- * rewrites those class bytes as they load —
- * see {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
+ * Most fixes are reflection-based against verified runtime names. Six of them
+ * cannot be, because the thing to change lives inside another mod's compiled
+ * method with no hook and no config key: the F7 overlay comparison constant
+ * (NEI), ServerUtilities' team-limit return value, GregTech's pollution packet
+ * constructor, Twilight Forest's castle and thorn call sites, IC2's Quantum
+ * Chestplate flight edits and GraviSuite's Advanced Jetpack flight edits. For
+ * those six, Patchee's coremod rewrites the class bytes as they load — see
+ * {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
  * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
  * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest run
  * on the server, so clients need nothing installed to join

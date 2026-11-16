@@ -26,7 +26,9 @@ import com.jointspaceforce.patchee.features.PollutionNoVisualsSettings;
  * <p>
  * The switches are read while the class loads, which happens before Forge's
  * config system exists, so {@link PollutionNoVisualsSettings} parses
- * {@code config/patchee.cfg} itself. Every failure mode is soft and loud: a
+ * {@code config/patchee.cfg} itself — the settings are handed to
+ * {@link #patch(byte[], PollutionNoVisualsSettings)} as a value, so a test never
+ * reads a config file. Every failure mode is soft and loud: a
  * class that is not GregTech's packet is skipped immediately, a packet whose
  * shape is not recognised is reported at ERROR with the instruction dump and
  * handed back untouched, and any unexpected {@link Throwable} returns the
@@ -48,7 +50,7 @@ public class PollutionNoVisualsTransformer implements IClassTransformer {
             return basicClass;
         }
         try {
-            return patch(basicClass);
+            return patch(basicClass, PollutionNoVisualsSettings.read());
         } catch (Throwable unexpected) {
             try {
                 LOG.error(
@@ -62,11 +64,26 @@ public class PollutionNoVisualsTransformer implements IClassTransformer {
         }
     }
 
-    private byte[] patch(byte[] original) {
-        PollutionNoVisualsSettings settings = PollutionNoVisualsSettings.read();
+    /**
+     * The patch itself, with the switches handed in as a value.
+     *
+     * <p>
+     * Public so the unit tests can drive the whole decision without reading the
+     * developer's own {@code config/patchee.cfg} (the {@link #transform} entry
+     * point reads the file; this method never does). All logging stays here, so
+     * a test that runs it prints exactly what a real boot would.
+     *
+     * @param original the class bytes as the loader handed them over
+     * @param settings the switches, already read
+     * @return the patched bytes, or {@code original} when nothing was changed
+     */
+    public byte[] patch(byte[] original, PollutionNoVisualsSettings settings) {
         String source = settings.fromFile() ? settings.path()
             : "the built-in defaults (" + settings.path() + " not read)";
         if (!PollutionNoVisuals.shouldPatch(settings.masterEnabled(), settings.enabled())) {
+            // Publish the real reason: the boot line must not report a shape
+            // mismatch on a class that was deliberately left alone.
+            PollutionNoVisuals.markLoadTimeDisabled();
             if (!settings.masterEnabled()) {
                 LOG.info(
                     "[PollutionNoVisuals] the master switch is off in {} — pollution still sends its real value to clients",

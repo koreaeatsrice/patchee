@@ -15,7 +15,9 @@ import java.nio.file.Files;
  * parses the file itself. The format understood is the one Forge writes
  * ({@code B:key=true} inside a {@code general { ... }} block); comments and
  * unknown keys are ignored and the documented defaults are used for a missing
- * file, a missing key or an unreadable value.
+ * file, a missing key or an unreadable value. A value that is not true/false is
+ * ignored and the default stands, exactly like Forge's own
+ * {@code Property.getBoolean}: a typo never quietly switches the feature off.
  *
  * <p>
  * The key names live in {@link PollutionNoVisuals} and are reused by
@@ -74,9 +76,15 @@ public final class PollutionNoVisualsSettings {
                 String value = line.substring(equals + 1)
                     .trim();
                 if ("enabled".equals(key)) {
-                    master = Boolean.parseBoolean(value);
+                    Boolean parsed = readBoolean(value, master);
+                    if (parsed != null) {
+                        master = parsed.booleanValue();
+                    }
                 } else if (PollutionNoVisuals.ENABLE_KEY.equals(key)) {
-                    enabled = Boolean.parseBoolean(value);
+                    Boolean parsed = readBoolean(value, enabled);
+                    if (parsed != null) {
+                        enabled = parsed.booleanValue();
+                    }
                 }
             }
         }
@@ -90,6 +98,30 @@ public final class PollutionNoVisualsSettings {
                 .trim();
         }
         return key;
+    }
+
+    /**
+     * A strict boolean: only {@code true} or {@code false}, in any case, is a
+     * value. Anything else ({@code maybe}, {@code yes}, an empty string) is
+     * {@code null}, so the caller keeps what it already had — Forge's own
+     * {@code Property.getBoolean} treats a malformed value the same way.
+     *
+     * @param value    the text after the {@code =}
+     * @param fallback the value to report when there is no text at all
+     * @return the parsed value, {@code fallback} for {@code null}, or
+     *         {@code null} when the text is not true/false
+     */
+    private static Boolean readBoolean(String value, boolean fallback) {
+        if (value == null) {
+            return Boolean.valueOf(fallback);
+        }
+        if ("true".equalsIgnoreCase(value)) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(value)) {
+            return Boolean.FALSE;
+        }
+        return null;
     }
 
     public boolean masterEnabled() {

@@ -5,8 +5,9 @@ package com.jointspaceforce.patchee.features;
  *
  * <p>
  * GregTech keeps pollution entirely on the server: production, accumulation,
- * decay, chunk storage, damage, sour rain, vegetation checks, scanners, WAILA
- * and every machine reading are all server-side numbers. What a player
+ * decay, chunk storage, damage, sour rain, vegetation checks, scanners, the
+ * pollution detector and every machine reading are all server-side numbers.
+ * What a player
  * <i>sees</i> is a separate path: the server sends one number per chunk to each
  * nearby client through a single packet, {@code gregtech.api.net.GTPacketPollution},
  * and the client's {@code PollutionRenderer} turns that one number into fog, a
@@ -60,6 +61,21 @@ public final class PollutionNoVisuals {
      */
     static volatile boolean patchApplied = false;
 
+    /**
+     * Whether the switches were off when the packet class loaded, so the class
+     * was deliberately handed back untouched.
+     *
+     * <p>
+     * Set by
+     * {@link com.jointspaceforce.patchee.asm.PollutionNoVisualsTransformer}
+     * when it sees its target class and decides not to patch it. Without this
+     * flag the boot line cannot tell "you switched it off before the class
+     * loaded" from "GregTech's class has a shape this patch does not know", and
+     * would print a misleading error on a config change. Never un-set during a
+     * boot: the class loads once.
+     */
+    static volatile boolean loadTimeDisabled = false;
+
     private PollutionNoVisuals() {}
 
     /**
@@ -75,6 +91,22 @@ public final class PollutionNoVisuals {
     /** True when the packet class was really patched this boot (the ARMED gate). */
     public static boolean patchApplied() {
         return patchApplied;
+    }
+
+    /**
+     * Publish that the packet class loaded while the switches were off, so it
+     * was handed back untouched on purpose. Called by
+     * {@link com.jointspaceforce.patchee.asm.PollutionNoVisualsTransformer}'s
+     * switch branch, so the boot line can name the real reason instead of
+     * reporting a shape mismatch.
+     */
+    public static void markLoadTimeDisabled() {
+        loadTimeDisabled = true;
+    }
+
+    /** True when the class-load switch was off, so nothing was changed. */
+    public static boolean loadTimeDisabled() {
+        return loadTimeDisabled;
     }
 
     /**

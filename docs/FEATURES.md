@@ -43,7 +43,7 @@ Server-side only. A team gets its best member's own per-rank chunk limit, never 
 
 ## GregTech pollution
 
-Server-side only. Players see no pollution smog, no fog, no fog colour shift, no smoke particles and no grass/leaf/water/flower tints. Pollution itself keeps running in full — production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, WAILA and every machine reading it keep their exact numbers — because only the one number GregTech sends each client about a chunk is rewritten to 0. It does not edit `Pollution.cfg` and does not touch the world. Tradeoff: anything a client reads from that number now reads 0, so a client-side pollution readout shows nothing. Switch: `enablePollutionNoVisuals`.
+Server-side only. Players see no pollution smog, no fog, no fog colour shift, no smoke particles and no grass/leaf/water/flower tints. Pollution itself keeps running in full — production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, the pollution detector and every machine reading it keep their exact numbers — because only the one number GregTech sends each client about a chunk is rewritten to 0. It does not edit `Pollution.cfg` and does not touch the world. Tradeoff: anything a client reads from that number now reads 0, so a client-side pollution readout shows nothing. Switch: `enablePollutionNoVisuals`.
 
 ## Enriched fertilizer
 

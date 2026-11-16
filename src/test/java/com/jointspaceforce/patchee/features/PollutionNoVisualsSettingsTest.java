@@ -59,6 +59,32 @@ class PollutionNoVisualsSettingsTest {
     }
 
     @Test
+    void aValueThatIsNotTrueOrFalseKeepsTheDefault() {
+        PollutionNoVisualsSettings settings = PollutionNoVisualsSettings
+            .parse("B:enabled=true\nB:enablePollutionNoVisuals=maybe\n");
+        assertTrue(settings.masterEnabled());
+        assertTrue(settings.enabled(), "a typo must not switch the feature off");
+
+        PollutionNoVisualsSettings masterTypo = PollutionNoVisualsSettings
+            .parse("B:enabled=yes\nB:enablePollutionNoVisuals=true\n");
+        assertTrue(masterTypo.masterEnabled(), "a typo must not switch the master off");
+        assertTrue(masterTypo.enabled());
+    }
+
+    @Test
+    void trueAndFalseAreHonouredInAnyCase() {
+        PollutionNoVisualsSettings off = PollutionNoVisualsSettings
+            .parse("B:enabled=True\nB:enablePollutionNoVisuals=FALSE\n");
+        assertTrue(off.masterEnabled());
+        assertFalse(off.enabled());
+
+        PollutionNoVisualsSettings on = PollutionNoVisualsSettings
+            .parse("B:enabled=TRUE\nB:enablePollutionNoVisuals=false\n");
+        assertTrue(on.masterEnabled());
+        assertFalse(on.enabled());
+    }
+
+    @Test
     void shouldPatchIsThePlainAndOfBothSwitches() {
         assertTrue(PollutionNoVisuals.shouldPatch(true, true));
         assertFalse(PollutionNoVisuals.shouldPatch(true, false));

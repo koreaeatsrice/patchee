@@ -10,6 +10,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
@@ -40,6 +41,17 @@ import com.jointspaceforce.patchee.asm.PollutionNoVisualsTransformer;
 class PollutionNoVisualsPatchTest {
 
     private static final String OWNER = PollutionNoVisualsPatch.TARGET_INTERNAL_NAME;
+
+    /**
+     * The two one-way flags live on a static holder, so a test that leaves them
+     * set would change what the next one sees. Reset before every test, not
+     * after, so test order can never matter.
+     */
+    @BeforeEach
+    void resetFeatureFlags() {
+        PollutionNoVisuals.patchApplied = false;
+        PollutionNoVisuals.loadTimeDisabled = false;
+    }
 
     /** How the constructor's pollution store is fed, so a wrong shape can be built. */
     private enum StoreSource {
@@ -237,29 +249,54 @@ class PollutionNoVisualsPatchTest {
      * The transformer is the only thing that may set the patch-success flag the
      * ARMED line is gated on: a recognised class flips it, garbage and a
      * non-target name do not.
+     *
+     * <p>
+     * The switches are handed in as parsed text, so this never reads the
+     * developer's own {@code config/patchee.cfg} — the old form went through
+     * {@code transform}, which read the real file and made the result depend on
+     * one person's machine.
      */
     @Test
     void theTransformerFailsSoftAndPublishesSuccessOnlyOnARealPatch() {
         PollutionNoVisualsTransformer transformer = new PollutionNoVisualsTransformer();
 
         byte[] garbage = new byte[] { 1, 2, 3, 4, 5 };
-        PollutionNoVisuals.patchApplied = false;
-        assertSame(
-            garbage,
-            transformer.transform(PollutionNoVisualsPatch.TARGET_CLASS, PollutionNoVisualsPatch.TARGET_CLASS, garbage));
+        assertSame(garbage, transformer.patch(garbage, armedSettings()));
         assertFalse(PollutionNoVisuals.patchApplied(), "garbage must not arm the feature");
+        assertFalse(PollutionNoVisuals.loadTimeDisabled());
 
         byte[] other = syntheticClass(StoreSource.INT_ARGUMENT);
         assertSame(other, transformer.transform("com.example.Other", "com.example.Other", other));
         assertFalse(PollutionNoVisuals.patchApplied());
 
-        PollutionNoVisuals.patchApplied = false;
-        byte[] patched = transformer.transform(
-            PollutionNoVisualsPatch.TARGET_CLASS,
-            PollutionNoVisualsPatch.TARGET_CLASS,
-            syntheticClass(StoreSource.INT_ARGUMENT));
+        byte[] patched = transformer.patch(syntheticClass(StoreSource.INT_ARGUMENT), armedSettings());
         assertTrue(PollutionNoVisuals.patchApplied());
+        assertFalse(PollutionNoVisuals.loadTimeDisabled());
         assertTrue(storesZero(patched));
+    }
+
+    /**
+     * Switched off when the class loaded: the bytes come back untouched, nothing
+     * is armed, and the flag the boot line reads says the switch — not a bad
+     * shape — is why.
+     */
+    @Test
+    void aClassThatLoadedWhileSwitchedOffIsHandedBackAndReportedAsSuch() {
+        PollutionNoVisualsTransformer transformer = new PollutionNoVisualsTransformer();
+        byte[] original = syntheticClass(StoreSource.INT_ARGUMENT);
+
+        byte[] untouched = transformer
+            .patch(original, PollutionNoVisualsSettings.parse("B:enabled=true\nB:enablePollutionNoVisuals=false\n"));
+
+        assertSame(original, untouched, "the class must come back as the same array instance");
+        assertFalse(storesZero(original), "the constructor still loads its int argument");
+        assertFalse(PollutionNoVisuals.patchApplied(), "a switched-off class must not arm the feature");
+        assertTrue(PollutionNoVisuals.loadTimeDisabled(), "the boot line needs the real reason");
+    }
+
+    /** Both switches on, from text. */
+    private static PollutionNoVisualsSettings armedSettings() {
+        return PollutionNoVisualsSettings.parse("B:enabled=true\nB:enablePollutionNoVisuals=true\n");
     }
 
     /** Loads the bytes into a fresh class loader (one class name per loader). */

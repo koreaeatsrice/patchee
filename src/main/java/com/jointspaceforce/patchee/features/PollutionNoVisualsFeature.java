@@ -12,8 +12,9 @@ import com.jointspaceforce.patchee.core.Step;
  *
  * <p>
  * Pollution itself is untouched: production, accumulation, decay, chunk
- * storage, damage, sour rain, vegetation checks, scanners, WAILA and every
- * machine that reads pollution all keep working on their exact numbers. What
+ * storage, damage, sour rain, vegetation checks, scanners, the pollution
+ * detector and every machine that reads pollution all keep working on their
+ * exact numbers. What
  * changes is only what a player's screen is told: GregTech sends one number per
  * chunk to each nearby client in {@code gregtech.api.net.GTPacketPollution}, and
  * the client's {@code PollutionRenderer} draws the smog, the fog, the fog colour
@@ -54,7 +55,8 @@ public final class PollutionNoVisualsFeature implements Feature {
         return "Feature: players see no pollution smog, no fog colour shift, no smoke particles and no "
             + "grass/leaf/water/flower tints, because the one number GregTech sends each client about a chunk is "
             + "rewritten to 0 as the packet is built. Pollution production, accumulation, decay, chunk storage, "
-            + "damage, sour rain, vegetation checks, scanners, WAILA and every machine reading pollution are all "
+            + "damage, sour rain, vegetation checks, scanners, the pollution detector and every machine reading "
+            + "pollution are all "
             + "server-side and stay exactly as they were. This does not edit Pollution.cfg, does not lower or "
             + "remove pollution and does not touch the game world. Tradeoff: anything a CLIENT reads from that "
             + "number now reads 0 — a client-side pollution readout or debug display built on GregTech's map shows "
@@ -103,9 +105,22 @@ public final class PollutionNoVisualsFeature implements Feature {
      * transformer hands an unrecognised shape back untouched and logs its own
      * ERROR. In that case this step logs a plain ERROR that the feature is NOT
      * armed and writes no armed line.
+     *
+     * <p>
+     * A class that loaded while the switches were off is a third case:
+     * {@link PollutionNoVisuals#loadTimeDisabled()} says so, and this step logs
+     * an INFO line telling the operator to restart instead of claiming the shape
+     * was wrong.
      */
     private Step configureAndArm() {
         return ctx -> {
+            if (PollutionNoVisuals.loadTimeDisabled()) {
+                ctx.log()
+                    .info(
+                        "[PollutionNoVisuals] switched off when GregTech's packet class loaded — nothing was changed; "
+                            + "restart the server after turning enablePollutionNoVisuals back on");
+                return Outcome.SKIPPED;
+            }
             if (!PollutionNoVisuals.patchApplied()) {
                 ctx.log()
                     .error(
@@ -119,7 +134,8 @@ public final class PollutionNoVisualsFeature implements Feature {
                 .info(
                     "[PollutionNoVisuals] armed — every pollution value GregTech sends to clients is now 0, so players "
                         + "see no pollution smog, fog, particles or grass/leaf/water/flower tints; the server keeps the "
-                        + "real pollution numbers for every damage, sour-rain, vegetation, scanner and WAILA check");
+                        + "real pollution numbers for every damage, sour-rain, vegetation, scanner and pollution "
+                        + "detector check");
             return Outcome.APPLIED;
         };
     }
