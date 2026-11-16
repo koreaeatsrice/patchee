@@ -5,7 +5,7 @@ package com.jointspaceforce.patchee.features;
  *
  * <p>
  * IC2's Quantum Chestplate has two ways to fly. With hover mode <b>off</b> the
- * suit rises at up to {@value #ASCENT_CEILING} blocks a tick (the literal
+ * suit rises at up to {@value #IC2_JETPACK_CEILING} blocks a tick (the literal
  * {@code 0.6} in {@code ItemArmorQuantumSuit.useJetpack}). With hover mode
  * <b>on</b>, the same method picks a vertical target {@code v}, then clamps the
  * motion to it:
@@ -17,17 +17,27 @@ package com.jointspaceforce.patchee.features;
  * </pre>
  *
  * <p>
- * Three defects follow from that order, and each has its own switch:
+ * Those three hover branches are what this patch changes, and each has its own
+ * switch:
  *
  * <ol>
- * <li><b>Hover climb is one sixth of normal flight.</b> Holding jump while
- * hovering rises at {@value #IC2_HOVER_JUMP_CLAMP} a tick instead of the
- * {@value #ASCENT_CEILING} the same method already allows with hover off.
- * {@link #hoverLiftClamp()} is the replacement.</li>
+ * <li><b>Hover climb and sink did not match the sideways speed.</b> Stock IC2
+ * climbs at {@value #IC2_HOVER_JUMP_CLAMP} with jump held and sinks at
+ * {@value #IC2_SNEAK_CLAMP} with sneak held — equal to each other in magnitude, but
+ * not to the {@value #HOVER_HORIZONTAL_SPEED} a tick its own hover flight already
+ * moves the player sideways at. The previous release's {@code 0.6} climb is what
+ * broke the 0.1 / -0.1 pairing. The new rule is one speed for all three: jump rises
+ * at {@value #HOVER_HORIZONTAL_SPEED}, sneak sinks at the same magnitude. Up and
+ * down are deliberately equal, and equal to sideways. <b>No-input hover is left at stock {@value
+ * #HOVER_DEFAULT_TARGET}</b>, so hovering without a key still hovers. IC2's
+ * horizontal axis has no ramp of its own — its speed comes from vanilla adding a
+ * constant each tick and multiplying by air drag — so the constant is applied
+ * directly here; IC2's existing {@code oldMotionY} clamp still restores a larger
+ * motion already in progress, which is what damps it instead of cutting it dead.</li>
  * <li><b>Shift + space drifts upward.</b> The jump test runs after the sneak
  * test, so holding both keys gives the jump target and the player climbs. The
  * two-key case must win over the jump branch;
- * {@link #hoverVerticalTarget(boolean, boolean, float)} is the decision table,
+ * {@link #hoverVerticalTarget(boolean, boolean, boolean)} is the decision table,
  * and the bytecode patch gets the same result by writing 0.0 over the jump
  * target after the jump-only store (see {@code ChestplateFlightPatch}).</li>
  * <li><b>Standing on the ground counts as flying.</b> The method ends by clearing
@@ -67,20 +77,55 @@ public final class ChestplateFlight {
     public static final boolean DEFAULT_ENABLED = true;
 
     /**
-     * The per-tick climb ceiling normal (non-hover) jetpack flight already uses:
-     * {@code Math.min(motionY + power * 0.2f, 0.6000000238418579d)}. Hover mode
-     * must reach the same number instead of its own clamp.
+     * The forward argument IC2 hands vanilla's {@code moveFlying} while hovering,
+     * with load factor 1: {@code EntityPlayer.func_70060_a(0.0f, 0.4f * load *
+     * 0.5f * 2.0f, 0.02f)}, so {@code 0.4f * 0.5f * 2.0f = 0.4f}. The
+     * {@code 0.5f} is IC2's hover-mode base, {@code 3.5f} is its normal-flight
+     * base.
      */
-    public static final float ASCENT_CEILING = 0.6f;
+    public static final float HORIZONTAL_FORWARD = 0.4f * 0.5f * 2.0f;
+
+    /** The third argument of that same call: the per-tick push {@code 0.02f}. */
+    public static final float HORIZONTAL_FRICTION = 0.02f;
+
+    /** Vanilla's horizontal air drag applied to the player every tick: {@code 0.91f}. */
+    public static final float AIR_DRAG = 0.91f;
+
+    /**
+     * The speed IC2's hover flight already moves the player sideways at, derived
+     * from its own bytecode: vanilla's {@code moveFlying} adds {@code friction *
+     * forward / max(1, length)} = {@code 0.02f * 0.4f = 0.008f} to
+     * {@code motionX}/{@code motionZ} each tick and then multiplies by
+     * {@value #AIR_DRAG}, so the steady state is {@code 0.008f / (1 - 0.91f)}.
+     * IC2 has no ramp of its own; this is the accumulation.
+     *
+     * <p>
+     * The match only holds at load factor 1 — full charge and normal altitude. The
+     * vertical target this patch writes is fixed, while IC2 scales its own sideways
+     * speed by {@code load}, so the two differ by {@code 1/load}: 2.00x at 2.5%
+     * charge, 2.08x a dozen blocks under the build limit. Below {@code load} ~0.401
+     * the thrust {@code 0.2*load} a tick cannot reach 0.0889, so the clamp stops
+     * engaging and the climb turns into a fall (~0.98 a tick at 1.5% charge).
+     */
+    public static final float HOVER_HORIZONTAL_SPEED = HORIZONTAL_FRICTION * HORIZONTAL_FORWARD / (1.0f - AIR_DRAG);
+
+    /**
+     * The per-tick climb ceiling normal (non-hover) jetpack flight uses:
+     * {@code Math.min(motionY + power * 0.2f, 0.6000000238418579d)}. This patch
+     * no longer writes it anywhere — hover mode gets
+     * {@link #HOVER_HORIZONTAL_SPEED} instead — but the method must still carry
+     * exactly one such literal, which is part of the shape check.
+     */
+    public static final float IC2_JETPACK_CEILING = 0.6f;
 
     /** IC2's own hover+jump clamp ({@code ldc 0.1f}), kept for the log lines. */
     public static final float IC2_HOVER_JUMP_CLAMP = 0.1f;
 
+    /** IC2's own hover+sneak clamp ({@code ldc -0.1f}), kept for the log lines. */
+    public static final float IC2_SNEAK_CLAMP = -0.1f;
+
     /** IC2's hover target with no key held ({@code ldc -0.025f}). */
     public static final float HOVER_DEFAULT_TARGET = -0.025f;
-
-    /** IC2's hover target while sneaking ({@code ldc -0.1f}). */
-    public static final float SNEAK_TARGET = -0.1f;
 
     /** Shift + space: the vertical target is 0.0; a climb already in progress damps to it. */
     public static final float HOLD_ALTITUDE_TARGET = 0.0f;
@@ -92,22 +137,32 @@ public final class ChestplateFlight {
     private ChestplateFlight() {}
 
     /**
-     * The one decision behind the vertical fix: the clamp hover mode applies
-     * while the jump key is held is the normal ascent ceiling. Pure.
+     * The clamp hover mode applies while the jump key is held: IC2's own hover
+     * horizontal speed, so the climb matches the sideways flight. Pure.
      */
-    public static float hoverLiftClamp() {
-        return ASCENT_CEILING;
+    public static float hoverAscentTarget() {
+        return HOVER_HORIZONTAL_SPEED;
+    }
+
+    /**
+     * The clamp hover mode applies while the sneak key is held: the exact
+     * negation of {@link #hoverAscentTarget()}, so up and down are equal. Pure.
+     */
+    public static float hoverDescentTarget() {
+        return -HOVER_HORIZONTAL_SPEED;
     }
 
     /**
      * The whole hover vertical-target table. Pure.
      *
      * <pre>
-     * sneak  jump   target
-     *  no     no    -0.025   (IC2's default sink; Hodgepodge's optional fix makes it 0.0)
-     *  yes    no    -0.1     (sink faster)
-     *  no     yes   ascentTarget (0.6 with the vertical fix on, IC2's 0.1 with it off)
-     *  yes    yes   0.0      (hold: target 0.0, an in-progress climb damps to it)
+     * sneak  jump   verticalFix   target
+     *  no     no      either      -0.025  (IC2's default sink; Hodgepodge's optional fix makes it 0.0)
+     *  yes    no       on         -0.0888889 (hoverDescentTarget: sink as fast as sideways)
+     *  yes    no       off        -0.1    (IC2's stock sneak sink)
+     *  no     yes      on         +0.0888889 (hoverAscentTarget: rise as fast as sideways)
+     *  no     yes      off        0.1     (IC2's stock hover climb)
+     *  yes    yes      either     0.0     (hold: target 0.0, an in-progress climb damps to it)
      * </pre>
      *
      * The two-key case is decided first in this table because it must win over the
@@ -115,20 +170,20 @@ public final class ChestplateFlight {
      * overwriting the jump target with 0.0 after the jump-only store; no
      * instructions are reordered.
      *
-     * @param sneak        sneak key held
-     * @param jump         jump key held
-     * @param ascentTarget what a jump-only hover should climb at — the value the
-     *                     vertical fix (or stock IC2) puts in the jump branch
+     * @param sneak       sneak key held
+     * @param jump        jump key held
+     * @param verticalFix true when this patch's symmetric hover speeds are in the
+     *                    class; false for stock IC2's 0.1 / -0.1 pair
      */
-    public static float hoverVerticalTarget(boolean sneak, boolean jump, float ascentTarget) {
+    public static float hoverVerticalTarget(boolean sneak, boolean jump, boolean verticalFix) {
         if (sneak && jump) {
             return HOLD_ALTITUDE_TARGET;
         }
         if (jump) {
-            return ascentTarget;
+            return verticalFix ? hoverAscentTarget() : IC2_HOVER_JUMP_CLAMP;
         }
         if (sneak) {
-            return SNEAK_TARGET;
+            return verticalFix ? hoverDescentTarget() : IC2_SNEAK_CLAMP;
         }
         return HOVER_DEFAULT_TARGET;
     }
@@ -139,10 +194,14 @@ public final class ChestplateFlight {
      *
      * <p>
      * {@code motionY <= 0} is the "not asking to ascend" half. It is read from
-     * the player's motion rather than the jump key because the motion is already
-     * positive on the very tick vanilla applies a jump, so a jump leaves the
-     * guard inert; the key also reaches the server, but one tick late and only
-     * after it changes.
+     * the player's motion rather than the jump key because the armour tick runs
+     * <b>before</b> the jump and gravity step: {@code EntityPlayer.onLivingUpdate}
+     * calls {@code inventory.decrementAnimations()} at {@code EntityPlayer.java:610},
+     * then {@code super.onLivingUpdate()} at {@code :613}, which is where {@code jump()}
+     * and gravity run. On the takeoff tick {@code motionY} is still 0, so the guard
+     * does fire there, and lift-off comes from vanilla's own 0.42 jump impulse, not
+     * from the jetpack; the jetpack takes over on the next tick. The key also reaches
+     * the server, but one tick late and only after it changes.
      */
     public static boolean guardFires(boolean onGround, double motionY) {
         return onGround && motionY <= 0.0;

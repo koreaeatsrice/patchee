@@ -44,12 +44,17 @@ import org.objectweb.asm.tree.VarInsnNode;
  * sequence this patch keys on — the shipped {@code gravisuite-2.0.3} order
  * ({@code javap -p -c gravisuite.ItemAdvancedJetPack#useJetpack}: ceiling at
  * offset 319, jump clamp {@code 0.2d} at 349, sneak clamp {@code -0.2d} at 365,
- * clamp chain at 443-472) — and pin:
+ * clamp chain at 443-472, boost {@code 2.0d} doubling) — and pin:
  *
  * <ul>
- * <li>the stock shape is patched: the jump clamp becomes 0.6, the shift+space
- * branch writes 0.0, the ground guard is at the top, and the {@code -0.2d}
- * descent is untouched;</li>
+ * <li>the stock shape is patched: the jump clamp becomes {@code +0.1155556} and
+ * the descent {@code -0.1155556} is injected as a second store right after the
+ * stock {@code -0.2d} store — exact opposites, each stored to the clamp local
+ * exactly once — while the shift+space branch writes 0.0, the ground guard is at
+ * the top, and the 0.6 ceiling and the boost 2.0 are untouched;</li>
+ * <li>the stock {@code -0.2d} literal survives, because Gravitation-Suite-Neo
+ * 1.3.16 matches it by value; a class where another mixin already turned that
+ * store into an expression gets the vertical edits skipped, guard only;</li>
  * <li>each of the three switches is independent;</li>
  * <li>idempotence, and refusal of every other shape;</li>
  * <li>the patched bytes still pass the JVM verifier (both injected frames);</li>
@@ -76,7 +81,7 @@ class GraviSuiteFlightPatchTest {
     // ---- the stock shape ---------------------------------------------------
 
     @Test
-    void patchesTheStockShapeAndLiftsOnlyTheJumpClamp() {
+    void patchesTheStockShapeAndMakesTheHoverSymmetric() {
         byte[] original = graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d);
         GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(original, true, true, true);
 
@@ -87,17 +92,136 @@ class GraviSuiteFlightPatchTest {
         assertTrue(result.guardApplied(), "the guard must be reported as applied");
 
         MethodNode method = method(result.bytes());
-        // the 0.2 descent is gone; the 0.6 ceiling and the lifted clamp are the
-        // only two 0.6 doubles left, and exactly one of them is the clamp store
+        // both stock key clamps are gone, replaced by one value and its exact negation
         assertEquals(0, count(method, 0.2d), "the stock jump clamp is still there: " + doubleConstants(method));
+        // DELIBERATE: the stock -0.2d literal stays, because Gravitation-Suite-Neo's
+        // ModifyExpressionValue(at=CONSTANT, doubleValue=-0.2) matches it by value.
+        assertEquals(1, count(method, -0.2d), "the stock sneak literal must survive: " + doubleConstants(method));
         assertEquals(
-            2,
+            1,
+            storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "exactly one ascent value must be followed by DSTORE: " + doubleConstants(method));
+        assertEquals(
+            1,
+            storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "exactly one descent value must be followed by DSTORE: " + doubleConstants(method));
+
+        // the ceiling and the boost double are left exactly as GraviSuite ships them
+        assertEquals(
+            1,
             count(method, GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT),
-            "expected the ceiling plus the lifted clamp: " + doubleConstants(method));
-        assertEquals(1, clampStores(method), "exactly one 0.6 store to the clamp local");
-        assertEquals(1, count(method, -0.2d), "the sneak descent moved: " + doubleConstants(method));
+            "the 0.6 ceiling must survive exactly once: " + doubleConstants(method));
+        assertEquals(1, count(method, 2.0d), "the boost key's 2.0 must survive: " + doubleConstants(method));
         assertEquals(1, holdStores(method), "the shift+space target is missing: " + doubleConstants(method));
         assertTrue(GraviSuiteFlightPatch.hasGuardHook(method), "the ground guard was not injected");
+    }
+
+    @Test
+    void theTwoHoverClampsAreExactOppositesReadBackFromTheBytes() {
+        MethodNode method = method(
+            GraviSuiteFlightPatch
+                .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, false, false)
+                .bytes());
+        // One side is the double stored at the jump site, the other the double
+        // stored at the injected descent site. Neither comes from a constant or from
+        // the other side, so changing only one of the two writes fails this test.
+        double ascent = jumpClampStoredValue(method);
+        double descent = injectedDescentValue(method);
+        assertEquals(1, storesOf(method, ascent), "exactly one ascent store: " + doubleConstants(method));
+        assertEquals(1, storesOf(method, descent), "exactly one descent store: " + doubleConstants(method));
+        assertEquals(
+            0,
+            Double.compare(ascent, -descent),
+            "up and down must be equal in magnitude, read from the bytes: " + ascent + " / " + descent);
+        assertTrue(ascent > 0.0d && descent < 0.0d, "jump goes up, sneak goes down");
+    }
+
+    @Test
+    void theDerivedNumbersArePinnedByBareLiterals() {
+        assertEquals(0.52f, GraviSuiteFlightPatch.HORIZONTAL_FORWARD, "0.4f * 0.65f * 2.0f at load 1");
+        assertEquals(0.02f, GraviSuiteFlightPatch.HORIZONTAL_FRICTION);
+        assertEquals(0.91f, GraviSuiteFlightPatch.AIR_DRAG);
+        MethodNode method = method(
+            GraviSuiteFlightPatch
+                .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, false, false)
+                .bytes());
+        // Bare literals, not the constants: a wrong 0.65f base or a wrong drag fails here.
+        assertEquals(0.11555557698011398d, jumpClampStoredValue(method), 0.0d, "the written rise");
+        assertEquals(-0.11555557698011398d, injectedDescentValue(method), 0.0d, "the written sink");
+    }
+
+    @Test
+    void theStockSinkLiteralSurvivesSoNeoStillFindsIt() {
+        MethodNode method = method(
+            GraviSuiteFlightPatch
+                .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, true, true)
+                .bytes());
+        // DELIBERATE: Gravitation-Suite-Neo 1.3.16 ships on both sides of GTNH 2.9.0
+        // with a ModifyExpressionValue on this method at CONSTANT with
+        // doubleValue=-0.2. Consuming that literal would leave Neo's injector with no
+        // target, so the stock store stays and the descent is a second store.
+        assertEquals(1, count(method, -0.2d), "Neo's matcher target was consumed: " + doubleConstants(method));
+        assertEquals(-0.2d, stockSneakStoredValue(method), 0.0d, "the stock store must stay intact");
+        assertEquals(-0.11555557698011398d, injectedDescentValue(method), 0.0d, "the injected sink store is missing");
+        assertEquals(
+            1,
+            storesOf(method, -0.11555557698011398d),
+            "exactly one injected sink store: " + doubleConstants(method));
+    }
+
+    @Test
+    void theHoldBranchComesAfterTheInjectedDescentStore() {
+        MethodNode method = method(
+            GraviSuiteFlightPatch
+                .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, false, true)
+                .bytes());
+        List<AbstractInsnNode> insns = realInsns(method);
+        int stock = -1;
+        for (int i = 0; i < insns.size(); i++) {
+            AbstractInsnNode insn = insns.get(i);
+            if (insn instanceof LdcInsnNode && ((LdcInsnNode) insn).cst instanceof Double
+                && ((Double) ((LdcInsnNode) insn).cst).doubleValue() == -0.2d) {
+                stock = i;
+            }
+        }
+        assertTrue(stock > 0, "no stock -0.2d store in the method");
+        // v = -0.2d; v = -0.1155556; if (isJumpKeyDown) v = 0.0d;
+        assertEquals(
+            Opcodes.DSTORE,
+            insns.get(stock + 1)
+                .getOpcode());
+        assertTrue(insns.get(stock + 2) instanceof LdcInsnNode, "the injected descent value is missing");
+        assertEquals(-0.11555557698011398d, ((Double) ((LdcInsnNode) insns.get(stock + 2)).cst).doubleValue(), 0.0d);
+        assertEquals(
+            Opcodes.DSTORE,
+            insns.get(stock + 3)
+                .getOpcode());
+        assertEquals(
+            Opcodes.GETSTATIC,
+            insns.get(stock + 4)
+                .getOpcode(),
+            "the hold branch must follow the injected descent store");
+        assertEquals(
+            Opcodes.POP,
+            insns.get(stock + 5)
+                .getOpcode());
+        assertEquals(
+            Opcodes.ALOAD,
+            insns.get(stock + 6)
+                .getOpcode());
+        assertTrue(insns.get(stock + 7) instanceof MethodInsnNode, "no jump query in the hold branch");
+        assertEquals(GraviSuiteFlightPatch.JUMP_KEY, ((MethodInsnNode) insns.get(stock + 7)).name);
+        assertEquals(
+            Opcodes.IFEQ,
+            insns.get(stock + 8)
+                .getOpcode());
+        assertTrue(insns.get(stock + 9) instanceof LdcInsnNode, "no hold target");
+        assertEquals(0.0d, ((Double) ((LdcInsnNode) insns.get(stock + 9)).cst).doubleValue(), 0.0d);
+        assertEquals(
+            Opcodes.DSTORE,
+            insns.get(stock + 10)
+                .getOpcode(),
+            "the hold store must be the last write, so it wins over the descent");
     }
 
     @Test
@@ -233,8 +357,16 @@ class GraviSuiteFlightPatchTest {
         assertEquals(1, result.sites());
         MethodNode method = method(result.bytes());
         assertFalse(GraviSuiteFlightPatch.hasGuardHook(method));
-        assertEquals(1, clampStores(method), "the jump clamp was not lifted");
+        assertEquals(
+            1,
+            storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "the jump clamp was not lifted");
+        assertEquals(
+            1,
+            storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "the sneak clamp was not lifted");
         assertEquals(0, count(method, 0.2d));
+        assertEquals(1, count(method, -0.2d), "the stock sink literal must survive");
         assertEquals(0, holdStores(method), "the hold branch leaked in");
     }
 
@@ -271,7 +403,14 @@ class GraviSuiteFlightPatchTest {
             GraviSuiteFlightPatch
                 .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, false, true)
                 .bytes());
-        assertEquals(1, clampStores(method), "jump alone must climb at the ceiling");
+        assertEquals(
+            1,
+            storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "jump alone must rise at the hover speed");
+        assertEquals(
+            1,
+            storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "sneak alone must sink at the hover speed");
         assertEquals(1, holdStores(method), "sneak+jump must hold altitude");
         assertEquals(0, count(method, 0.2d));
     }
@@ -295,7 +434,14 @@ class GraviSuiteFlightPatchTest {
         assertEquals(GraviSuiteFlightPatch.State.ALREADY_PATCHED, twice.state(), twice.detail());
         assertSame(once, twice.bytes());
         MethodNode method = method(once);
-        assertEquals(1, clampStores(method), "the 0.6 clamp was duplicated");
+        assertEquals(
+            1,
+            storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "the ascent value was duplicated");
+        assertEquals(
+            1,
+            storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "the descent value was duplicated");
         assertEquals(1, guardHooks(method), "the guard was duplicated");
         assertEquals(1, holdStores(method), "the hold store was duplicated");
     }
@@ -312,9 +458,66 @@ class GraviSuiteFlightPatchTest {
         assertTrue(result.holdApplied(), "the hold must be reported as applied");
         assertTrue(result.guardApplied(), "the guard must be reported as applied");
         MethodNode method = method(result.bytes());
-        assertEquals(1, clampStores(method));
+        assertEquals(1, storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED));
+        assertEquals(1, storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED));
         assertEquals(1, guardHooks(method));
         assertEquals(1, holdStores(method));
+        // Counting is not enough: the hold has to run AFTER the injected sink, or the
+        // sink overwrites the 0.0 and sneak+space goes back to sinking.
+        assertEquals(
+            "stock,descent,hold-branch,hold",
+            sneakBlockOrder(method),
+            "the hold must be placed after the injected descent store");
+    }
+
+    @Test
+    void theHoldGoesAfterTheInjectedSinkWhenOnlyTheHoldIsMissing() {
+        // The regression this pins: the first pass only lifted, so the class already
+        // carries the descent store, and a later pass adds only the hold. Inserting
+        // the hold straight after the stock sneak store (the old behaviour) put it in
+        // FRONT of the descent, so the descent ran last, overwrote the 0.0 hold
+        // target with -0.1155556, and sneak+space sank at full hover speed.
+        byte[] liftOnly = GraviSuiteFlightPatch
+            .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), true, false, false)
+            .bytes();
+        assertEquals(
+            "stock,descent",
+            sneakBlockOrder(method(liftOnly)),
+            "the first pass must leave the descent store inside the sneak block");
+
+        GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(liftOnly, false, false, true);
+        assertEquals(GraviSuiteFlightPatch.State.PATCHED, result.state(), result.detail());
+        assertTrue(result.holdApplied(), "the hold must be reported as applied");
+        assertFalse(result.liftApplied(), "the lift was already there");
+        assertEquals(
+            "stock,descent,hold-branch,hold",
+            sneakBlockOrder(method(result.bytes())),
+            "the hold must be placed after the injected descent store");
+
+        // ... and it stays that way: one more pass changes nothing.
+        GraviSuiteFlightPatch.Result again = GraviSuiteFlightPatch.apply(result.bytes(), true, false, true);
+        assertEquals(GraviSuiteFlightPatch.State.ALREADY_PATCHED, again.state(), again.detail());
+        assertEquals("stock,descent,hold-branch,hold", sneakBlockOrder(method(result.bytes())));
+    }
+
+    @Test
+    void aStrayHoldIsStillFollowedByTheInjectedSinkNeverPrecededByIt() {
+        // The other half-state: the hold is already in the class and the descent is
+        // missing. The descent goes in right after the stock store, which is in front
+        // of the hold, so the pair comes out in order without the hold being moved.
+        byte[] holdOnly = GraviSuiteFlightPatch
+            .apply(graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.2d), false, false, true)
+            .bytes();
+        assertEquals("stock,hold-branch,hold", sneakBlockOrder(method(holdOnly)));
+
+        GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(holdOnly, true, false, false);
+        assertEquals(GraviSuiteFlightPatch.State.PATCHED, result.state(), result.detail());
+        assertTrue(result.liftApplied());
+        assertFalse(result.holdApplied(), "the hold was already there");
+        assertEquals(
+            "stock,descent,hold-branch,hold",
+            sneakBlockOrder(method(result.bytes())),
+            "the sink must land in front of the hold");
     }
 
     // ---- another mixin already rewrote shift+space --------------------------
@@ -333,7 +536,14 @@ class GraviSuiteFlightPatchTest {
 
         MethodNode method = method(result.bytes());
         assertTrue(GraviSuiteFlightPatch.hasGuardHook(method), "the ground guard was not injected");
-        assertEquals(0, clampStores(method), "the jump clamp must stay stock");
+        assertEquals(
+            0,
+            storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "no ascent value may be written");
+        assertEquals(
+            0,
+            storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "no descent value may be written");
         assertEquals(1, count(method, 0.2d), "the jump clamp is still 0.2d: " + doubleConstants(method));
         assertEquals(0, holdStores(method), "the shift+space branch leaked in without a clamp site");
         assertTrue(
@@ -365,7 +575,47 @@ class GraviSuiteFlightPatchTest {
         assertEquals(GraviSuiteFlightPatch.State.ALREADY_PATCHED, result.state(), result.detail());
         assertSame(original, result.bytes(), "raising the climb alone would turn the other mixin's hold into a climb");
         assertTrue(result.skipped(), "the refusal to raise the climb must be reported");
+        assertEquals(0, storesOf(method(result.bytes()), GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED));
         assertEquals(1, count(method(result.bytes()), 0.2d), "the jump clamp must still be stock 0.2d");
+    }
+
+    // ---- Gravitation-Suite-Neo ran first -----------------------------------
+
+    @Test
+    void neoFirstLeavesNoStockSneakSiteSoTheVerticalEditsAreSkipped() {
+        // Neo's ModifyExpressionValue already replaced the -0.2d store with
+        // "-0.2d + maxHoverY", so there is no constant store to anchor a descent
+        // store on. The vertical edits must be skipped together, not half-applied.
+        byte[] neo = graviClassWithSneakExpression();
+        GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(neo, true, true, true);
+
+        assertEquals(GraviSuiteFlightPatch.State.PARTIAL, result.state(), result.detail());
+        assertTrue(result.skipped(), "the skip must be reported");
+        assertFalse(result.liftApplied(), "no rise may be claimed");
+        assertFalse(result.holdApplied(), "the hold must be skipped with the rise");
+        assertTrue(result.guardApplied(), "the ground guard must still land");
+        assertTrue(
+            result.detail()
+                .contains("shift+space"),
+            result.detail());
+
+        MethodNode method = method(result.bytes());
+        assertEquals(0, storesOf(method, 0.11555557698011398d), "a rise was written: " + doubleConstants(method));
+        assertEquals(0, storesOf(method, -0.11555557698011398d), "a sink was written: " + doubleConstants(method));
+        assertEquals(0.2d, jumpClampStoredValue(method), 0.0d, "the jump clamp must stay stock");
+        assertTrue(GraviSuiteFlightPatch.hasGuardHook(method), "the guard was not injected");
+    }
+
+    @Test
+    void neoFirstWithNothingElseRequestedLeavesTheBytesAlone() {
+        byte[] neo = graviClassWithSneakExpression();
+        GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(neo, true, false, false);
+
+        assertEquals(GraviSuiteFlightPatch.State.ALREADY_PATCHED, result.state(), result.detail());
+        assertTrue(result.skipped(), "the skip must be reported");
+        assertFalse(result.liftApplied());
+        assertSame(neo, result.bytes(), "a skipped lift must not rewrite a byte");
+        assertEquals(0, storesOf(method(result.bytes()), 0.11555557698011398d), "a rise was written");
     }
 
     // ---- refusal -----------------------------------------------------------
@@ -396,6 +646,25 @@ class GraviSuiteFlightPatchTest {
                 .contains("clamp site"),
             result.detail());
         assertSame(unknown, result.bytes());
+    }
+
+    @Test
+    void refusesAJumpClampAnotherPatchAlreadyRaised() {
+        // A 0.6 jump clamp is not a site this patch knows (it accepts 0.2 or its own
+        // 0.1155556), so the class is refused by the site check with a "found 0"
+        // message, not silently treated as a ceiling.
+        byte[] raised = graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.6d);
+        GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(raised, true, true, true);
+        assertEquals(GraviSuiteFlightPatch.State.UNEXPECTED_SHAPE, result.state(), result.detail());
+        assertSame(raised, result.bytes());
+        assertTrue(
+            result.detail()
+                .contains("hover+jump clamp site"),
+            result.detail());
+        assertTrue(
+            result.detail()
+                .contains("found 0"),
+            result.detail());
     }
 
     @Test
@@ -478,7 +747,8 @@ class GraviSuiteFlightPatchTest {
             byte[] out = new com.jointspaceforce.patchee.asm.GraviSuiteFlightTransformer()
                 .transform(GraviSuiteFlightPatch.TARGET_CLASS, GraviSuiteFlightPatch.TARGET_CLASS, real);
             MethodNode method = method(out);
-            assertEquals(1, clampStores(method));
+            assertEquals(1, storesOf(method, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED));
+            assertEquals(1, storesOf(method, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED));
             assertEquals(1, holdStores(method));
             assertFalse(GraviSuiteFlightPatch.hasGuardHook(method));
         } finally {
@@ -542,12 +812,28 @@ class GraviSuiteFlightPatchTest {
 
         MethodNode after = method(result.bytes());
         assertEquals(0, count(after, 0.2d), "real bytes: the stock jump clamp is still there");
+        assertEquals(1, count(after, -0.2d), "real bytes: the stock sink literal must survive for Neo");
         assertEquals(
-            2,
+            -0.11555557698011398d,
+            injectedDescentValue(after),
+            0.0d,
+            "real bytes: the injected descent store is missing");
+        assertEquals(
+            0,
+            Double.compare(jumpClampStoredValue(after), -injectedDescentValue(after)),
+            "real bytes: rise and sink must be the same size");
+        assertEquals(
+            1,
             count(after, GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT),
-            "real bytes: expected the ceiling plus the lifted clamp");
-        assertEquals(1, clampStores(after), "real bytes: no lifted clamp store");
-        assertEquals(1, count(after, -0.2d), "real bytes: the sneak clamp moved");
+            "real bytes: the 0.6 ceiling must survive exactly once");
+        assertEquals(
+            1,
+            storesOf(after, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "real bytes: no lifted ascent store");
+        assertEquals(
+            1,
+            storesOf(after, -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED),
+            "real bytes: no lifted descent store");
         assertEquals(1, holdStores(after), "real bytes: no shift+space target");
         assertTrue(GraviSuiteFlightPatch.hasGuardHook(after), "real bytes: no ground guard");
         assertTrue(otherMethodsUnchanged(real, result.bytes()), "real bytes: another method changed");
@@ -626,25 +912,48 @@ class GraviSuiteFlightPatchTest {
         return n;
     }
 
-    /** How many {@code 0.6d -> DSTORE} pairs the method holds: the lifted clamp. */
-    private static int clampStores(MethodNode method) {
+    /** How many {@code ldc2_w <value> -> DSTORE} pairs the method holds. */
+    private static int storesOf(MethodNode method, double value) {
         int n = 0;
         for (AbstractInsnNode insn : method.instructions.toArray()) {
             if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
                 continue;
             }
-            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT) {
+            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != value) {
                 continue;
             }
-            AbstractInsnNode next = insn.getNext();
-            while (next != null && next.getOpcode() < 0) {
-                next = next.getNext();
-            }
-            if (next != null && next.getOpcode() == Opcodes.DSTORE) {
+            if (storedAfter(insn)) {
                 n++;
             }
         }
         return n;
+    }
+
+    /** True when the next real instruction after this node is a {@code DSTORE}. */
+    private static boolean storedAfter(AbstractInsnNode insn) {
+        AbstractInsnNode next = insn.getNext();
+        while (next != null && next.getOpcode() < 0) {
+            next = next.getNext();
+        }
+        return next != null && next.getOpcode() == Opcodes.DSTORE;
+    }
+
+    /** The key query whose {@code IFEQ} gates this clamp value. */
+    private static MethodInsnNode keyBefore(AbstractInsnNode value) {
+        AbstractInsnNode branch = value.getPrevious();
+        while (branch != null && branch.getOpcode() < 0) {
+            branch = branch.getPrevious();
+        }
+        assertEquals(
+            Opcodes.IFEQ,
+            branch == null ? -1 : branch.getOpcode(),
+            "the clamp value must sit inside a key branch");
+        AbstractInsnNode call = branch.getPrevious();
+        while (call != null && call.getOpcode() < 0) {
+            call = call.getPrevious();
+        }
+        assertTrue(call instanceof MethodInsnNode, "no key query before the clamp branch");
+        return (MethodInsnNode) call;
     }
 
     /** How many {@code 0.0d -> DSTORE} pairs the method holds: the hold branch. */
@@ -666,6 +975,148 @@ class GraviSuiteFlightPatchTest {
             }
         }
         return n;
+    }
+
+    /** The double stored at the jump clamp site: {@code isJumpKeyDown -> IFEQ -> LDC2_W -> DSTORE}. */
+    private static double jumpClampStoredValue(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (insn.getOpcode() != Opcodes.INVOKESTATIC) {
+                continue;
+            }
+            if (!GraviSuiteFlightPatch.JUMP_KEY.equals(((MethodInsnNode) insn).name)) {
+                continue;
+            }
+            AbstractInsnNode branch = nextReal(insn.getNext());
+            assertNotNull(branch, "no branch after the jump query");
+            assertEquals(Opcodes.IFEQ, branch.getOpcode(), "the jump query must be followed by IFEQ");
+            AbstractInsnNode value = nextReal(branch.getNext());
+            assertTrue(value instanceof LdcInsnNode, "no jump clamp value after the branch");
+            assertTrue(((LdcInsnNode) value).cst instanceof Double, "the jump clamp must be a double");
+            AbstractInsnNode store = nextReal(value.getNext());
+            assertEquals(Opcodes.DSTORE, store.getOpcode(), "the jump clamp value must be stored");
+            return ((Double) ((LdcInsnNode) value).cst).doubleValue();
+        }
+        throw new AssertionError("no jump clamp site in these bytes");
+    }
+
+    /** The stock sneak value: the {@code -0.2d} the class ships, read from the bytes. */
+    private static double stockSneakStoredValue(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
+                continue;
+            }
+            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != -0.2d) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store != null && store.getOpcode() == Opcodes.DSTORE) {
+                return -0.2d;
+            }
+        }
+        throw new AssertionError("the stock -0.2d store is not in these bytes");
+    }
+
+    /**
+     * The double this patch injected right after the stock sneak store:
+     * {@code LDC2_W -0.2d, DSTORE local, LDC2_W <descent>, DSTORE local}.
+     */
+    private static double injectedDescentValue(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
+                continue;
+            }
+            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != -0.2d) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store == null || store.getOpcode() != Opcodes.DSTORE) {
+                continue;
+            }
+            AbstractInsnNode value = nextReal(store.getNext());
+            if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Double)) {
+                continue;
+            }
+            AbstractInsnNode again = nextReal(value.getNext());
+            if (again != null && again.getOpcode() == Opcodes.DSTORE
+                && ((VarInsnNode) again).var == ((VarInsnNode) store).var) {
+                return ((Double) ((LdcInsnNode) value).cst).doubleValue();
+            }
+        }
+        throw new AssertionError("no descent store after the stock -0.2d store");
+    }
+
+    private static AbstractInsnNode nextReal(AbstractInsnNode insn) {
+        AbstractInsnNode cursor = insn;
+        while (cursor != null && cursor.getOpcode() < 0) {
+            cursor = cursor.getNext();
+        }
+        return cursor;
+    }
+
+    private static AbstractInsnNode previousReal(AbstractInsnNode insn) {
+        AbstractInsnNode cursor = insn.getPrevious();
+        while (cursor != null && cursor.getOpcode() < 0) {
+            cursor = cursor.getPrevious();
+        }
+        return cursor;
+    }
+
+    /**
+     * The order of the stores inside the sneak-taken block, read out of the patched
+     * bytes rather than counted: {@code stock} for the stock {@code -0.2d} store,
+     * {@code descent} for the injected sink store, {@code hold-branch} for the
+     * shift+space key test and {@code hold} for its {@code 0.0d} store, up to the
+     * block's own join label (not included).
+     *
+     * <p>
+     * Counting stores cannot tell a correct block from one whose descent store runs
+     * after the hold and overwrites it; this can.
+     */
+    private static String sneakBlockOrder(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
+                continue;
+            }
+            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != GraviSuiteFlightPatch.SNEAK_CLAMP) {
+                continue;
+            }
+            AbstractInsnNode sneakStore = nextReal(insn.getNext());
+            if (sneakStore == null || sneakStore.getOpcode() != Opcodes.DSTORE) {
+                continue;
+            }
+            AbstractInsnNode branch = previousReal(insn);
+            if (branch == null || branch.getOpcode() != Opcodes.IFEQ) {
+                continue;
+            }
+            LabelNode join = ((JumpInsnNode) branch).label;
+            List<String> order = new ArrayList<String>();
+            order.add("stock");
+            for (AbstractInsnNode cur = insn.getNext(); cur != null; cur = cur.getNext()) {
+                if (cur == join) {
+                    break;
+                }
+                if (cur instanceof MethodInsnNode
+                    && GraviSuiteFlightPatch.JUMP_KEY.equals(((MethodInsnNode) cur).name)) {
+                    order.add("hold-branch");
+                    continue;
+                }
+                if (!(cur instanceof LdcInsnNode) || !(((LdcInsnNode) cur).cst instanceof Double)) {
+                    continue;
+                }
+                double value = ((Double) ((LdcInsnNode) cur).cst).doubleValue();
+                AbstractInsnNode store = nextReal(cur.getNext());
+                if (store == null || store.getOpcode() != Opcodes.DSTORE) {
+                    continue;
+                }
+                if (value == -GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED) {
+                    order.add("descent");
+                } else if (value == GraviSuiteFlightPatch.HOLD_ALTITUDE_TARGET) {
+                    order.add("hold");
+                }
+            }
+            return String.join(",", order);
+        }
+        throw new AssertionError("no stock -0.2d store in the sneak branch");
     }
 
     private static int guardHooks(MethodNode method) {
@@ -721,6 +1172,15 @@ class GraviSuiteFlightPatchTest {
     }
 
     /**
+     * The shape Gravitation-Suite-Neo leaves behind: its {@code ModifyExpressionValue}
+     * has replaced the sneak clamp constant with {@code -0.2d + 0.2d} (the real one
+     * adds {@code maxHoverY}), so no constant is stored at the sneak site any more.
+     */
+    private static byte[] graviClassWithSneakExpression() {
+        return graviClassWithCeiling(0.2d, GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, true, true);
+    }
+
+    /**
      * The same shape, optionally without the hover+sneak clamp store — the shape
      * another mixin leaves behind when it has already rewritten shift+space.
      *
@@ -730,6 +1190,11 @@ class GraviSuiteFlightPatchTest {
      * Static: local 0 is the player, local 1 the hover flag.
      */
     private static byte[] graviClassWithCeiling(double jumpClamp, double ceiling, boolean includeSneakClamp) {
+        return graviClassWithCeiling(jumpClamp, ceiling, includeSneakClamp, false);
+    }
+
+    private static byte[] graviClassWithCeiling(double jumpClamp, double ceiling, boolean includeSneakClamp,
+        boolean sneakExpression) {
         ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
         writer.visit(
             Opcodes.V1_8,
@@ -810,10 +1275,24 @@ class GraviSuiteFlightPatchTest {
                 "(L" + PLAYER + ";)Z",
                 false);
             mv.visitJumpInsn(Opcodes.IFEQ, afterSneak);
-            mv.visitLdcInsn(Double.valueOf(GraviSuiteFlightPatch.SNEAK_CLAMP));
-            mv.visitVarInsn(Opcodes.DSTORE, 13);
+            if (sneakExpression) {
+                // the shape Neo's ModifyExpressionValue leaves: no constant store
+                mv.visitLdcInsn(Double.valueOf(-0.2d));
+                mv.visitLdcInsn(Double.valueOf(0.2d));
+                mv.visitInsn(Opcodes.DADD);
+                mv.visitVarInsn(Opcodes.DSTORE, 13);
+            } else {
+                mv.visitLdcInsn(Double.valueOf(GraviSuiteFlightPatch.SNEAK_CLAMP));
+                mv.visitVarInsn(Opcodes.DSTORE, 13);
+            }
             mv.visitLabel(afterSneak);
         }
+
+        // the boost key: v = v * 2.0d (GraviSuite ships this; the patch must leave it alone)
+        mv.visitVarInsn(Opcodes.DLOAD, 13);
+        mv.visitLdcInsn(Double.valueOf(2.0d));
+        mv.visitInsn(Opcodes.DMUL);
+        mv.visitVarInsn(Opcodes.DSTORE, 13);
 
         // if (motionY > v) { motionY = v; if (oldMotionY > motionY) motionY = oldMotionY; }
         Label afterClamp = new Label();

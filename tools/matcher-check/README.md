@@ -122,13 +122,17 @@ how the synthetic unit-test shape is checked against the real class.
 
 It checks, on the live bytes:
 
-1. the class is patched: exactly one `0.6f` hover clamp, no `0.1f` left, and the
-   `-0.025f` / `-0.1f` descent constants untouched;
+1. the class is patched: exactly one `+0.0888889` at the jump clamp, and exactly
+   one exact negation of it **injected as a second store right after the stock
+   `-0.1f` store** (IC2's own hover horizontal speed, so up and down match); the
+   stock `0.1f` is gone but the stock `-0.1f` is deliberately kept (other mods
+   match stock literals by value), `-0.025f` untouched, and the `0.6d` ascent
+   ceiling still present with no `0.6f` written;
 2. the ground guard is the first seven instructions (hover-flag `ILOAD 2` test,
    hook-call test, `iconst_0; ireturn`) and its join point carries an `F_SAME`
    frame;
-3. the method grew by exactly thirteen instructions (guard seven, hold branch six)
-   and no other method moved;
+3. the method grew by exactly fifteen instructions (guard seven, hold branch six,
+   injected descent store two) and no other method moved;
 4. a second pass is idempotent;
 5. the Hodgepodge-simulated bytes (`-0.025f` rewritten to `0.0f`, which is what
    `mixins.late.ic2.MixinIc2QuantumSuitHoverMode` does) are still patched and
@@ -155,6 +159,7 @@ java -cp "$OUT:$ASM:$ASMT:$LW:$LOG4J:$MC" ChestplateCheck "$IC2" "$OUT"
 javap -p -c "$OUT/ItemArmorQuantumSuit.patched.class" | sed -n '/useJetpack/,/^$/p'
 ```
 
-Expected: `RESULT: 17/17 PASS`, and the `javap` output shows `ldc 0.6` where the
-shipped class has `ldc_w 0.1` and an `ifeq` past an `iconst_0; ireturn` at the top
-of `useJetpack`.
+Expected: `RESULT: 18/18 PASS`, and the `javap` output shows `ldc 0.08888892`
+where the shipped class has `ldc 0.1` for the jump clamp, followed by the stock
+`ldc -0.1f / fstore` and then the injected `ldc -0.08888892f / fstore`, with an
+`ifeq` past an `iconst_0; ireturn` at the top of `useJetpack`.

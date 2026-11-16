@@ -35,15 +35,20 @@ import com.jointspaceforce.patchee.features.ChestplateFlightPatch;
  * Checks, all against {@code ic2/core/item/armor/ItemArmorQuantumSuit.class}:
  *
  * <ol>
- * <li>the shipped bytes are patched: exactly one {@code 0.6f} hover clamp, no
- * {@code 0.1f} left, and the descent constants {@code -0.025f} and
- * {@code -0.1f} untouched;</li>
+ * <li>the shipped bytes are patched: exactly one {@code +0.0888889} (IC2's hover
+ * horizontal speed) at the jump clamp, and exactly one exact negation of it
+ * injected as a second store right after the stock sneak store, so rising and
+ * sinking match; the stock {@code 0.1f} is gone but the stock {@code -0.1f} is
+ * deliberately <b>kept</b> (value-matching mixins must keep their targets);
+ * {@code -0.025f} untouched; and the {@code 0.6d} ascent ceiling still there
+ * (this patch no longer writes it, and must never write {@code 0.6f});</li>
  * <li>the ground guard is injected as the first seven instructions (a hover-flag
  * {@code ILOAD 2} test, the hook call test, and the {@code return false}), followed
  * by the {@code F_SAME} frame at its join point;</li>
  * <li>nothing else in the class moved (every other method's opcode sequence is
- * identical, and the patched method grows by exactly thirteen instructions — guard
- * seven plus hold six);</li>
+ * identical, and the patched method grows by exactly fifteen instructions — guard
+ * seven, hold six and the injected descent store two; the jump clamp rewrite
+ * itself adds none);</li>
  * <li>a second pass is idempotent;</li>
  * <li>the Hodgepodge-simulated bytes ({@code -0.025f} already rewritten to
  * {@code 0.0f}) are still patched, and both edits survive — which is what makes
@@ -79,24 +84,37 @@ public class ChestplateCheck {
             result.state() + " sites=" + result.sites() + " " + result.detail());
 
         MethodNode after = method(result.bytes());
-        check("exactly one 0.6f hover clamp", count(after, Float.valueOf(0.6f)) == 1, floats(after));
-        check("the 0.1f stock clamp is gone", count(after, Float.valueOf(0.1f)) == 0, floats(after));
-        check("the -0.025f descent clamp is untouched", count(after, Float.valueOf(-0.025f)) == 1, floats(after));
-        check("the -0.1f sneak clamp is untouched", count(after, Float.valueOf(-0.1f)) == 1, floats(after));
+        float ascent = ChestplateFlightPatch.HOVER_JUMP_LIFTED;
+        float descent = ChestplateFlightPatch.SNEAK_LIFTED;
+        check("exactly one +ascent hover constant", count(after, Float.valueOf(ascent)) == 1, floats(after));
         check(
-            "the 0.6d ascent ceiling is still there",
-            doubles(after).contains(Double.valueOf(ChestplateFlightPatch.ASCENT_CEILING_CONSTANT)),
-            doubles(after));
+            "exactly one exact -ascent hover constant (same magnitude)",
+            count(after, Float.valueOf(descent)) == 1 && Float.compare(ascent, -descent) == 0,
+            floats(after));
+        check("the 0.1f stock climb clamp is gone", count(after, Float.valueOf(0.1f)) == 0, floats(after));
+        check(
+            "the stock -0.1f sink literal is still there exactly once (deliberately kept)",
+            count(after, Float.valueOf(-0.1f)) == 1,
+            floats(after));
+        check(
+            "the -ascent store sits immediately after the stock -0.1f store",
+            Float.compare(descentAfterStock(after), descent) == 0,
+            "injected=" + descentAfterStock(after));
+        check("the -0.025f no-input hover clamp is untouched", count(after, Float.valueOf(-0.025f)) == 1, floats(after));
+        check(
+            "the 0.6d ascent ceiling is still there and no 0.6f was written",
+            doubles(after).contains(Double.valueOf(ChestplateFlightPatch.ASCENT_CEILING_CONSTANT))
+                && count(after, Float.valueOf(0.6f)) == 0,
+            doubles(after) + " / " + floats(after));
         check("ground guard injected once", guardHooks(after) == 1, "hooks=" + guardHooks(after));
         check("shift+space target injected once", holdStores(after) == 1, "0.0f stores=" + holdStores(after));
         check(
-            "guard starts with ILOAD of the hover flag",
-            isHoverLoad(firstReal(after)),
-            "first=" + firstOpcode(after) + " var=" + firstVar(after));
-        check("guard has its F_SAME frame", hasFrameAtJoin(after), "instructions=" + realCount(after));
+            "guard starts with ILOAD of the hover flag and has its F_SAME frame",
+            isHoverLoad(firstReal(after)) && hasFrameAtJoin(after),
+            "first=" + firstOpcode(after) + " var=" + firstVar(after) + " instructions=" + realCount(after));
         check(
-            "only the two branches were added",
-            realCount(after) == realCount(method(stock)) + 13,
+            "only the two branches and the descent store were added",
+            realCount(after) == realCount(method(stock)) + 15,
             realCount(method(stock)) + " -> " + realCount(after));
         check("no other method moved", othersUnchanged(stock, result.bytes()), "compared every method");
 
@@ -113,7 +131,8 @@ public class ChestplateCheck {
         MethodNode bothMethod = method(both.bytes());
         check(
             "Hodgepodge-first bytes still patched",
-            both.state() == ChestplateFlightPatch.State.PATCHED && count(bothMethod, Float.valueOf(0.6f)) == 1,
+            both.state() == ChestplateFlightPatch.State.PATCHED && count(bothMethod, Float.valueOf(ascent)) == 1
+                && count(bothMethod, Float.valueOf(descent)) == 1,
             both.state() + " " + floats(bothMethod));
         check(
             "Hodgepodge's 0.0 default and our 0.0 hold target both survive",
@@ -207,6 +226,39 @@ public class ChestplateCheck {
             }
         }
         return n;
+    }
+
+    /** The float stored right after the stock {@code -0.1f} store, or {@code NaN}. */
+    private static float descentAfterStock(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) insn).cst).floatValue() != -0.1f) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store == null || store.getOpcode() != Opcodes.FSTORE) {
+                continue;
+            }
+            AbstractInsnNode value = nextReal(store.getNext());
+            if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Float)) {
+                continue;
+            }
+            AbstractInsnNode again = nextReal(value.getNext());
+            if (again != null && again.getOpcode() == Opcodes.FSTORE) {
+                return ((Float) ((LdcInsnNode) value).cst).floatValue();
+            }
+        }
+        return Float.NaN;
+    }
+
+    private static AbstractInsnNode nextReal(AbstractInsnNode insn) {
+        AbstractInsnNode cursor = insn;
+        while (cursor != null && cursor.getOpcode() < 0) {
+            cursor = cursor.getNext();
+        }
+        return cursor;
     }
 
     private static int guardHooks(MethodNode method) {
