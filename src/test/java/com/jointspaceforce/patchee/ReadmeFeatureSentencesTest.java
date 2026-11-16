@@ -19,8 +19,9 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The README renders straight onto the public site, so a feature line that grew a second sentence is a
- * user-visible defect. This guard parses the {@code ## Features} list and fails, naming the line, when
- * any bullet text is more than one sentence or stops using the house bullet shape.
+ * user-visible defect. This guard parses the {@code ## Features} list and fails, naming the line and the
+ * measured word count, when any bullet text is more than one sentence, runs past 18 words after the em
+ * dash, or stops using the house bullet shape.
  *
  * <p>
  * A sentence end is a {@code .}, {@code !} or {@code ?} followed, past any closing bracket or quote, by
@@ -36,6 +37,9 @@ class ReadmeFeatureSentencesTest {
 
     /** Abbreviations whose final dot may be part of the word rather than a sentence end. */
     private static final List<String> ABBREVIATIONS = Arrays.asList("e.g.", "i.e.", "etc.", "vs.", "cf.");
+
+    /** Hard cap on the words in one feature bullet's text, counted after the em dash. */
+    private static final int MAX_WORDS = 18;
 
     /** {@code - **Name** — text} with an em dash as the separator, exactly as the site renders it. */
     private static final Pattern FEATURE_BULLET = Pattern.compile("^- \\*\\*(.+?)\\*\\* — (.+)$");
@@ -93,6 +97,42 @@ class ReadmeFeatureSentencesTest {
         assertEquals(2, sentenceCount("works with IC2, etc. Users see the change."));
         assertEquals(2, sentenceCount("Ends in e.g. Next sentence here."));
         assertEquals(2, sentenceCount("one sentence.\u00A0Two sentences."));
+    }
+
+    @Test
+    void wordCapRejectsRunOnFeatureLines() {
+        String seventeen = "- **Seventeen** — " + words(17) + ".";
+        String eighteen = "- **Eighteen** — " + words(18) + ".";
+        String nineteen = "- **Nineteen** — " + words(19) + ".";
+        List<String> lines = Arrays.asList("## Features", "", seventeen, eighteen, nineteen, "");
+
+        assertEquals(3, featureBullets(lines).size());
+        List<String> violations = violations(lines);
+        assertEquals(1, violations.size(), String.join("\n", violations));
+        assertTrue(
+            violations.get(0)
+                .contains("19 words"),
+            violations.get(0));
+        assertTrue(
+            violations.get(0)
+                .contains("**Nineteen**"),
+            violations.get(0));
+        assertEquals(17, wordCount(words(17) + "."));
+        assertEquals(18, wordCount(words(18) + "."));
+        assertEquals(0, wordCount("   "));
+    }
+
+    /** {@code n} distinct words, so the cap test never depends on real prose. */
+    private static String words(int n) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 1; i <= n; i++) {
+            if (i > 1) {
+                out.append(' ');
+            }
+            out.append('w')
+                .append(i);
+        }
+        return out.toString();
     }
 
     @Test
@@ -158,9 +198,14 @@ class ReadmeFeatureSentencesTest {
                 violations.add("line " + line.number + ": not in `- **Name** — text` form: " + line.text);
                 continue;
             }
-            int sentences = sentenceCount(matcher.group(2));
+            String text = matcher.group(2);
+            int sentences = sentenceCount(text);
             if (sentences > 1) {
                 violations.add("line " + line.number + ": " + sentences + " sentences: " + line.text);
+            }
+            int words = wordCount(text);
+            if (words > MAX_WORDS) {
+                violations.add("line " + line.number + ": " + words + " words (max " + MAX_WORDS + "): " + line.text);
             }
         }
         return violations;
@@ -199,6 +244,12 @@ class ReadmeFeatureSentencesTest {
                 }
         }
         return entries;
+    }
+
+    /** Words in the bullet text: whitespace-separated tokens, so punctuation is never a word of its own. */
+    static int wordCount(String text) {
+        String trimmed = text.trim();
+        return trimmed.isEmpty() ? 0 : trimmed.split("\s+").length;
     }
 
     /** Counts sentence ends, stepping over closing brackets and quotes; no end still means one. */

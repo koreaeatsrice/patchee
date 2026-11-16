@@ -19,14 +19,14 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **JABBA Dolly** — moves Forestry, Gendustry and MagicBees bee housings with their bees.
 - **Tinkers' mattock** — digs sand and snow at shovel speed, with drops.
 - **GregTech tanks and chests** — carrying a filled one applies no debuffs.
-- **Glass cuts** — Chisel's Transparent Technical Block is metal, not glass, so breaking it no longer causes Blood Arsenal's Bleeding and Blindness, while real glass still cuts an unarmoured player and armour protects them.
-- **VeinMiner** — sand, clay and gravel only, 64 blocks per vein.
-- **NEI F7 overlay** — lights pitch-dark blocks only (client-side).
-- **Twilight Forest** — after the Snow Queen, aurora blocks, Weathered Deadrock and the Final Castle break in 10 ticks, bricks stop draining pickaxes 16x as fast, the thorn wall stays broken and shears cut arctic fur in 5 ticks for anyone; the same 10-tick rate applies to Forge Multipart microblocks, ArchitectureCraft shapes, Carpenter's Blocks covers and LittleTiles tiles, where ArchitectureCraft shapes also area-mine with the Tinkers' hammer and the other three keep their own tool.
-- **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum (server-side).
-- **Enriched fertilizer** — the pack's old recipe still works in the Chemical Reactor and Large Chemical Reactor: 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer.
-- **Fish Trap** — the HarvestCraft trap takes the inventory sorter's move and sort hotkeys, with space/alt/ctrl-click moves working from the server jar alone while middle-click sorting and the sorter's sort button in that GUI need Patchee on the client too, and plain shift-click already works.
-- **IC2 and GraviSuite jetpacks** — in hover mode both rise and sink at the same speed, which is each mod's own sideways hover speed (0.089 blocks a tick for IC2, 0.1156 for GraviSuite), so up matches down and both match sideways, while hover with no key held still sinks gently, sneak plus jump still holds your height, and standing on the ground with hover on is still not counted as flying; both mods send their key state to the server, so both sides apply all of it and the same jar everywhere keeps them in step.
+- **Glass cuts** — Chisel's Transparent Technical Block never cuts, but real glass still does.
+- **VeinMiner** — mines sand, clay and gravel only, 64 blocks per vein.
+- **NEI F7 overlay** — marks only pitch-dark blocks, on the client.
+- **Twilight Forest** — after the Snow Queen, aurora, deadrock and castle blocks break in 10 ticks.
+- **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum.
+- **Enriched fertilizer** — the old Chemical Reactor recipe works again, making 1000 L enriched fertilizer.
+- **Fish Trap** — the HarvestCraft trap takes the sorter's move and sort hotkeys.
+- **IC2 and GraviSuite jetpacks** — hover mode rises and sinks at flight speed instead of crawling.
 
 ## Install
 
@@ -46,6 +46,7 @@ Each feature has its own switch in `config/patchee.cfg`, plus a master switch. K
 
 ## Docs
 
+- [Feature detail](docs/FEATURES.md)
 - [Settings](docs/SETTINGS.md)
 - [Server install](docs/INSTALL-SERVER.md)
 - [Client mods](docs/CLIENT-MODS.md)
