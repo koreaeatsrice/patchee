@@ -10,7 +10,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartedEvent;
 
 /**
- * Patchee — a small GTNH 1.7.10 addon that fixes nine cross-mod annoyances
+ * Patchee — a small GTNH 1.7.10 addon that fixes ten cross-mod annoyances
  * without editing any other mod's jar. The fixes are registered in one place,
  * {@link com.jointspaceforce.patchee.features.PatcheeFeatures}.
  *
@@ -74,6 +74,14 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * The move hotkeys (space/alt/ctrl-click) work from the server jar alone;
  * sorting the trap's output with middle-click (and the sorter's sort button in
  * that GUI) needs Patchee on the client too. Plain shift-click already works.
+ *
+ * <p>
+ * 10. <b>GregTech pollution.</b> Pollution stays on, but has no downsides and
+ * no smog: Patchee writes {@code config/GregTech/Pollution.cfg} before GregTech
+ * reads it ({@code Activate Pollution=true}, the four effect limits at
+ * 2147483647) and forces those values in memory after load; on a client it also
+ * turns off the Pollution Fog and Pollution Dirt render flags
+ * ({@link com.jointspaceforce.patchee.features.PollutionConfigFeature}).
  *
  * <p>
  * Most fixes are reflection-based against verified runtime names. Two of them

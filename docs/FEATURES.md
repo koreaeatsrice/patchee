@@ -49,6 +49,10 @@ Server-side only. A team gets its best member's own per-rank chunk limit, never 
 
 The HarvestCraft Fish Trap works with InventoryBogoSorter: space+click moves all, alt+click moves the same item, ctrl+click moves one, and middle-click sorts the 18 output slots. Bait from your inventory goes into the trap's bait slot. The move hotkeys work from the server jar alone; middle-click sorting and the sorter's sort button in that GUI need Patchee on the client too. Plain shift-click already works. Switch: `enableFishTrapMoves`.
 
+## Pollution
+
+GregTech pollution stays on, but nothing comes of it. Patchee writes `config/GregTech/Pollution.cfg` before GregTech reads it, with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. The same five values are forced in memory after GregTech loads, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns off the pollution fog, the dirt particles and the block tint. Switch: `enablePollutionNoNegatives`.
+
 ## IC2 and GraviSuite jetpacks
 
 In hover mode both jetpacks rise and sink at the speed they already fly sideways: 0.089 blocks a tick on IC2, 0.1156 on GraviSuite. Up matches down, and both match sideways. On IC2, hover with no key held still sinks gently at 0.025 (or 0.0 when Hodgepodge's hover fix is on). GraviSuite keeps its own fall speed with no key held. Sneak plus jump holds your height, and standing on the ground with hover on is not counted as flying. Both mods send key state to the server, so both sides apply it; the same jar everywhere keeps them in step. Switches: `enableChestplateHoverLift`, `enableChestplateGroundGuard`, `enableChestplateHoldAltitude`.

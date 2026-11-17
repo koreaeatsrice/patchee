@@ -26,6 +26,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum.
 - **Enriched fertilizer** — the old Chemical Reactor recipe works again, making 1000 L enriched fertilizer.
 - **Fish Trap** — the HarvestCraft trap takes the sorter's move and sort hotkeys.
+- **GregTech pollution** — stays on, but the four effect limits are maxed, so no downsides.
 - **IC2 and GraviSuite jetpacks** — hover mode rises and sinks at the speed it already flies sideways.
 
 ## Install

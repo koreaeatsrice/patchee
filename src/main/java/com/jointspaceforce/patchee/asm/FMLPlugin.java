@@ -1,6 +1,11 @@
 package com.jointspaceforce.patchee.asm;
 
+import java.io.File;
 import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+
+import com.jointspaceforce.patchee.features.PollutionPreload;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
@@ -17,6 +22,15 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
  * Chestplate hover climb and keeps a standing player from counting as flying,
  * and GraviSuiteFlight applies those same three flight edits to GraviSuite's
  * Advanced Jetpack (which the Advanced Nano Chestplate inherits).
+ *
+ * <p>
+ * {@link #injectData(Map)} also runs Patchee's one config write that cannot wait
+ * for preInit: GregTech reads {@code config/GregTech/Pollution.cfg} while it is
+ * still constructing itself, before any mod's preInit, so
+ * {@link PollutionPreload} rewrites that file (and the client render flags in
+ * {@code config/GregTech/Client.cfg}) here, before GregTech gets to it.
+ *
+ * <p>
  * There is deliberately no coremod config and nothing else here: each
  * transformer ignores every class except its own target(s), so an absent NEI
  * (every server), an absent ServerUtilities, an absent Twilight Forest or an
@@ -47,7 +61,23 @@ public class FMLPlugin implements IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        // no setup data needed
+        Object location = data == null ? null : data.get("mcLocation");
+        File gameDirectory;
+        if (location instanceof File) {
+            gameDirectory = (File) location;
+        } else if (location instanceof String) {
+            gameDirectory = new File((String) location);
+        } else {
+            gameDirectory = new File(".");
+        }
+        try {
+            PollutionPreload.run(gameDirectory);
+        } catch (Throwable failure) {
+            LogManager.getLogger("patchee")
+                .warn(
+                    "[PollutionNoNegatives] preload pass crashed ({}) - GregTech's pollution files left as they are",
+                    failure.toString());
+        }
     }
 
     @Override
