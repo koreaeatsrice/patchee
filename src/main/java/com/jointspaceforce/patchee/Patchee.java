@@ -98,9 +98,12 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * those six, Patchee's coremod rewrites the class bytes as they load — see
  * {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
  * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
- * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest run
+ * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest act
  * on the server, so clients need nothing installed to join
- * ({@code acceptableRemoteVersions = "*"}).
+ * ({@code acceptableRemoteVersions = "*"}). The pollution rewrite is the exception
+ * in the other direction: a client that also installs Patchee rewrites its own copy
+ * and hides pollution visuals everywhere until that copy is removed or its own
+ * switch is turned off.
  */
 @Mod(
     modid = Patchee.MODID,
