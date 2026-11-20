@@ -16,15 +16,19 @@ import java.util.Map;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.Items;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.management.ItemInWorldManager;
 import net.minecraft.stats.Achievement;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntityFurnace;
+import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.config.Configuration;
 
 import com.jointspaceforce.patchee.core.Toggles;
@@ -812,12 +816,32 @@ public final class SelfTest {
     }
 
     /**
-     * The Fish Trap fix: plain shift-click both ways must move bait into slot 18
-     * and fish out to the player (shift-click is unchanged vanilla behaviour, and
-     * this covers it). When the sorter is installed the trap must be a valid
-     * sortable container with exactly the 18 output slots as its one group, and
-     * the sorter's own insert path must route bait into slot 18 and refuse
-     * anything else. Reflection only: neither mod is a compile dependency.
+     * A real player on the server world, for {@link Container#slotClick}. It is
+     * not added to the player list and never ticked: the click path only needs
+     * the player's own inventory and world.
+     */
+    private static EntityPlayer selfTestPlayer() {
+        MinecraftServer server = FMLCommonHandler.instance()
+            .getMinecraftServerInstance();
+        if (server == null) {
+            throw new IllegalStateException("no server instance");
+        }
+        WorldServer world = server.worldServerForDimension(0);
+        return new EntityPlayerMP(
+            server,
+            world,
+            new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "PatcheeSelfTest"),
+            new ItemInWorldManager(world));
+    }
+
+    /**
+     * The Fish Trap check: the real Container.slotClick(slot, 0, 1, player) path
+     * must drive shift-click both ways — bait into slot 18 and fish out to the
+     * player — and must refuse to put a non-bait stack in the bait slot. When the
+     * sorter is installed the trap must be a valid sortable container with
+     * exactly the 18 output slots as its one group, and the sorter's own insert
+     * path must route bait into slot 18 and refuse anything else. Reflection
+     * only: neither mod is a compile dependency.
      */
     private void checkFishTrapMoves(Toggles toggles) {
         if (!toggles.featureEnabled(FishTrapMovesFeature.ID)) {
@@ -836,7 +860,13 @@ public final class SelfTest {
             Object tile = tileClass.getDeclaredConstructor()
                 .newInstance();
             Class<?> containerClass = Class.forName("com.pam.harvestcraft.ContainerPamFishTrap");
-            InventoryPlayer inv = new InventoryPlayer((EntityPlayer) null);
+            // A real shift-click is a client packet that the server runs against
+            // the player who sent it. The old check passed a null player straight
+            // to transferStackInSlot, which is not the path a click takes; drive
+            // the same Container.slotClick(slot, button=0, mode=1, player) the
+            // server runs instead.
+            EntityPlayer player = selfTestPlayer();
+            InventoryPlayer inv = player.inventory;
             Container container = (Container) containerClass.getConstructor(InventoryPlayer.class, tileClass)
                 .newInstance(inv, tile);
 
@@ -852,7 +882,7 @@ public final class SelfTest {
 
             // (a) shift-click bait from player main index 9 (slot 19) into slot 18
             inv.mainInventory[9] = new ItemStack(bait, 2);
-            container.transferStackInSlot(null, 19);
+            container.slotClick(19, 0, 1, player);
             ItemStack baitSlot = trapInventory.getStackInSlot(18);
             check(
                 "fishtrap shift-click puts bait in slot 18",
@@ -860,7 +890,7 @@ public final class SelfTest {
 
             // (b) shift-click fish (slot 0) out to the player inventory
             trapInventory.setInventorySlotContents(0, new ItemStack(Items.apple, 3));
-            container.transferStackInSlot(null, 0);
+            container.slotClick(0, 0, 1, player);
             int apples = 0;
             for (ItemStack stack : inv.mainInventory) {
                 if (stack != null && stack.getItem() == Items.apple) {
@@ -870,6 +900,13 @@ public final class SelfTest {
             check(
                 "fishtrap shift-click moves results to the player",
                 trapInventory.getStackInSlot(0) == null && apples == 3);
+
+            // Negative control: a non-bait stack shift-clicked from the player
+            // inventory must never land in the bait slot.
+            trapInventory.setInventorySlotContents(18, null);
+            inv.mainInventory[9] = new ItemStack(Items.apple, 2);
+            container.slotClick(19, 0, 1, player);
+            check("fishtrap shift-click keeps non-bait out of slot 18", trapInventory.getStackInSlot(18) == null);
 
             // (c) the sorter half, only when InventoryBogoSorter is installed
             Class<?> bogoApi;
