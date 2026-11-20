@@ -105,17 +105,19 @@ public final class PollutionConfigFeature implements Feature {
 
     @Override
     public String description() {
-        return "Feature: GregTech's pollution stays ON, with no downsides and no smog. true = Patchee writes "
-            + "config/GregTech/Pollution.cfg before GregTech reads it, with Activate Pollution=true and the four "
-            + "effect limits (poison, smog, sour rain, vegetation) at 2147483647, and forces those five values in "
-            + "memory after GregTech loads - in the five GregTech fields and in the copies on GTMod.proxy that "
-            + "GregTech's pollution code actually reads - so a read-only file or a hand edit cannot bring the "
-            + "effects back. It keeps a timestamped .bak and changes only those five lines. On a client it also "
-            + "turns off the Pollution Fog and Pollution Dirt render flags in config/GregTech/Client.cfg and in "
-            + "memory, and turns the block-recolour tint off in memory only (that file keeps exactly five keys); "
-            + "the client half only helps players who install Patchee themselves - a player without Patchee still "
-            + "sees the smog the server reports. false = Patchee leaves GregTech's pollution files and values "
-            + "exactly as they ship.";
+        return "Feature: GregTech's pollution stays ON, with no downsides and no smog. true = at coremod load, "
+            + "before any mod's preInit, Patchee rewrites config/GregTech/Pollution.cfg: Activate Pollution=true and "
+            + "the four effect limits (poison, smog, sour rain, vegetation) at 2147483647, changing only those five "
+            + "values and keeping every other byte, with a timestamped .bak. After GregTech loads it forces the same "
+            + "five values in memory - in the five GregTech fields and in the copies on GTMod.proxy that GregTech's "
+            + "pollution code actually reads - so a read-only file or a hand edit cannot bring the effects back; "
+            + "that memory pass also covers the boot where GregTech read the file before Patchee could rewrite it. "
+            + "On a client it turns the Pollution Fog and Pollution Dirt render flags off in memory, and in "
+            + "config/GregTech/Client.cfg when that file exists (GregTech writes it on its first launch); the "
+            + "block-recolour field pollutionBlockRecolor is cleared in memory only and no other line of that file "
+            + "is touched. The client half only helps players who install Patchee themselves - a player without "
+            + "Patchee still sees the smog the server reports. false = Patchee leaves GregTech's pollution files and "
+            + "values exactly as they ship.";
     }
 
     @Override
@@ -313,7 +315,7 @@ public final class PollutionConfigFeature implements Feature {
         return mirrorNote(updated);
     }
 
-    /** Clears the block-recolour tint in memory only; the file keeps exactly its five keys. */
+    /** Clears the block-recolour field in memory only; nothing is written into the file. */
     private static void clearTint(PatchContext ctx) {
         try {
             Class<?> pollutionConfig = Class.forName(POLLUTION_CONFIG_CLASS);
@@ -322,8 +324,8 @@ public final class PollutionConfigFeature implements Feature {
             tint.setBoolean(null, false);
             ctx.log()
                 .info(
-                    "[PollutionNoNegatives] client tint: pollutionBlockRecolor=false (memory only - the file keeps "
-                        + "exactly five keys)");
+                    "[PollutionNoNegatives] client tint: pollutionBlockRecolor=false (memory only - nothing is "
+                        + "written into that file)");
         } catch (NoSuchFieldException absent) {
             ctx.log()
                 .info(

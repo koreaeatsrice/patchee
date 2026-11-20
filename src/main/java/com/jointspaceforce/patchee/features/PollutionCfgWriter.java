@@ -72,7 +72,9 @@ public final class PollutionCfgWriter {
                 return new Result(Status.MISSING_FILE, changedKeys, new ArrayList<String>(), "", "file does not exist");
             }
 
-            String original = new String(Files.readAllBytes(cfgFile.toPath()), StandardCharsets.UTF_8);
+            // ISO-8859-1 maps every byte 1:1 in both directions, so arbitrary comment bytes (a cp1252
+            // character, say) survive the round trip while the ASCII keys still parse.
+            String original = new String(Files.readAllBytes(cfgFile.toPath()), StandardCharsets.ISO_8859_1);
             PollutionCfg.Edit edit = PollutionCfg.apply(original, keys);
             // Nothing to change: every value found is already right, even if some keys are missing altogether.
             // A missing key is GregTech's business, not Patchee's, so no write and no .bak.
@@ -90,7 +92,7 @@ public final class PollutionCfgWriter {
             Files.copy(cfgFile.toPath(), backup.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
             File temp = new File(cfgFile.getParentFile(), cfgFile.getName() + ".tmp");
-            Files.write(temp.toPath(), edit.text.getBytes(StandardCharsets.UTF_8));
+            Files.write(temp.toPath(), edit.text.getBytes(StandardCharsets.ISO_8859_1));
             try {
                 Files.move(
                     temp.toPath(),
@@ -107,6 +109,13 @@ public final class PollutionCfgWriter {
                 backup.getPath(),
                 "wrote " + changedKeys.size() + " key(s)");
         } catch (IOException | RuntimeException failure) {
+            if (cfgFile != null && cfgFile.getParentFile() != null) {
+                try {
+                    new File(cfgFile.getParentFile(), cfgFile.getName() + ".tmp").delete();
+                } catch (RuntimeException ignored) {
+                    // best effort: a stray .tmp is not worth turning into a second failure
+                }
+            }
             return new Result(Status.FAILED, changedKeys, new ArrayList<String>(), "", failure.toString());
         }
     }

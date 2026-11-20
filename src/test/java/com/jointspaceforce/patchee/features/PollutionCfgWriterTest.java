@@ -123,6 +123,79 @@ class PollutionCfgWriterTest {
         assertEquals(1, backups(dir).size(), "the first backup stays, the second boot adds none");
     }
 
+    @Test
+    void keepsAByteThatIsNotValidUtf8() throws IOException {
+        Path dir = Files.createTempDirectory("patchee-pollution-latin1");
+        Path cfg = dir.resolve("Pollution.cfg");
+        byte[] original = latin1Fixture();
+        Files.write(cfg, original);
+
+        PollutionCfgWriter.Result result = PollutionCfgWriter.rewrite(cfg.toFile(), PollutionCfg.SERVER_KEYS, STAMP);
+
+        assertEquals(PollutionCfgWriter.Status.WRITTEN, result.status);
+        assertEquals(5, result.changedKeys.size());
+        byte[] rewritten = Files.readAllBytes(cfg);
+        assertTrue(indexOf(rewritten, new byte[] { (byte) 0xE9 }, 0) >= 0, "the 0xE9 byte must survive the rewrite");
+        assertEquals(
+            -1,
+            indexOf(rewritten, new byte[] { (byte) 0xEF, (byte) 0xBF, (byte) 0xBD }, 0),
+            "the 0xE9 byte must not be replaced by the UTF-8 replacement character");
+    }
+
+    @Test
+    void failsSoftWhenTheBackupPathCannotBeWritten() throws IOException {
+        Path dir = Files.createTempDirectory("patchee-pollution-backup-blocked");
+        Path cfg = dir.resolve("Pollution.cfg");
+        byte[] original = Files.readAllBytes(FIXTURES.resolve("Pollution.before.cfg"));
+        Files.write(cfg, original);
+        // A non-empty directory where the .bak must go, so Files.copy cannot replace it.
+        Path blocked = Files.createDirectory(dir.resolve("Pollution.cfg." + STAMP + ".bak"));
+        Files.write(blocked.resolve("keep"), new byte[] { 1 });
+
+        PollutionCfgWriter.Result result = PollutionCfgWriter.rewrite(cfg.toFile(), PollutionCfg.SERVER_KEYS, STAMP);
+
+        assertEquals(PollutionCfgWriter.Status.FAILED, result.status);
+        assertFalse(result.message.isEmpty());
+        assertEquals("", result.backupPath);
+        assertArrayEquals(original, Files.readAllBytes(cfg), "the original file must be left untouched");
+    }
+
+    /** A Pollution.cfg with the five keys wrong and a comment holding a lone 0xE9 byte. */
+    private static byte[] latin1Fixture() {
+        String head = "# Gr";
+        String tail = "sse und Kommentar\n" + "pollution {\n"
+            + "    B:\"Activate Pollution\"=false\n"
+            + "    I:pollutionSmogLimit=550000\n"
+            + "    I:pollutionPoisonLimit=550000\n"
+            + "    I:pollutionVegetationLimit=550000\n"
+            + "    I:pollutionSourRainLimit=550000\n"
+            + "}\n";
+        byte[] before = head.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] after = tail.getBytes(StandardCharsets.ISO_8859_1);
+        byte[] all = new byte[before.length + 1 + after.length];
+        System.arraycopy(before, 0, all, 0, before.length);
+        all[before.length] = (byte) 0xE9;
+        System.arraycopy(after, 0, all, before.length + 1, after.length);
+        return all;
+    }
+
+    /** The first index of {@code needle} in {@code haystack} at or after {@code from}, or {@code -1}. */
+    private static int indexOf(byte[] haystack, byte[] needle, int from) {
+        for (int i = from; i <= haystack.length - needle.length; i++) {
+            boolean hit = true;
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    hit = false;
+                    break;
+                }
+            }
+            if (hit) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     /** The {@code .bak} files in a directory. */
     private static List<Path> backups(Path dir) {
         List<Path> found = new ArrayList<Path>();

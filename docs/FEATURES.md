@@ -55,7 +55,7 @@ The HarvestCraft Fish Trap works with InventoryBogoSorter: space+click moves all
 
 ## GregTech pollution settings
 
-GregTech pollution stays on, but nothing comes of it. Patchee writes `config/GregTech/Pollution.cfg` before GregTech reads it, with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. The same five values are forced in memory after GregTech loads, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns off the pollution fog, the dirt particles and the block tint. Switch: `enablePollutionNoNegatives`.
+GregTech pollution stays on, but nothing comes of it. Patchee rewrites `config/GregTech/Pollution.cfg` at coremod load, with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. The same five values are forced in memory after GregTech loads, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns the pollution fog and dirt particle flags off, in memory and in `config/GregTech/Client.cfg` once that file exists, and clears the block-recolour field in memory only. Switch: `enablePollutionNoNegatives`.
 
 ## IC2 and GraviSuite jetpacks
 
