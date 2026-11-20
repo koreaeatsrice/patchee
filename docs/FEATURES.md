@@ -41,6 +41,10 @@ The faster break is only seen on a client that has Patchee; the server half is w
 
 Server-side only. A team gets its best member's own per-rank chunk limit, never the sum: four ordinary players get one player's 1500 / 500 instead of 6000 / 2000. A member whose rank carries higher numbers (an admin) keeps them, and a player on their own is not affected. Switch: `enableTeamChunkCap`.
 
+## GregTech pollution visuals
+
+Players see no pollution smog, no fog, no fog colour shift, no smoke particles and no grass/leaf/water/flower tints. Pollution itself keeps running in full — production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, the pollution detector and every machine reading it keep their exact numbers — because only the one number GregTech sends each client about a chunk is rewritten to 0. It does not edit `Pollution.cfg` and does not touch the world. A stock client needs nothing: the server decides what it is told. A client that also runs Patchee applies the same rewrite locally, so that player keeps the visuals hidden even with this off. Tradeoff: anything a client reads from that number now reads 0, so a client-side pollution readout shows nothing. Switch: `enablePollutionNoVisuals`.
+
 ## Enriched fertilizer
 
 4 fertilizer + 1000 L fertilizer liquid makes 1000 L enriched fertilizer, in a Chemical Reactor or Large Chemical Reactor (LV, 1 second). The pack's own recipe is untouched. A server-only install still crafts it; a client that has Patchee also drops the NEI recipe cache so the recipe shows up in NEI. Switch: `enableEnrichedFertilizerRecipe`.
@@ -49,7 +53,7 @@ Server-side only. A team gets its best member's own per-rank chunk limit, never 
 
 The HarvestCraft Fish Trap works with InventoryBogoSorter: space+click moves all, alt+click moves the same item, ctrl+click moves one, and middle-click sorts the 18 output slots. Bait from your inventory goes into the trap's bait slot. The move hotkeys work from the server jar alone; middle-click sorting and the sorter's sort button in that GUI need Patchee on the client too. Plain shift-click already works. Switch: `enableFishTrapMoves`.
 
-## Pollution
+## GregTech pollution settings
 
 GregTech pollution stays on, but nothing comes of it. Patchee writes `config/GregTech/Pollution.cfg` before GregTech reads it, with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. The same five values are forced in memory after GregTech loads, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns off the pollution fog, the dirt particles and the block tint. Switch: `enablePollutionNoNegatives`.
 
