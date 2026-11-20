@@ -49,8 +49,8 @@ public final class PollutionPreload {
     private PollutionPreload() {}
 
     /**
-     * Rewrites what GregTech is about to read. Called from the coremod, before
-     * mod construction; never throws.
+     * Rewrites GregTech's pollution file for the next boot. Called from the coremod,
+     * before mod construction; never throws.
      */
     public static void run(File gameDirectory) {
         try {

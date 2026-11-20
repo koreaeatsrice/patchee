@@ -26,8 +26,8 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
  * Nano Chestplate inherits).
  *
  * <p>
- * {@link #injectData(Map)} also runs Patchee's one config write that cannot wait
- * for preInit: {@link PollutionPreload} rewrites {@code config/GregTech/Pollution.cfg}
+ * {@link #injectData(Map)} also runs Patchee's one config write as early as a coremod can:
+ * {@link PollutionPreload} rewrites {@code config/GregTech/Pollution.cfg}
  * (and the client render flags in {@code config/GregTech/Client.cfg}) as early as
  * a coremod can run. GregTech reads that same file in its own coremod's static
  * initializer, which FML runs before any coremod's {@code injectData}, so the file

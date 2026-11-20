@@ -163,7 +163,7 @@ public final class PollutionConfigFeature implements Feature {
                 for (int i = 0; i < SERVER_FIELDS.length; i++) {
                     Field field = pollutionConfig.getDeclaredField(SERVER_FIELDS[i]);
                     field.setAccessible(true);
-                    field.get(null); // read first: a field of the wrong type throws here rather than after a set
+                    field.get(null); // read once before writing, so an unreadable field is caught here
                     if (i == 0) {
                         field.setBoolean(null, true);
                     } else {
