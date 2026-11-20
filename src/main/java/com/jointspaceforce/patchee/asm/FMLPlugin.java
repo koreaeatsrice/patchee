@@ -1,6 +1,11 @@
 package com.jointspaceforce.patchee.asm;
 
+import java.io.File;
 import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+
+import com.jointspaceforce.patchee.features.PollutionPreload;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
@@ -19,6 +24,16 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
  * standing player from counting as flying, and GraviSuiteFlight applies those
  * same three flight edits to GraviSuite's Advanced Jetpack (which the Advanced
  * Nano Chestplate inherits).
+ *
+ * <p>
+ * {@link #injectData(Map)} also runs Patchee's one config write as early as a coremod can:
+ * {@link PollutionPreload} rewrites {@code config/GregTech/Pollution.cfg}
+ * (and the client render flags in {@code config/GregTech/Client.cfg}) as early as
+ * a coremod can run. GregTech reads that same file in its own coremod's static
+ * initializer, which FML runs before any coremod's {@code injectData}, so the file
+ * change lands for the next boot; the postInit memory pass covers this one.
+ *
+ * <p>
  * There is deliberately no coremod config and nothing else here: each
  * transformer ignores every class except its own target(s), so an absent NEI
  * (every server), an absent ServerUtilities, an absent GregTech, an absent
@@ -50,7 +65,23 @@ public class FMLPlugin implements IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        // no setup data needed
+        Object location = data == null ? null : data.get("mcLocation");
+        File gameDirectory;
+        if (location instanceof File) {
+            gameDirectory = (File) location;
+        } else if (location instanceof String) {
+            gameDirectory = new File((String) location);
+        } else {
+            gameDirectory = new File(".");
+        }
+        try {
+            PollutionPreload.run(gameDirectory);
+        } catch (Throwable failure) {
+            LogManager.getLogger("patchee")
+                .warn(
+                    "[PollutionNoNegatives] preload pass crashed ({}) - GregTech's pollution files left as they are",
+                    failure.toString());
+        }
     }
 
     @Override

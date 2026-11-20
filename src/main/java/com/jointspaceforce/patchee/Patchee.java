@@ -89,6 +89,16 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * so that player keeps the visuals hidden even when the switch is off.
  *
  * <p>
+ * 11. <b>GregTech pollution settings.</b> Pollution stays on, but has no
+ * downsides and no smog: Patchee rewrites {@code config/GregTech/Pollution.cfg}
+ * ({@code Activate Pollution=true}, the four effect limits at 2147483647) and
+ * forces those values in memory after load; the file change lands on the next
+ * boot, because GregTech reads that file in its own coremod first, and the
+ * in-memory pass is what covers the current one; on a client it also turns off
+ * the Pollution Fog and Pollution Dirt render flags
+ * ({@link com.jointspaceforce.patchee.features.PollutionConfigFeature}).
+ *
+ * <p>
  * Most fixes are reflection-based against verified runtime names. Six of them
  * cannot be, because the thing to change lives inside another mod's compiled
  * method with no hook and no config key: the F7 overlay comparison constant

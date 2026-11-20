@@ -20,6 +20,7 @@ public final class PatcheeFeatures {
             .register(new SuperTankFeature())
             .register(new GlassBreakFeature())
             .register(new VeinConfigFeature())
+            .register(new PollutionConfigFeature())
             .register(new LightOverlayFeature())
             .register(new AuroraBreakFeature())
             .register(new ArcticFurBreakFeature())
