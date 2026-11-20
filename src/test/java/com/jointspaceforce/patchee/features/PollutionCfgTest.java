@@ -19,7 +19,8 @@ import org.junit.jupiter.api.Test;
  * The line-preserving edit of {@code config/GregTech/Pollution.cfg}.
  *
  * <p>
- * The fixture pair is a realistic Forge file straight from GregTech: comments,
+ * The fixture pair is shaped like GregTech's {@code Pollution.cfg} but trimmed to
+ * the keys this feature touches (the real file carries about 95 keys): comments,
  * a {@code pollution} section and eight keys, five of them Patchee's. The after
  * fixture must differ from the before fixture on exactly those five lines -
  * nothing reordered, nothing re-commented, nothing dropped.

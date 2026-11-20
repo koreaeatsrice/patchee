@@ -23,12 +23,12 @@ import cpw.mods.fml.relauncher.Side;
  *
  * <p>
  * Two halves. The <b>file half</b> runs from Patchee's coremod
- * ({@link com.jointspaceforce.patchee.asm.FMLPlugin}) before GregTech loads:
- * GregTech reads its pollution config while it is still constructing itself (its
- * coremod / static initializer), before any mod's preInit, so a postInit write
- * would be too late. That half sets {@code Activate Pollution=true} and the
- * four effect limits in {@code config/GregTech/Pollution.cfg} to 2147483647, and
- * keeps a timestamped {@code .bak} of the original.
+ * ({@link com.jointspaceforce.patchee.asm.FMLPlugin}): it sets
+ * {@code Activate Pollution=true} and the four effect limits in
+ * {@code config/GregTech/Pollution.cfg} to 2147483647, and keeps a timestamped
+ * {@code .bak} of the original. GregTech reads that file in its own coremod's
+ * static initializer, which FML runs before any coremod's {@code injectData}, so
+ * this change lands for the next boot.
  *
  * <p>
  * The four limits are the top of the int range, so no effect threshold can ever
@@ -36,11 +36,11 @@ import cpw.mods.fml.relauncher.Side;
  * wrote it. The <b>memory half</b> runs at postInit and writes both places
  * GregTech looks: the five {@code PollutionConfig} fields, and the copies on
  * {@code GTMod.proxy} that GregTech's pollution code actually reads - so a
- * read-only file or a hand edit cannot bring the effects back. On a client it
- * also turns off the {@code Pollution Fog} and {@code Pollution Dirt} render
- * flags in memory and in {@code config/GregTech/Client.cfg}, clears the same two
- * mirrors on {@code GTMod.proxy}, and turns the block-recolour tint off in memory
- * only - {@code Pollution.cfg} keeps exactly its five keys.
+ * read-only file or a hand edit cannot bring the effects back, and this is the
+ * half that fixes a boot GregTech already read the file on. On a client it also
+ * turns off the {@code Pollution Fog} and {@code Pollution Dirt} render flags in
+ * memory, in {@code config/GregTech/Client.cfg} when that file already exists,
+ * and clears the same two mirrors on {@code GTMod.proxy}.
  *
  * <p>
  * Honest limits: the client half only helps players who install Patchee
@@ -75,9 +75,6 @@ public final class PollutionConfigFeature implements Feature {
     private static final String RENDER_FIELD = "render";
     private static final String PROXY_FIELD = "proxy";
 
-    /** The block-recolour tint: a client-side switch Patchee only ever clears in memory. */
-    private static final String TINT_FIELD = "pollutionBlockRecolor";
-
     /** The two client render fields, in the order they are logged. */
     private static final String[] CLIENT_LABELS = { "Pollution Fog", "Pollution Dirt" };
     private static final String[] CLIENT_FIELDS = { "renderPollutionFog", "renderDirtParticles" };
@@ -105,17 +102,16 @@ public final class PollutionConfigFeature implements Feature {
 
     @Override
     public String description() {
-        return "Feature: GregTech's pollution stays ON, with no downsides and no smog. true = at coremod load, "
-            + "before any mod's preInit, Patchee rewrites config/GregTech/Pollution.cfg: Activate Pollution=true and "
-            + "the four effect limits (poison, smog, sour rain, vegetation) at 2147483647, changing only those five "
-            + "values and keeping every other byte, with a timestamped .bak. After GregTech loads it forces the same "
-            + "five values in memory - in the five GregTech fields and in the copies on GTMod.proxy that GregTech's "
-            + "pollution code actually reads - so a read-only file or a hand edit cannot bring the effects back; "
-            + "that memory pass also covers the boot where GregTech read the file before Patchee could rewrite it. "
-            + "On a client it turns the Pollution Fog and Pollution Dirt render flags off in memory, and in "
-            + "config/GregTech/Client.cfg when that file exists (GregTech writes it on its first launch); the "
-            + "block-recolour field pollutionBlockRecolor is cleared in memory only and no other line of that file "
-            + "is touched. The client half only helps players who install Patchee themselves - a player without "
+        return "Feature: GregTech's pollution stays ON, with no downsides and no smog. true = Patchee rewrites "
+            + "config/GregTech/Pollution.cfg: Activate Pollution=true and the four effect limits (poison, smog, "
+            + "sour rain, vegetation) at 2147483647, changing only those five values and keeping every other byte, "
+            + "with a timestamped .bak. GregTech reads that file in its own coremod before Patchee can run, so the "
+            + "file change lands on the next boot; after GregTech loads Patchee forces the same five values in memory "
+            + "- the five GregTech fields and the copies on GTMod.proxy that GregTech's pollution code actually reads "
+            + "- and that is what fixes the current boot, so a read-only file or a hand edit cannot bring the "
+            + "effects back. On a client it turns the Pollution Fog and Pollution Dirt render flags off in memory, "
+            + "and in config/GregTech/Client.cfg when that file already exists (GregTech writes it on its first "
+            + "launch). The client half only helps players who install Patchee themselves - a player without "
             + "Patchee still sees the smog the server reports. false = Patchee leaves GregTech's pollution files and "
             + "values exactly as they ship.";
     }
@@ -167,7 +163,7 @@ public final class PollutionConfigFeature implements Feature {
                 for (int i = 0; i < SERVER_FIELDS.length; i++) {
                     Field field = pollutionConfig.getDeclaredField(SERVER_FIELDS[i]);
                     field.setAccessible(true);
-                    field.get(null); // read first, so a field of the wrong type fails before anything changes
+                    field.get(null); // read first: a field of the wrong type throws here rather than after a set
                     if (i == 0) {
                         field.setBoolean(null, true);
                     } else {
@@ -218,11 +214,28 @@ public final class PollutionConfigFeature implements Feature {
                     reason);
             return "; GTMod.proxy mirrors not updated";
         }
-        int updated = mirrorBoolean(ctx, proxy, SERVER_MIRRORS[0], true);
-        for (int i = 1; i < SERVER_MIRRORS.length; i++) {
-            updated += mirrorInt(ctx, proxy, SERVER_MIRRORS[i], PollutionCfg.MAX_LIMIT);
+        int updated = 0;
+        int absent = 0;
+        int failed = 0;
+        int result = mirrorBoolean(ctx, proxy, SERVER_MIRRORS[0], true);
+        if (result > 0) {
+            updated += result;
+        } else if (result == -1) {
+            absent++;
+        } else if (result == -2) {
+            failed++;
         }
-        return mirrorNote(updated);
+        for (int i = 1; i < SERVER_MIRRORS.length; i++) {
+            result = mirrorInt(ctx, proxy, SERVER_MIRRORS[i], PollutionCfg.MAX_LIMIT);
+            if (result > 0) {
+                updated += result;
+            } else if (result == -1) {
+                absent++;
+            } else if (result == -2) {
+                failed++;
+            }
+        }
+        return mirrorNote(updated, absent, failed);
     }
 
     /** Turns off the two client render flags, in memory and in the file. */
@@ -274,7 +287,6 @@ public final class PollutionConfigFeature implements Feature {
                     ctx.log()
                         .info(line.toString());
                 }
-                clearTint(ctx);
                 return Outcome.APPLIED;
             } catch (Throwable failure) {
                 ctx.log()
@@ -309,33 +321,19 @@ public final class PollutionConfigFeature implements Feature {
             return "; GTMod.proxy mirrors not updated";
         }
         int updated = 0;
+        int absent = 0;
+        int failed = 0;
         for (String mirror : CLIENT_MIRRORS) {
-            updated += mirrorBoolean(ctx, proxy, mirror, false);
+            int result = mirrorBoolean(ctx, proxy, mirror, false);
+            if (result > 0) {
+                updated += result;
+            } else if (result == -1) {
+                absent++;
+            } else if (result == -2) {
+                failed++;
+            }
         }
-        return mirrorNote(updated);
-    }
-
-    /** Clears the block-recolour field in memory only; nothing is written into the file. */
-    private static void clearTint(PatchContext ctx) {
-        try {
-            Class<?> pollutionConfig = Class.forName(POLLUTION_CONFIG_CLASS);
-            Field tint = pollutionConfig.getDeclaredField(TINT_FIELD);
-            tint.setAccessible(true);
-            tint.setBoolean(null, false);
-            ctx.log()
-                .info(
-                    "[PollutionNoNegatives] client tint: pollutionBlockRecolor=false (memory only - nothing is "
-                        + "written into that file)");
-        } catch (NoSuchFieldException absent) {
-            ctx.log()
-                .info(
-                    "[PollutionNoNegatives] pollutionBlockRecolor is not present in this GregTech version - left alone");
-        } catch (Throwable failure) {
-            ctx.log()
-                .error(
-                    "[PollutionNoNegatives] could not clear the pollution block-recolour tint ({}) - left alone",
-                    failure.toString());
-        }
+        return mirrorNote(updated, absent, failed);
     }
 
     /** The live {@code GTMod.proxy} instance; {@code null} when the field itself is null. */
@@ -346,13 +344,48 @@ public final class PollutionConfigFeature implements Feature {
         return proxyField.get(null);
     }
 
-    /** The success tail for the mirror count: {@code 0} means the mirrors already said what we wanted. */
-    private static String mirrorNote(int updated) {
-        return updated > 0 ? "; GTMod.proxy mirrors updated (" + updated + " field(s))"
-            : "; GTMod.proxy mirrors already say this";
+    /**
+     * The success tail for the mirror counts: {@code updated} changed, {@code absent} missing from this GregTech
+     * version, {@code failed} present but not settable.
+     */
+    private static String mirrorNote(int updated, int absent, int failed) {
+        if (updated == 0 && absent == 0 && failed == 0) {
+            return "; GTMod.proxy mirrors already say this";
+        }
+        if (updated == 0) {
+            StringBuilder note = new StringBuilder("; GTMod.proxy mirrors: none needed changing, but ");
+            if (absent > 0) {
+                note.append(absent)
+                    .append(" not present in this GregTech version");
+            }
+            if (absent > 0 && failed > 0) {
+                note.append(" and ");
+            }
+            if (failed > 0) {
+                note.append(failed)
+                    .append(" could not be set");
+            }
+            return note.toString();
+        }
+        StringBuilder note = new StringBuilder("; GTMod.proxy mirrors updated (").append(updated)
+            .append(" field(s))");
+        if (absent > 0) {
+            note.append(", ")
+                .append(absent)
+                .append(" not present in this GregTech version");
+        }
+        if (failed > 0) {
+            note.append(", ")
+                .append(failed)
+                .append(" could not be set");
+        }
+        return note.toString();
     }
 
-    /** Sets one boolean mirror; {@code 1} when it actually changed, {@code 0} otherwise. Never throws. */
+    /**
+     * Sets one boolean mirror; {@code 1} when it changed, {@code 0} when it already said this, {@code -1} when the
+     * field is absent, {@code -2} when it could not be set. Never throws.
+     */
     private static int mirrorBoolean(PatchContext ctx, Object proxy, String name, boolean wanted) {
         try {
             Field field = findField(proxy.getClass(), name);
@@ -365,18 +398,21 @@ public final class PollutionConfigFeature implements Feature {
         } catch (NoSuchFieldException absent) {
             ctx.log()
                 .info("[PollutionNoNegatives] {} is not present on GregTech's proxy - skipped", name);
-            return 0;
+            return -1;
         } catch (Throwable failure) {
             ctx.log()
                 .error(
                     "[PollutionNoNegatives] could not set {} on GregTech's proxy ({}) - skipped",
                     name,
                     failure.toString());
-            return 0;
+            return -2;
         }
     }
 
-    /** Sets one int mirror; {@code 1} when it actually changed, {@code 0} otherwise. Never throws. */
+    /**
+     * Sets one int mirror; {@code 1} when it changed, {@code 0} when it already said this, {@code -1} when the field
+     * is absent, {@code -2} when it could not be set. Never throws.
+     */
     private static int mirrorInt(PatchContext ctx, Object proxy, String name, int wanted) {
         try {
             Field field = findField(proxy.getClass(), name);
@@ -389,14 +425,14 @@ public final class PollutionConfigFeature implements Feature {
         } catch (NoSuchFieldException absent) {
             ctx.log()
                 .info("[PollutionNoNegatives] {} is not present on GregTech's proxy - skipped", name);
-            return 0;
+            return -1;
         } catch (Throwable failure) {
             ctx.log()
                 .error(
                     "[PollutionNoNegatives] could not set {} on GregTech's proxy ({}) - skipped",
                     name,
                     failure.toString());
-            return 0;
+            return -2;
         }
     }
 
@@ -419,7 +455,8 @@ public final class PollutionConfigFeature implements Feature {
             if (!file.isFile()) {
                 return PollutionCfg.values("", keys);
             }
-            return PollutionCfg.values(new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8), keys);
+            return PollutionCfg
+                .values(new String(Files.readAllBytes(file.toPath()), StandardCharsets.ISO_8859_1), keys);
         } catch (IOException | RuntimeException unreadable) {
             return PollutionCfg.values("", keys);
         }

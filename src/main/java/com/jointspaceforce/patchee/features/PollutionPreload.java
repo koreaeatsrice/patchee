@@ -16,18 +16,22 @@ import cpw.mods.fml.common.Loader;
  * The coremod (pre-load) half of PollutionNoNegatives.
  *
  * <p>
- * GregTech registers its configs in {@code GTMod}'s static initializer, i.e.
- * during mod construction, before any mod's preInit. Patchee's normal pipeline
- * runs at postInit, far too late to change what GregTech read. So the file half
- * runs from {@link com.jointspaceforce.patchee.asm.FMLPlugin#injectData} instead:
- * {@code config/GregTech/Pollution.cfg} gets {@code Activate Pollution=true} and
- * the four effect limits set to 2147483647 before GregTech's own config code
- * sees it.
+ * GregTech registers its configs in its coremod's static initializer, which FML
+ * runs before any coremod's {@code injectData}, so a rewrite from here always
+ * lands after GregTech has already read the file: the new values take effect on
+ * the next boot. The postInit memory pass is what fixes the current one.
+ *
+ * <p>
+ * Even so the file half runs from {@link com.jointspaceforce.patchee.asm.FMLPlugin#injectData},
+ * as early as a coremod can run: {@code config/GregTech/Pollution.cfg} gets
+ * {@code Activate Pollution=true} and the four effect limits set to 2147483647,
+ * so every later boot reads the right values from disk.
  *
  * <p>
  * {@code config/GregTech/Client.cfg} is rewritten only when it already exists,
- * so the client render flags are off before the client reads them, and a
- * server-only install creates nothing.
+ * so the client render flags are off when GregTech next reads them; the
+ * in-memory flags cover the current session, and a server-only install creates
+ * nothing.
  *
  * <p>
  * Everything is fail-soft: a read-only file or directory just logs, and the
@@ -118,7 +122,8 @@ public final class PollutionPreload {
         switch (result.status) {
             case WRITTEN:
                 LOG.info(
-                    "{} wrote {} before GregTech loads it ({} key(s): {}; backup {}.{}.bak)",
+                    "{} wrote {} for the next boot ({} key(s): {}; backup {}.{}.bak - this boot is covered by the "
+                        + "in-memory pass)",
                     ID,
                     relativePath,
                     result.changedKeys.size(),
