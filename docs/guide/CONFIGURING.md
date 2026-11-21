@@ -52,14 +52,17 @@ Two features and the coremod rewrite another mod's config, because that mod has 
 |---|---|---|
 | `config/GregTech/Pollution.cfg` | `PollutionPreload` (coremod) | Yes, a timestamped `.bak` |
 | `config/GregTech/Client.cfg` | `PollutionPreload` (if the file exists) and `PollutionVisualsFeature` at postInit | Yes, a timestamped `.bak` |
-| `config/veinminer/*.cfg` | `VeinConfigFeature` | No |
+| `config/veinminer/general.cfg` and `config/veinminer/tools-and-blocks.json` | `VeinConfigFeature` | No |
+
+`PollutionCfgWriter` edits only the keys it owns, so a hand edit elsewhere in the two GregTech files survives. The
+VeinMiner pair is different: `VeinConfigFeature` generates both files in full on every boot, so a hand edit there is
+lost. The file says so at the top.
 
 `PollutionConfigFeature` is not a writer: at postInit it sets the same values in memory and reads the file to log
 what it actually says.
 
-Each writer changes only its own keys and re-reads the file to log what is actually there. If a pack update replaces
-one of these files, Patchee rewrites its keys on the next boot. If you want the previous values back, restore the
-`.bak` next to the file and restart.
+If a pack update replaces one of these files, Patchee writes it again on the next boot. If you want the previous
+GregTech values back, restore the `.bak` next to the file and restart.
 
 ## Advanced keys, briefly
 
