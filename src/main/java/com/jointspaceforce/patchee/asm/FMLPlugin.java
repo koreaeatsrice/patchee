@@ -14,15 +14,17 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
  * class loader.
  *
  * <p>
- * Five tweaks have to change another mod's class bytes while those bytes load,
+ * Six tweaks have to change another mod's class bytes while those bytes load,
  * which is a coremod's job: the F7 light overlay rewrites NEI's comparison
  * constants on the client, TeamChunkCap clamps ServerUtilities' team chunk
  * limits on the server, FinalCastleBreak
  * redirects Twilight Forest's castle and thorn call sites on the server,
  * ChestplateFlight lifts IC2's Quantum Chestplate hover climb and keeps a
- * standing player from counting as flying, and GraviSuiteFlight applies those
+ * standing player from counting as flying, GraviSuiteFlight applies those
  * same three flight edits to GraviSuite's Advanced Jetpack (which the Advanced
- * Nano Chestplate inherits).
+ * Nano Chestplate inherits), and HandshakeModList observes FML's client mod-list
+ * handshake step so the Super Tank fix only clears debuffs for clients that run
+ * Patchee.
  *
  * <p>
  * {@link #injectData(Map)} also runs Patchee's one config write as early as a coremod can:
@@ -48,7 +50,8 @@ public class FMLPlugin implements IFMLLoadingPlugin {
             "com.jointspaceforce.patchee.asm.TeamChunkCapTransformer",
             "com.jointspaceforce.patchee.asm.FinalCastleBreakTransformer",
             "com.jointspaceforce.patchee.asm.ChestplateFlightTransformer",
-            "com.jointspaceforce.patchee.asm.GraviSuiteFlightTransformer" };
+            "com.jointspaceforce.patchee.asm.GraviSuiteFlightTransformer",
+            "com.jointspaceforce.patchee.asm.HandshakeModListTransformer" };
     }
 
     @Override

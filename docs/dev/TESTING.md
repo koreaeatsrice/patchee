@@ -50,7 +50,12 @@ visual guard writes. It runs only when `PATCHEE_GREGTECH_JAR` is set:
 PATCHEE_GREGTECH_JAR=/path/to/gregtech.jar ./gradlew test --rerun-tasks
 ```
 
-Unset, the test is skipped with a JUnit assumption, so a plain build needs no third-party jar. Use the same pattern
+`SuperTankRealJarTest` uses the same jar and the same skip. It reads `gregtech/common/blocks/ItemMachines.class`
+with ASM and asserts that `onUpdate` calls `addPotionEffect` four times, carries the 64000 / 1200 / 12000 /
+4096000.0 / 2000000.0 constants, reads `mFluid` and `mItemCount`, checks `MTESuperTank` and `MTESuperChest`
+instanceof, and loads four `Potion` fields.
+
+Unset, both are skipped with a JUnit assumption, so a plain build needs no third-party jar. Use the same pattern
 for any new reflection target whose field names are the risk. Do not commit the jar.
 
 ## Matcher tools
