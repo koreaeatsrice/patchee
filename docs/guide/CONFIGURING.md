@@ -46,13 +46,16 @@ reads at class-load time. A new value still needs a restart.
 
 ## What Patchee writes outside its own file
 
-Three features rewrite another mod's config, because that mod has no API for the setting:
+Two features and the coremod rewrite another mod's config, because that mod has no API for the setting:
 
 | File | Written by | Keeps a backup |
 |---|---|---|
-| `config/GregTech/Pollution.cfg` | `PollutionPreload` (coremod) and `PollutionConfigFeature` | Yes, a timestamped `.bak` |
-| `config/GregTech/Client.cfg` | `PollutionPreload` (if the file exists) and the pollution features: `PollutionConfigFeature` and `PollutionVisualsFeature` at postInit | Yes, a timestamped `.bak` |
+| `config/GregTech/Pollution.cfg` | `PollutionPreload` (coremod) | Yes, a timestamped `.bak` |
+| `config/GregTech/Client.cfg` | `PollutionPreload` (if the file exists) and `PollutionVisualsFeature` at postInit | Yes, a timestamped `.bak` |
 | `config/veinminer/*.cfg` | `VeinConfigFeature` | No |
+
+`PollutionConfigFeature` is not a writer: at postInit it sets the same values in memory and reads the file to log
+what it actually says.
 
 Each writer changes only its own keys and re-reads the file to log what is actually there. If a pack update replaces
 one of these files, Patchee rewrites its keys on the next boot. If you want the previous values back, restore the
