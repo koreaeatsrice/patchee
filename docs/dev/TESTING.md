@@ -8,7 +8,7 @@ class transformer without risking a live server. The command set is [SETUP.md](S
 | Layer | Runs where | Proves |
 |---|---|---|
 | JUnit 5 (`src/test/java`) | `./gradlew test`; no game | The pure decisions: thresholds, team-limit maths, config parsing, byte matching on synthetic classes. |
-| Real-jar tests | `./gradlew test` with an env var | Field names and descriptors against a real mod jar. Third-party jars are skipped unless `PATCHEE_GREGTECH_JAR` is set; Forge's own classes are always on the classpath and their test never skips. |
+| Real-jar tests | `./gradlew test` with an env var | Field names and descriptors against a real mod jar. Third-party jars are skipped unless their var is set (`PATCHEE_GREGTECH_JAR`, `PATCHEE_IC2_JAR`, `PATCHEE_GRAVISUITE_JAR`); Forge's own classes are always on the classpath and their test never skips. |
 | Matcher tools (`tools/matcher-check/`) | A shell, by hand | A transformer against the actual jar bytes: site count, instruction sequence, idempotence, pass-through, fail-loud. |
 | Smoke job (`ci.yml`) | GitHub Actions, real dev server | The server boots, each feature arms, the self-test passes. |
 

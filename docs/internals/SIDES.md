@@ -87,10 +87,10 @@ The server is complete without the client.
 ### 6. The handshake hook is server-side only
 
 `HandshakeModListTransformer` patches `cpw.mods.fml.common.network.handshake.FMLHandshakeServerState$2`, FML's own
-server-side HELLO handler. It wraps the `accept` that already reads the client's mod list and records one boolean
-per connection. It adds no packet, no channel and no client requirement: the list it reads is one the stock
-handshake already sends. A client without Patchee is recorded as absent, and an unseen connection answers absent,
-so the server-side clear simply does not run for it.
+server-side HELLO handler. It inserts one call at the entry of the `accept` that already reads the client's mod
+list and records one boolean per connection. It adds no packet, no channel and no client requirement: the list it
+reads is one the stock handshake already sends. A client without Patchee is recorded as absent, and an unseen
+connection answers absent, so the server-side clear simply does not run for it.
 
 ## Why "both sides" is sometimes needed
 
@@ -115,10 +115,10 @@ so the server-side clear simply does not run for it.
   dedicated-server skip line.
 - **The stock-client join:** `HandshakeModListPatchTest` runs against the real Forge class on the test classpath —
   `FMLHandshakeServerState$2`, the HELLO handler that reads the joining client's mod list. It proves the target is
-  that state (its `accept` references `FMLHandshakeMessage$ModList` and `ClientHello`), that the hook is the
-  method's first instruction, that a second pass changes nothing, and that an unrelated class comes back
-  byte-identical. The test never skips: a missing Forge class fails the suite, so a green build means the join path
-  was checked. The two-machine run itself — server with the jar, client without — is the manual check;
+  that state (its `accept` references `FMLHandshakeMessage$ModList` and `ClientHello`), that the hook call opens
+  the method ahead of Forge's own work, that a second pass changes nothing, and that an unrelated class comes
+  back byte-identical. The test never skips: a missing Forge class fails the suite, so a green build means the
+  join path was checked. The two-machine run itself — server with the jar, client without — is the manual check;
   `./gradlew runServer` plus `./gradlew runClient` with no jar on the client is the closest local version.
 
 ## What breaks client optionality
