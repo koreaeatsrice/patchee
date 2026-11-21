@@ -8,7 +8,7 @@ The JABBA Dolly picks up Forestry apiaries and bee houses, Gendustry industrial 
 
 ## Tinkers' mattock
 
-The Tinkers' Construct mattock digs sand and snow at shovel speed, and the drops come with it. Switch: `enableMattockFix`.
+The Tinkers' Construct mattock digs sand and snow at shovel speed, and the drops come with it. Switch: `enableMattockFix`. The speed half is measured by the client, so a stock client keeps the old speed.
 
 ## GregTech tanks and chests
 

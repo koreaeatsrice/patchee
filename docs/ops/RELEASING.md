@@ -11,7 +11,7 @@ and `gradleTokenVersion = VERSION`; `Patchee.java:117` uses `version = Tags.VERS
 derives `VERSION` from `git describe`, so the tag is the version.
 
 Tags are `vMAJOR.MINOR.PATCH`. `parse_semver` rejects anything else, and `last_tag` skips a non-semver tag instead
-of crashing (`release.py:125-146`). `v1.9.0` and `v1.9.1` are real tags.
+of crashing (`release.py:125-136`). `v1.9.0` and `v1.9.1` are real tags.
 
 A local build without a tag still produces a jar, but its version is not a release version. The release build checks
 out the tag (`release.yml`, `build-release`), so the published jar carries the tag's version.
@@ -70,7 +70,7 @@ Each subject is parsed with `CONVENTIONAL_PATTERN`; a subject without a conventi
 Each line is `- **scope**: description ([sha](url))`. A breaking commit appears in `Breaking Changes` and in its
 type section. A `Contributors` section follows, then a `Full changelog` compare link. Contributors are derived from
 author identity; only retired identities with hard evidence are folded, and everyone else keeps their own handle
-(`contributor_handle`, `release.py:186-235`).
+(`contributor_handle`, `release.py:186-226`).
 
 ### The commit and tag
 

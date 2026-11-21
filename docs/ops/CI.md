@@ -76,7 +76,7 @@ does not bypass CI; auto-merge waits for the required checks.
 | `Build & Format` fails at Spotless | Run `./gradlew spotlessApply` and commit. |
 | `Build & Format` fails at Checkstyle | A wildcard import. |
 | `Build & Format` fails to resolve a dependency | The GTNH maven is down or a pin moved. |
-| Smoke job times out | The server never reached the first tick; read `run/server/logs/latest.log` in the artifact. |
+| Smoke job times out | The server never reached the first tick; download the `patchee-smoke-server-log` artifact and read `server.log`. |
 | Smoke job misses an arm line | A feature skipped because a mod is absent or a shape changed. |
 | Smoke job sees `[SelfTest] FAIL` | A real behavioural regression; the line names the check. |
 | `Release Engine Tests` fails | A change to `release.py` without its test, or a changed section order. |
