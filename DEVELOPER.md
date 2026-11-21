@@ -1,176 +1,61 @@
 # DEVELOPER
 
-For the person building, changing or releasing Patchee.
+For the person building or changing Patchee. This page is a signpost: the detail is in `docs/`, and only the facts
+unique to local development are kept here.
+
+## Start here
+
+| If you want to… | Read |
+|---|---|
+| Understand the design | [docs/internals/PIPELINE.md](docs/internals/PIPELINE.md) |
+| Add a feature | [docs/dev/ADDING-A-FEATURE.md](docs/dev/ADDING-A-FEATURE.md) |
+| Run the tests | [docs/dev/TESTING.md](docs/dev/TESTING.md) |
+| Open a PR | [docs/dev/WORKFLOW.md](docs/dev/WORKFLOW.md) |
+| Cut a release | [docs/ops/RELEASING.md](docs/ops/RELEASING.md) |
+| Know the rules | [AGENTS.md](AGENTS.md) |
+| See every page | [docs/README.md](docs/README.md) |
 
 ## Build
 
-Requires JDK 25 and network access to the GTNH maven (first build downloads the
-toolchain):
+JDK 25, network access to the GTNH maven for the first build:
 
 ```sh
 JAVA_HOME=/opt/jdk-25 ./gradlew spotlessApply build
-# -> build/libs/patchee-<version>.jar   (the PLAIN jar; -dev is for dev runs)
+# -> build/libs/patchee-<version>.jar   (the plain jar; -dev is for dev runs)
 ```
 
-The dev runtime pins Twilight Forest 2.7.41: the newest version published to a
-resolvable maven (the pack's 2.7.44 is not). The pin only affects a local
-`runServer`; it never reaches a build.
+## Dev-runtime pins
 
-## Architecture (design patterns)
+- Twilight Forest is pinned to 2.7.41, the newest version published to a resolvable maven. The pack's newer build
+  is not on that maven. The pin only affects `runServer`; it never reaches a published jar.
+- Gendustry and MagicBees are not on the dev runtime: their jitpack artifacts drag in an unresolvable
+  CodeChickenLib pin. The self-test skips them locally and checks them on a real pack.
+- Blood Arsenal is absent, so the smoke job sees the GlassBreak skip line, not its armed line.
 
-The code is deliberately small and pattern-based. Adding a feature = **one
-registration** in `features/PatcheeFeatures.standard()`; its config option,
-banner field and pipeline steps all follow from it.
+## What CI asserts
 
-| Pattern | Where |
-|---|---|
-| **Artifact registry** | `core/FeatureRegistry.java` + `core/Feature.java` (descriptor: id, config key, default, description, target class, steps, `early()` for work that must run at preInit — see `features/VeinConfigFeature.java`) + `features/PatcheeFeatures.java` |
-| **Composition** | `core/Step.java` (`Outcome run(PatchContext)`), `core/Steps.java` (`sequence`, `present`, `noop`) — features are composed steps, not monoliths |
-| **Decorators** | `core/StepDecorators.java`: `failSoft` (Throwable → FAILED, policy-logged; the server never breaks), `logged` (DEBUG-only, so prod logs are unchanged), `requiresTarget` (absent target → SKIPPED with the feature's INFO line) |
-| **Policies** | `core/policy/` — `FailurePolicy` (`FAIL_LOG_ERROR_CONTINUE`) and `MissingTargetPolicy` (`QUIET_SKIP_INFO`); decorators consult them, no feature contains a raw catch |
-| **Factory** | `core/PatchFactory.java` builds the decorated pipeline of enabled features; `core/FeaturePipeline.java` runs it |
-| **Dependency injection** (manual) | `core/PatchContext.java` carries logger, `Toggles` snapshot, policies and `core/reflect/Reflective` into every step; `CommonProxy` is the composition root. Features never touch static `Config` fields. |
+The smoke job repeats the list in [docs/ops/CI.md](docs/ops/CI.md). If a feature's log line changes, that file and
+the workflow change in the same PR.
 
-`fixes/` no longer exists — the old monolithic classes were replaced by the
-`features/` (one file per feature) + `core/` split.
+## Verified against
 
-## Invariants — do not break these
+The builds the reflection targets and byte shapes were checked against. Re-verify with `javap` and
+`tools/matcher-check/` before changing a target.
 
-- **Log strings are API.** The CI smoke test greps for `[DollyFix] Dolly now
-  accepts …`, `[MattockFix] mattock shovel materials …`, `[SuperTankFix] …`,
-  `[VeinConfig] wrote …`, `[AuroraBreak] armed …`, `[ArcticFurBreak] armed …`,
-  `[TeamChunkCap] armed …`,
-  `[GlassBreak] Blood Arsenal is not installed - skipped` and
-  `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too — this list
-  is the contract for the strings ops docs quote. Blood Arsenal is not on the dev
-  runtime, so the dev check sees the skip line — the `[GlassBreak] armed …` line
-  only appears on a server that has it. `PollutionVisuals` is not in this list:
-  CI runs the dev pack as a dedicated server (`./gradlew runServer`), and the
-  feature checks the side before it looks for GregTech, so CI only ever sees its
-  `[PollutionVisuals] dedicated server - no client renderer, skipped` line; its
-  client decision logic is proven by `PollutionVisualsTest` instead. Setting
-  `PATCHEE_GREGTECH_JAR` also makes `PollutionVisualsRealJarTest` check the real
-  jar's field names; unset, that test is skipped.
-- **The config file keys/comment text** (`enabled`, `enableDollyFix`,
-  `enableMattockFix`, `enableSuperTankFix`, `enableGlassBreakFix`,
-  `enableVeinConfig`, `enableLightOverlayTweak`, `enableAuroraBreak`,
-  `enableArcticFurBreak`, `enableTeamChunkCap`, `enablePollutionNoVisuals` (on
-  by default, client-side),
-  `extraDollyClasses`, `runSelfTest`, the `veinConfig.*` section keys
-  (`veinConfig.blockLimit`, `veinConfig.radius`, `veinConfig.blocks`,
-  `veinConfig.extraTools`), `glassBreak.minArmourPieces` and
-  `lightOverlay.maxLightNormal`) are user-facing;
-  keep names, defaults and the plain-language comments stable. Config
-  generation is registry-driven — the feature descriptor supplies the text.
-  `docs/SETTINGS.md` is the complete, authoritative list of every key; keep
-  this bullet as the rule plus that pointer, never a hand-maintained list
-  that can rot.
-- **Every fix stays fail-soft** (INFO skip on absent mods, ERROR + untouched on
-  malformed targets) and **config-gated**.
-- **The class-load patches are the exception to "no bytecode edits".**
-  `LightOverlay` (client, NEI's F7 overlay), `TeamChunkCap` (server,
-  ServerUtilities' team limits), `FinalCastleBreak` (server, Twilight Forest's
-  castle and thorns), `ChestplateFlight` (IC2's Quantum Chestplate) and
-  `GraviSuiteFlight` (GraviSuite's Advanced Jetpack) rewrite another mod's class
-  bytes as those bytes load, because the thing to change is a comparison
-  constant, a return value or a constructor argument with no hook and no config
-  key. All five live in `asm/` as `IClassTransformer`s registered by
-  `asm/FMLPlugin`, all are name-gated to their own classes, all report their site
-  count, all leave a class of any other shape **untouched** with an ERROR line,
-  and all are idempotent. `TeamChunkCap` is the one patch that injects a call
-  (the JVM has no "min" instruction) — three instructions per return site, with
-  the class's own stack map frames left alone. Verify a transformer against the
-  REAL bytes with `tools/matcher-check` (see its README) before believing it
-  works: a matcher that never fires is silent.
-- **A class-load patch cannot reach Forge's config.** Its switches are parsed
-  from `config/patchee.cfg` by the patch's own `*Settings` class at load time.
-  `TeamChunkCap` seeds them into a small holder and the feature's arm step then
-  publishes the authoritative `Toggles` values into that same holder, because
-  the injected hook reads it on every call. When a holder is involved, publish to
-  the exact object the hot path reads, and log the effective values in the armed
-  line.
-- One jar must stay **client-optional** and **acceptableRemoteVersions = "*"**:
-  clients never need it to join. Without a client copy, a client is out of step
-  where a fix changes the same thing on both sides (e.g. the server clears the
-  tank effects while the client still applies them, and the mattock's sand/snow
-  speed differs). The Twilight Forest break speeds are different: they are seen
-  only on a client that has Patchee, and a client without it just keeps the plain
-  1.7.10 speed — no mismatch. All of that is accepted; the docs describe it.
-- **The break-speed features are two-sided — never server-only.** In 1.7.10 the
-  client is the clock: `PlayerControllerMP` accumulates the break progress and
-  sends `C07PacketPlayerDigging(2)` when it reaches `1.0F`, and the server only
-  validates a `0.7F` minimum (`ItemInWorldManager.uncheckedTryHarvestBlock`), so
-  a floor applied only on the server changes nothing a real player feels. Apply
-  `AuroraBreak` and `ArcticFurBreak` on both sides; the faster break is what a
-  player sees on a client that has Patchee installed.
-- **Wrapper coverage is implicit — do not add per-wrapper unwrapping code.**
-  Every block-wrapper mod (Forge Multipart, ArchitectureCraft, Carpenter's
-  Blocks, LittleTiles) computes break progress from the block it wraps, so
-  `PlayerEvent.BreakSpeed` already carries the Twilight Forest block and needs
-  no adapter; `features/WrapperCoverage.java` is the researched table plus the
-  boot-log wording, not a hook. Corollary: a `BreakSpeed` event may arrive with
-  `y < 0` — Forge Multipart reports its wrapped block at `(0,-1,0)` — and in
-  that case the floor must read the block's own hardness, never the world
-  (see `BreakHardness`).
-
-## CI / CD
-
-- `ci.yml` — build + formatter/checkstyle, then a **real server smoke test**:
-  boots `runServer` with `runSelfTest=true` and fails unless the self-test
-  reports `0 failed`.
-- `security.yml` — dependency-graph submission (weekly + on push; feeds
-  Dependabot alerts). CodeQL is intentionally absent: it needs GitHub Advanced
-  Security on private repos.
-- `dependabot.yml` + `dependabot-automerge.yml` — weekly `github-actions`
-  updates, auto-merged when green. The Gradle ecosystem is not enabled there
-  because Dependabot cannot resolve the GTNH toolchain.
-- `release.yml` — run from the Actions tab (`workflow_dispatch`, pick
-  `auto`/`patch`/`minor`/`major`, `dry_run` to preview) or push a `v*` tag. The
-  engine (`.github/scripts/release.py`) builds grouped notes from Conventional
-  Commits, updates `CHANGELOG.md`, commits + tags + pushes, builds the jar and
-  opens a **draft** GitHub release for review. Unit tests:
-  `python3 .github/scripts/test_release.py`.
-
-## Licence position
-
-Twilight Forest code — the modern 1.20.1 mod and the old 1.7.10 mod — is GNU
-LGPL v2.1-or-later, "©2012-2017 Ben Mazur / Benimatic"; the 1.7.10 code was
-re-licensed to LGPL-2.1 in 2017, commit 98b88bd on the Twilight Forest 1.7.10
-branch. The modern mod splits its assets: code LGPL-2.1, non-code art (textures
-and models) CC BY-NC-SA 4.0, sounds all rights reserved. The 1.7.10 Twilight
-Forest on the server is the GTNewHorizons fork
-(LGPL-2.1 code; textures CC BY-NC-SA 4.0; sounds all rights reserved; GTNH
-modifications LGPL-2.1, 2021-2024).
-
-**Rule for future work:** Twilight Forest source must never be copied into
-Patchee — copying its code verbatim would drag LGPL-2.1 copyleft onto those
-files and break Patchee's pure-MIT release, and its art and sounds are barred
-outright. A feature may only **re-implement the behaviour**; Patchee ships none
-of Twilight Forest's code, art or sound and changes runtime behaviour only.
-
-## Deeper notes
-
-The technical research behind each fix (exact classes, bytecode evidence,
-alternatives considered) lives in the operations notes on the server-ops side
-(`gtnh-server-ops` playbook) and in the commit messages — read those before
-changing a fix's reflection targets.
-
-**Verified against:**
-- JABBA (GTNH fork), `ItemBarrelMover` — static list at class-init, gate at
+- JABBA (GTNH fork), `ItemBarrelMover` — static `classExtensions`, gate at
   `for (Class c : classExtensions) if (c.isInstance(te)) return true;`.
-- Tinkers' Construct (GTNH fork) `1.14.108-GTNH` — javap-verified:
-  `static Material[] shovelMaterials` (package-private, not final) is read
-  per call by `getEffectiveSecondaryMaterials()`.
-- GT5-Unofficial — `gregtech.common.blocks.ItemMachines#onUpdate` (the four
-  potions, `mItemCount` / `mFluid > 64000` gates).
-- ServerUtilities 2.4.9 — `serverutils.data.ServerUtilitiesTeamData`
-  (`getMaxClaimChunks` / `getMaxChunkloaderChunks` sum
-  `serverutilities.claims.max_chunks` / `serverutilities.chunkloader.max_chunks`
-  over `team.getMembers()`, cache into `cachedMaxClaimChunks` /
-  `cachedMaxChunkloaderChunks`, and answer `-1`/`-2` for the inactive and
-  invalid-team cases). Enforced at `serverutils.data.ClaimedChunks#claimChunk`
-  (`max == 0 || getTeamChunks(...).size() >= max` → `NO_POWER`) and
-  `#loadChunk`; the numbers the claim-map GUI shows are computed server-side in
-  `serverutils.net.MessageClaimedChunksUpdate`, so no client change is needed.
-  Bytecode and matcher proof: `tools/matcher-check`.
+- Tinkers' Construct (GTNH fork) `1.14.108-GTNH` — package-private, non-final `Material[] shovelMaterials`.
+- GT5-Unofficial `5.09.54.265` — `ItemMachines#onUpdate`, the four potions and the `mItemCount` / `mFluid > 64000`
+  gates.
+- ServerUtilities `2.4.9` — `ServerUtilitiesTeamData#getMaxClaimChunks` / `#getMaxChunkloaderChunks`; enforced at
+  `ClaimedChunks#claimChunk` and `#loadChunk`.
+- Twilight Forest — the nine `TFBlocks` fields used by `FinalCastleBreakFeature`, verified with `javap`. The source
+  comment records 2.7.45; the dev runtime pins 2.7.41 and the matcher also checks the live 2.7.40 bytes.
+- IC2 `ItemArmorQuantumSuit`, GraviSuite `ItemAdvancedJetPack` — closed source; the patch checks the method shape and
+  refuses an unknown one.
 - Forestry (GTNH fork), Gendustry, MagicBees — class names read from source.
+
+## Licence
+
+Twilight Forest code is LGPL-2.1-or-later, art CC BY-NC-SA 4.0, sounds all rights reserved. Patchee ships none of
+it. The full position is [docs/ops/GTNH-INTERNALS.md](docs/ops/GTNH-INTERNALS.md).
