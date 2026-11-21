@@ -44,9 +44,10 @@ A PR that breaks one of these is rejected, regardless of intent.
 2. **Never commit agent artifacts.** No report, handover, audit, verdict or summary Markdown outside the docs in
    this repo. No `review/` or `reports/` folder. Long-form scratch stays in the PR conversation. A commit in the
    history removed stale handover reports from `review/`; do not recreate that folder.
-3. **Clean-room only.** Never copy Twilight Forest, IC2, GraviSuite, GregTech or Pam's code, art or sound into this
-   repo, including `src/test/resources/`. A patch may rewrite the bytecode of a mod the user already owns, or
-   re-implement published behaviour. It may not vendor the original.
+3. **Clean-room only.** Never copy Twilight Forest, IC2, GraviSuite, GregTech or Pam's source code, art or sound
+   into this repo. A patch may rewrite the bytecode of a mod the user already owns, or re-implement published
+   behaviour. It may not vendor the original. Extracted class files used as matcher fixtures under
+   `src/test/resources/finalcastlebreak/` are test inputs, not a redistribution; never add a mod jar.
 4. **Client optional.** The server jar is complete on its own. A player joins with a stock client and nothing
    installed. A PR that makes the jar required on the client is rejected by policy. See the next section.
 5. **Fail soft.** A missing mod is an INFO skip. A changed shape is an ERROR line and the target is left untouched.
@@ -92,7 +93,7 @@ for the switch, banner and self-test. The full recipe, with the doc rows and the
 ## Forbidden
 
 - Editing `GTPacketPollution`, or suppressing pollution data in any way.
-- Copying another mod's source, art, sound or jar into the repo.
+- Copying another mod's source, art, sound or jar into the repo (extracted matcher fixtures excepted).
 - Committing reports, handovers, audits, verdicts, summaries or a `review/`/`reports/` directory.
 - Adding a network channel, a packet class or a client-only mod requirement.
 - Throwing out of a transformer; it must catch `Throwable`, log ERROR and return the original bytes.

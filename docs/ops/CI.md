@@ -33,8 +33,9 @@ The smoke job asserts these lines:
 - `[GlassBreak] Blood Arsenal is not installed - skipped`
 
 Blood Arsenal is not on the dev runtime, so CI sees the GlassBreak skip line. The `[GlassBreak] armed ...` line only
-appears on a server that has it. The FinalCastle line is checked in both its armed and absent forms by the same
-grep block; read the workflow before changing a target.
+appears on a server that has it. The FinalCastle line is asserted in its armed form only; read the workflow before
+changing a target. The same job also asserts `[SelfTest] result: <n> passed, 0 failed`, so a feature that arms but
+fails its check still fails the job.
 
 `PollutionVisuals` is not in the grep list. CI runs a dedicated server, and the feature checks the side before it
 looks for GregTech, so CI sees

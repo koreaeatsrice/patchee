@@ -1,7 +1,7 @@
 # Documentation index
 
-Start here. Each page says at the top who it is for and what it answers. Every page is short on purpose; where two
-pages touch the same subject, one owns it and the other links.
+Start here. Each page added by this split says at the top who it is for and what it answers. Every page is short on
+purpose; where two pages touch the same subject, one owns it and the other links.
 
 ## For server owners
 

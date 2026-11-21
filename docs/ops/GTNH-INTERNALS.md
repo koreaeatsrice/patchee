@@ -209,5 +209,5 @@ redistribution of the mod. Do not add a whole third-party jar to the repo; use a
 - A config file write must keep the original. Patchee writes a timestamped `.bak` next to GregTech's config and
   changes only its own lines. Do not rewrite a whole file from a template.
 - `runServer` runs a dedicated server. A client-only feature will log its skip line there, and CI will only ever
-  see that line. That is why `PollutionVisualsTest` exists and why `DEVELOPER.md` says the client decision is
+  see that line. That is why `PollutionVisualsTest` exists and why `docs/internals/SIDES.md` says the client decision is
   proven by a unit test, not by the smoke job.

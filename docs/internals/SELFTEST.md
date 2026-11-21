@@ -22,8 +22,8 @@ switch and `runSelfTest` are both on (`CommonProxy.java:88`).
 
 ## Output
 
-`check(what, ok)` logs `[SelfTest] PASS  ...` or `[SelfTest] FAIL  ...`, counts it, and returns the boolean
-(`SelfTest.java:143-152`). The run ends with:
+`check(what, ok)` logs `[SelfTest] PASS  ...` or `[SelfTest] FAIL  ...` and counts it (`SelfTest.java:143-152`). The
+run ends with:
 
 ```
 [SelfTest] result: N passed, M failed

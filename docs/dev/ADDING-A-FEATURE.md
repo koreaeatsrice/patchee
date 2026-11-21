@@ -51,17 +51,18 @@ methods that matter:
 | `failureMessage()` | one ERROR line | What `failSoft` logs when a step throws. |
 | `targetClass()` | the JABBA class name | The feature only runs when that class is present. |
 | `missingTargetMessage()` | one INFO line | What an operator sees when JABBA is absent. |
-| `steps()` | `Steps.sequence(appendHousings())` | The work. |
+| `steps()` | `Collections.singletonList(appendHousings())` | The work. |
 | `early()` | not overridden | `false`; postInit is early enough. |
 
 The work itself (`DollyFeature.java:121-168`):
 
 1. resolve the static list through `Steps.withStaticField`;
 2. reject the value if it is not a `List` (log and return `FAILED`);
-3. build the set of installed housing class names from `TileEntity` subclasses that are in the world's registry;
+3. build the wanted names from the static `HOUSINGS` list plus `ctx.toggles().extraDollyClasses()`, keeping only
+   names that resolve with `ctx.reflect().find(...)` and are `TileEntity` subclasses;
 4. append each name once, via `Reflective.appendIfAbsent`;
 5. log how many were added and how many were already there;
-6. return `APPLIED`, or `SKIPPED` when nothing changed.
+6. return `APPLIED` unconditionally; the added and already-present counts are in the INFO line.
 
 Two rules are visible in that code and apply to every feature:
 
@@ -151,8 +152,8 @@ A transformer-backed feature keeps the `Feature` for the switch, banner and self
 1. `asm/YourTransformer.java` — name gate, `try/catch Throwable`, settings read, patch call, site-count log,
    original bytes on any doubt. `LightOverlayTransformer.java:37-70` is the smallest example.
 2. One line in `FMLPlugin.getASMTransformerClass()`.
-3. `features/YourPatch.java` — the byte matching and editing. Report a state (`PATCHED`, `ALREADY`, `MISMATCH`), a
-   site count, and never throw.
+3. `features/YourPatch.java` — the byte matching and editing. Report a state (`PATCHED`, `ALREADY_PATCHED`,
+   `UNEXPECTED_SHAPE`, and `PARTIAL` where a multi-edit patch supports it), a site count, and never throw.
 4. `features/YourSettings.java` — the early config reader, if the transformer needs a value.
 
 The feature's step usually only logs that the transformer is armed, gated on the transformer's "patch applied" flag.

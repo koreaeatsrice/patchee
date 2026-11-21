@@ -69,7 +69,7 @@ one of these files, Patchee rewrites its keys on the next boot. If you want the 
 | `veinConfig.blocks` | sand, red sand, clay, gravel | The blocks that may be vein-mined, `mod:block` or `mod:block/metadata`. |
 | `veinConfig.extraTools` | empty | Extra items accepted as shovels for vein mining. |
 | `lightOverlay.maxLightNormal` | `0` | The light level at which NEI's F7 overlay draws an X. `0` = pitch dark only, `7` = NEI's own default. Client-side only. |
-| `glassBreak.minArmourPieces` | `4` | Filled armour slots that count as protected when mining real glass. `0`..`4`; values outside are clamped. |
+| `glassBreak.minArmourPieces` | `1` | Filled armour slots that count as protected when mining real glass. `0`..`4`; values outside are clamped. |
 
 ## Pollution settings and the client
 

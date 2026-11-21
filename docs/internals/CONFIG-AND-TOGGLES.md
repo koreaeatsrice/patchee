@@ -73,9 +73,10 @@ stays parseable and ignored.
 
 ## Where the values are clamped
 
-Some keys have a range. `glassBreak.minArmourPieces` is clamped to `0..4`; `lightOverlay.maxLightNormal` is a light
-level. Clamp in the reader, not in every consumer, and test the boundary. A value outside the range should not
-throw.
+Some keys have a range. `glassBreak.minArmourPieces` is clamped to `0..4` by the rule itself
+(`GlassBreakPolicy.clampMinArmourPieces`, called from `GlassBreak.java:104`), not by the config reader, so a value
+written into the file is stored as-is and the consumer clamps it. Clamp in one place, as close to the decision as
+possible, and test the boundary. A value outside the range should not throw.
 
 ## See also
 
