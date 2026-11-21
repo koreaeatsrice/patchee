@@ -882,7 +882,8 @@ public final class SelfTest {
             ItemStack baitSlot = trapInventory.getStackInSlot(18);
             check(
                 "fishtrap shift-click puts bait in slot 18",
-                baitSlot != null && baitSlot.getItem() == bait && baitSlot.stackSize == 2
+                baitSlot != null && baitSlot.getItem() == bait
+                    && baitSlot.stackSize == 2
                     && inv.mainInventory[9] == null);
 
             // (b) shift-click fish (slot 0) out to the player inventory
@@ -908,7 +909,8 @@ public final class SelfTest {
             check(
                 "fishtrap click refuses non-bait in slot 18",
                 trapInventory.getStackInSlot(18) == null && stillOnCursor != null
-                    && stillOnCursor.getItem() == Items.apple && stillOnCursor.stackSize == 2);
+                    && stillOnCursor.getItem() == Items.apple
+                    && stillOnCursor.stackSize == 2);
             inv.setItemStack(null);
 
             if (!toggles.featureEnabled(FishTrapMovesFeature.ID)) {
