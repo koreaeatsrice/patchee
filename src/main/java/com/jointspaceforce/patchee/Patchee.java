@@ -76,17 +76,18 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * that GUI) needs Patchee on the client too. Plain shift-click already works.
  *
  * <p>
- * 10. <b>GregTech pollution visuals.</b> Pollution keeps running in full on the
- * server, but players see none of it: the single number GregTech sends each
- * client about a chunk is rewritten to 0 as the packet is built, so the client
- * draws no smog, no fog, no fog colour shift, no smoke particles and no
- * grass/leaf/water/flower tints
+ * 10. <b>GregTech pollution visuals.</b> Off by default
+ * ({@code enablePollutionNoVisuals}); with it on, pollution keeps running in
+ * full on the server, but players see none of it: the single number GregTech
+ * sends each client about a chunk is rewritten to 0 as the packet is built, so
+ * the client draws no smog, no fog, no fog colour shift, no smoke particles and
+ * no grass/leaf/water/flower tints
  * ({@link com.jointspaceforce.patchee.features.PollutionNoVisualsFeature}). Every
  * server-side read — damage, sour rain, vegetation, scanners, the pollution
  * detector, machines — keeps the real numbers; a client-side pollution readout
  * reads 0. A stock client needs nothing installed, but a client that also runs
  * Patchee applies the same rewrite to its own copy while the packet class loads,
- * so that player keeps the visuals hidden even when the switch is off.
+ * but only while that copy's own switch is on too; both copies ship with it off.
  *
  * <p>
  * 11. <b>GregTech pollution settings.</b> Pollution stays on, but has no

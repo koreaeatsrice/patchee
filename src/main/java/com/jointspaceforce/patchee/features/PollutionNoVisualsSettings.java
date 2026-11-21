@@ -16,8 +16,8 @@ import java.nio.file.Files;
  * ({@code B:key=true} inside a {@code general { ... }} block); comments and
  * unknown keys are ignored and the documented defaults are used for a missing
  * file, a missing key or an unreadable value. A value that is not true/false is
- * ignored and the default stands, exactly like Forge's own
- * {@code Property.getBoolean}: a typo never quietly switches the feature off.
+ * ignored and the current value stands, exactly like Forge's own
+ * {@code Property.getBoolean}: a typo never changes the switch.
  *
  * <p>
  * The key names live in {@link PollutionNoVisuals} and are reused by

@@ -52,7 +52,8 @@ public final class PollutionNoVisualsFeature implements Feature {
 
     @Override
     public String description() {
-        return "Feature: players see no pollution smog, no fog colour shift, no smoke particles and no "
+        return "Feature (OFF by default): when this switch is on, players see no pollution smog, no fog "
+            + "colour shift, no smoke particles and no "
             + "grass/leaf/water/flower tints, because the one number GregTech sends each client about a chunk is "
             + "rewritten to 0 as the packet is built. Pollution production, accumulation, decay, chunk storage, "
             + "damage, sour rain, vegetation checks, scanners, the pollution detector and every machine reading "
@@ -62,9 +63,8 @@ public final class PollutionNoVisualsFeature implements Feature {
             + "number now reads 0 — a client-side pollution readout or debug display built on GregTech's map shows "
             + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client is "
             + "driven entirely by the value the server sends. A client that also runs Patchee applies the same "
-            + "rewrite to its own copy while the packet class loads, so that player keeps the visuals hidden even "
-            + "when this switch is off — remove the client copy, or turn the switch off there too, to give them "
-            + "pollution visuals back. Restart the server after changing this.";
+            + "rewrite to its own copy while the packet class loads, but only when that copy's own "
+            + "enablePollutionNoVisuals is on too; both copies ship with it off. Restart the server after changing this.";
     }
 
     @Override
