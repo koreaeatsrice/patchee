@@ -59,6 +59,8 @@ public final class ClientModPresence {
      * connection — but harmless to call when a disconnect is observed.
      *
      * @param connection the connection's Netty {@code NetworkManager} (ignored when null)
+     *                   <p>
+     *                   Used only by tests and manual ops; production never calls it.
      */
     public static void forget(Object connection) {
         if (connection == null) {
