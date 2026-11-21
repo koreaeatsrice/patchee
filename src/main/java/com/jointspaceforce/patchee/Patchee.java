@@ -113,8 +113,7 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * on the server, so clients need nothing installed to join
  * ({@code acceptableRemoteVersions = "*"}). The pollution rewrite is the exception
  * in the other direction: a client that also installs Patchee rewrites its own copy
- * and hides pollution visuals everywhere until that copy is removed or its own
- * switch is turned off.
+ * only while that copy's own switch is on; both copies ship with it off.
  */
 @Mod(
     modid = Patchee.MODID,

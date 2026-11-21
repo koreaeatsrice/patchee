@@ -19,7 +19,8 @@ import com.jointspaceforce.patchee.core.Step;
  * chunk to each nearby client in {@code gregtech.api.net.GTPacketPollution}, and
  * the client's {@code PollutionRenderer} draws the smog, the fog, the fog colour
  * shift, the smoke particles and the grass/leaves/water/flower tints from that
- * one number and nothing else. {@link PollutionNoVisualsPatch} rewrites that
+ * one number, subject to GregTech's own Client.cfg fog and dirt-particle
+ * flags. {@link PollutionNoVisualsPatch} rewrites that
  * packet's constructor to store {@code 0} instead of the value it was given, so
  * every number the server sends is 0 and the client has nothing to draw with.
  *
@@ -61,8 +62,9 @@ public final class PollutionNoVisualsFeature implements Feature {
             + "server-side and stay exactly as they were. This does not edit Pollution.cfg, does not lower or "
             + "remove pollution and does not touch the game world. Tradeoff: anything a CLIENT reads from that "
             + "number now reads 0 — a client-side pollution readout or debug display built on GregTech's map shows "
-            + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client is "
-            + "driven entirely by the value the server sends. A client that also runs Patchee applies the same "
+            + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client "
+            + "draws from the value the server sends, and GregTech's own Client.cfg fog and dirt-particle "
+            + "flags decide whether those two are drawn. A client that also runs Patchee applies the same "
             + "rewrite to its own copy while the packet class loads, but only when that copy's own "
             + "enablePollutionNoVisuals is on too; both copies ship with it off. Restart the server after changing this.";
     }

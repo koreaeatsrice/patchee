@@ -70,6 +70,10 @@ class PollutionNoVisualsSettingsTest {
             .parse("B:enabled=yes\nB:enablePollutionNoVisuals=true\n");
         assertTrue(masterTypo.masterEnabled(), "a typo must not switch the master off");
         assertTrue(masterTypo.enabled());
+
+        PollutionNoVisualsSettings typoWhenOn = PollutionNoVisualsSettings
+            .parse("B:enabled=true\nB:enablePollutionNoVisuals=true\nB:enablePollutionNoVisuals=maybe\n");
+        assertTrue(typoWhenOn.enabled(), "a typo must not switch the feature off either");
     }
 
     @Test
