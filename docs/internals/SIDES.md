@@ -15,7 +15,7 @@ cannot ask every player to install a mod.
 | Shape | Contract | Examples |
 |---|---|---|
 | **SERVER-ONLY** (default) | The server changes behaviour; a stock client needs nothing. | Dolly, GlassBreak, VeinConfig, TeamChunkCap, Fish Trap hotkeys. |
-| **BOTH-SIDES-OPTIONAL** | A client copy only improves what that player sees or feels. A stock client keeps stock behaviour on both sides and is never left worse off. | Twilight Forest break-speed floors, the mattock's shovel speed (drops are server-side), the Super Tank effect clear, the fertilizer recipe's NEI refresh, IC2 and GraviSuite flight edits, pollution visuals. |
+| **BOTH-SIDES-OPTIONAL** | A client copy only improves what that player sees or feels. A stock client keeps stock behaviour on both sides and is never left worse off. | Twilight Forest break-speed floors, the mattock's shovel speed (drops are server-side), the Super Tank effect clear (the server clears only for a client whose handshake listed Patchee), the fertilizer recipe's NEI refresh, IC2 and GraviSuite flight edits, pollution visuals. |
 | **CLIENT-ONLY** | Cosmetic and inert without Patchee. The server is not involved. | NEI's F7 light overlay. |
 
 Choose the first shape that works. "Both sides" is not a way to make a server feature work; it is a way to make a
@@ -31,8 +31,9 @@ Patchee registers nothing with `NetworkRegistry` and defines no `IMessage` or `I
 grep -rn "SimpleNetworkWrapper\|NetworkRegistry\|IMessage\|IPacket" src/main/java
 ```
 
-It must print nothing. Today the only match for the word `network` is a comment naming IC2's own packet
-(`features/ChestplateHoverLiftFeature.java:35`).
+It must print nothing. The plain word `network` does appear, in FML's own handshake classes the Super Tank patch
+reads (`cpw/mods/fml/common/network/...`) and in a comment naming IC2's own packet
+(`features/ChestplateHoverLiftFeature.java:35`); none of those is a channel Patchee registers.
 
 If a feature seems to need a packet, the design is wrong. Either the server can do it alone, or it is a client-only
 cosmetic and needs no server data.
@@ -84,6 +85,14 @@ The pollution visuals are the model. The server always sends the real number. On
 render flags and tint tables off. A stock client still draws GregTech's smog, and that is accepted and documented.
 The server is complete without the client.
 
+### 6. The handshake hook is server-side only
+
+`HandshakeModListTransformer` patches `cpw.mods.fml.common.network.handshake.FMLHandshakeServerState$2`, FML's own
+server-side HELLO handler. It inserts one call at the entry of the `accept` that already reads the client's mod
+list and records one boolean per connection. It adds no packet, no channel and no client requirement: the list it
+reads is one the stock handshake already sends. A client without Patchee is recorded as absent, and an unseen
+connection answers absent, so the server-side clear simply does not run for it.
+
 ## Why "both sides" is sometimes needed
 
 1.7.10 is not server-authoritative for everything. Two cases:
@@ -105,9 +114,13 @@ The server is complete without the client.
   on `codechicken.nei.WorldOverlayRenderer`; a dedicated server never loads it, so the transformer never fires and
   the feature logs its skip. `PollutionVisualsTest` proves the client decision without a game; CI only sees the
   dedicated-server skip line.
-- **The stock-client join:** a real client connection to a server running the new jar, with no Patchee on the
-  client, and a clean `latest.log` on both sides. There is no automated substitute. In dev, `./gradlew runServer`
-  plus `./gradlew runClient` is the closest available, and the client must not be given the jar.
+- **The stock-client join:** `HandshakeModListPatchTest` runs against the real Forge class on the test classpath —
+  `FMLHandshakeServerState$2`, the HELLO handler that reads the joining client's mod list. It proves the target is
+  that state (its `accept` references `FMLHandshakeMessage$ModList` and `ClientHello`), that the hook call opens
+  the method ahead of Forge's own work, that a second pass changes nothing, and that an unrelated class comes
+  back byte-identical. The test never skips: a missing Forge class fails the suite, so a green build means the
+  join path was checked. The two-machine run itself — server with the jar, client without — is the manual check;
+  `./gradlew runServer` plus `./gradlew runClient` with no jar on the client is the closest local version.
 
 ## What breaks client optionality
 

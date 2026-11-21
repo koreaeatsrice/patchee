@@ -8,7 +8,7 @@ class transformer without risking a live server. The command set is [SETUP.md](S
 | Layer | Runs where | Proves |
 |---|---|---|
 | JUnit 5 (`src/test/java`) | `./gradlew test`; no game | The pure decisions: thresholds, team-limit maths, config parsing, byte matching on synthetic classes. |
-| Real-jar tests | `./gradlew test` with an env var | Field names and descriptors against a real mod jar. Skipped by default. |
+| Real-jar tests | `./gradlew test` with an env var | Field names and descriptors against a real mod jar. Third-party jars are skipped unless their var is set (`PATCHEE_GREGTECH_JAR`, `PATCHEE_IC2_JAR`, `PATCHEE_GRAVISUITE_JAR`); Forge's own classes are always on the classpath and their test never skips. |
 | Matcher tools (`tools/matcher-check/`) | A shell, by hand | A transformer against the actual jar bytes: site count, instruction sequence, idempotence, pass-through, fail-loud. |
 | Smoke job (`ci.yml`) | GitHub Actions, real dev server | The server boots, each feature arms, the self-test passes. |
 
@@ -38,8 +38,22 @@ Each patch has a test that builds synthetic bytes with ASM and asserts:
 - a non-target class comes back byte-identical;
 - a right-name, wrong-shape class returns the original bytes and a failure state, not an exception.
 
-Existing examples: `LightOverlayPatchTest`, `TeamChunkCapPatchTest`, `FinalCastleBreakPatchTest`,
-`ChestplateFlightPatchTest`, `GraviSuiteFlightPatchTest`.
+Existing examples: `LightOverlayPatchTest`, `TeamChunkCapPatchTest`, `ChestplateFlightPatchTest`,
+`GraviSuiteFlightPatchTest`. `FinalCastleBreakPatchTest` builds its main cases from committed Twilight Forest
+bytes in `src/test/resources/finalcastlebreak/`.
+
+`HandshakeModListPatchTest` is different in one way: it reads FML's class from the build's own classpath rather
+than from committed fixture bytes, because the join path depends on the shape of FML's own code.
+
+### The handshake test never skips
+
+`HandshakeModListPatchTest` loads `cpw/mods/fml/common/network/handshake/FMLHandshakeServerState$2.class` from the
+test runtime classpath — the build's recompiled Forge classes, which carry the same HELLO shape as the shipped
+universal jar. When the class is absent it fails with a message saying so; it does not skip.
+
+Skip-based green builds are banned for this path. A test that skips when the class is missing turns a broken patch
+into a green suite. Any check whose subject is missing must fail, not pass quietly. The same rule applies to the
+transformer-level checks: they assert the site count and the hook's position, never just "no exception".
 
 ## Real-jar tests
 
@@ -55,8 +69,10 @@ with ASM and asserts that `onUpdate` calls `addPotionEffect` four times, carries
 4096000.0 / 2000000.0 constants, reads `mFluid` and `mItemCount`, checks `MTESuperTank` and `MTESuperChest`
 instanceof, and loads four `Potion` fields.
 
-Unset, both are skipped with a JUnit assumption, so a plain build needs no third-party jar. Use the same pattern
-for any new reflection target whose field names are the risk. Do not commit the jar.
+Unset, both are skipped with a JUnit assumption, so a plain build needs no third-party jar. That exemption is for
+**third-party** jars only, which we may not redistribute. Forge's own classes are part of the build and must never
+be skipped: use `HandshakeModListPatchTest` as the pattern when the patch depends on FML's own shape. Do not
+commit the jar.
 
 ## Matcher tools
 
