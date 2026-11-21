@@ -41,6 +41,7 @@ import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
 import com.jointspaceforce.patchee.features.FishTrapMovesFeature;
 import com.jointspaceforce.patchee.features.GlassBreak;
 import com.jointspaceforce.patchee.features.GlassBreakFeature;
+import com.jointspaceforce.patchee.features.SuperTankDecision;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -52,7 +53,7 @@ import cpw.mods.fml.common.registry.GameRegistry;
 import cpw.mods.fml.relauncher.Side;
 
 /**
- * One-shot behavioural self-check for both patches, run at server start when
+ * One-shot behavioural self-check for the patched decisions, run at server start when
  * {@code runSelfTest=true} in the config.
  *
  * <p>
@@ -66,6 +67,9 @@ import cpw.mods.fml.relauncher.Side;
  * <li>Tinkers' Construct's {@code Mattock.isEffective(Material)} must return
  * {@code true} for sand and for wood (its axe behaviour, control) and
  * {@code false} for stone (control).</li>
+ * <li>The Super Tank rule must clear the four effects for a Patchee client and
+ * for the player's own client, and leave a stock client, a player carrying
+ * nothing and a player without the effects alone.</li>
  * </ul>
  *
  * Every check fails soft: results are logged, nothing is thrown. Enable it for
@@ -129,6 +133,7 @@ public final class SelfTest {
 
         checkDollyGate();
         checkMattock();
+        checkSuperTankDecision();
         checkVeinConfig(toggles, configDirectory);
         checkAuroraBreak(toggles);
         checkArcticFurBreak(toggles);
@@ -282,6 +287,22 @@ public final class SelfTest {
             failed++;
             Patchee.LOG.error("[SelfTest] FAIL  mattock isEffective({}) = {} (expected {})", label, actual, expected);
         }
+    }
+
+    // ---- GregTech Super Tank debuffs (SuperTankDecision) ------------------
+
+    /**
+     * The Super Tank rule, called with plain booleans: the server side of a
+     * Patchee client clears, the local client clears, and a stock (or unknown)
+     * client, a player carrying nothing and a player with no effects are left
+     * alone — GregTech's own debuff and timer stay theirs.
+     */
+    private void checkSuperTankDecision() {
+        check("patchee client cleared", SuperTankDecision.shouldClear(false, true, true, true));
+        check("local client cleared", SuperTankDecision.shouldClear(true, false, true, true));
+        check("stock client untouched", !SuperTankDecision.shouldClear(false, false, true, true));
+        check("no tank untouched", !SuperTankDecision.shouldClear(false, true, false, true));
+        check("no effects untouched", !SuperTankDecision.shouldClear(false, true, true, false));
     }
 
     // ---- 3. Patchee's VeinMiner config (VeinConfig) ------------------------

@@ -12,7 +12,10 @@ The Tinkers' Construct mattock digs sand and snow at shovel speed, and the drops
 
 ## GregTech tanks and chests
 
-Carrying a filled GregTech Super Tank or Super Chest no longer gives hunger, slow legs, slow mining or weakness. An empty one never did. Switch: `enableSuperTankFix`.
+The four effects (hunger, slow legs, slow mining, weakness) are cleared for a player whose client also runs
+Patchee. A client without Patchee is never touched: it keeps GregTech's own debuff, which fades on GregTech's timer
+(up to ten minutes after the tank is put down). An empty tank never gave effects. There is no packet channel, so
+clients stay optional. Switch: `enableSuperTankFix`.
 
 ## Glass cuts
 

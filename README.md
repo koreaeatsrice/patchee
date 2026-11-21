@@ -18,7 +18,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 
 - **JABBA Dolly** — moves Forestry, Gendustry and MagicBees bee housings with their bees.
 - **Tinkers' mattock** — digs sand and snow at shovel speed, with drops.
-- **GregTech tanks and chests** — carrying a filled one applies no debuffs.
+- **GregTech tanks and chests** — carrying a filled one gives no debuffs on a Patchee client; a stock client keeps GregTech's own.
 - **Glass cuts** — Chisel's Transparent Technical Block never cuts, but real glass still does.
 - **VeinMiner** — mines sand, clay and gravel only, 64 blocks per vein.
 - **NEI F7 overlay** — marks only pitch-dark blocks, on the client.
@@ -40,7 +40,7 @@ Full steps and the log lines to expect: [docs/INSTALL-SERVER.md](docs/INSTALL-SE
 
 ## Client (optional)
 
-Players join with nothing. Without the jar a client still sees the tank debuffs and the old Twilight Forest break speed; the F7 overlay only works with the jar installed. A client without the jar still sees GregTech's pollution smog when pollution is high enough, because the server sends the real number. Per-mod detail: [docs/CLIENT-MODS.md](docs/CLIENT-MODS.md).
+Players join with nothing. On a client that runs Patchee the tank debuffs are gone. A client without the jar gets GregTech's own behaviour: debuffed while carrying a filled tank or chest, fading on GregTech's timer after it is put down — up to ten minutes. No new channel is added and nothing is required on the client. Without the jar a client also sees the old Twilight Forest break speed; the F7 overlay only works with the jar installed. A client without the jar still sees GregTech's pollution smog when pollution is high enough, because the server sends the real number. Per-mod detail: [docs/CLIENT-MODS.md](docs/CLIENT-MODS.md).
 
 ## Config
 

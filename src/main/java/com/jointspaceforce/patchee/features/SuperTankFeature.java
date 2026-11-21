@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.potion.Potion;
@@ -40,27 +41,39 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * them on the next tick and they are cleared again, so the debuff never sticks.
  *
  * <p>
- * It runs on <b>both sides</b> on purpose: the item applies the effects on the
- * client too, so the local HUD/slowness only disappear when the client also
- * runs Patchee. Players without the mod still lose the server-side effects
- * (hunger drain and everything server-authoritative); for the full effect they
- * can install the same jar client-side — it is and stays client-optional.
+ * The clearing is per side. On the <b>logical client</b> it always runs — that
+ * client is running Patchee, so it wipes its own local copy of the effects and
+ * the HUD/slowness goes away. On the <b>server</b> it runs only for a client
+ * whose FML handshake listed Patchee: the server reads that list at the entry of
+ * FML's own handshake step (one tiny bytecode hook, no packet channel and no
+ * client-only requirement added), remembers the answer per connection, and a
+ * <b>stock client is never touched</b>.
  *
  * <p>
- * Honest side effect, documented in the README: while carrying a qualifying
- * item, these four effects are cleared regardless of where they came from
- * (the pack's pollution system can also use them). The whole feature is
- * config-gated ({@code enableSuperTankFix}).
+ * So a player without the mod gets exactly GregTech's own behaviour: debuffed
+ * while carrying the tank, and the effects fade on GT's own timer — up to ten
+ * minutes — after the tank is put down. Nothing about their game changes.
  *
  * <p>
- * The work is two composed steps — register the tick handler, then report that
- * the fix is armed — so the existing log line keeps its place in the boot log.
+ * Honest side effect, documented in the README: for a Patchee client, while
+ * carrying a qualifying item, these four effects are cleared regardless of where
+ * they came from (the pack's pollution system can also use them). The whole
+ * feature is config-gated ({@code enableSuperTankFix}).
+ *
+ * <p>
+ * The work is two composed steps — register the tick handler (which also marks
+ * the feature armed for the handshake transformer), then report that the fix is
+ * armed — so the existing log line keeps its place in the boot log.
  */
 public final class SuperTankFeature implements Feature {
 
     public static final String ID = "SuperTankFix";
 
     private static final String ITEM_CLASS = "gregtech.common.blocks.ItemMachines";
+
+    /** Set once the tick handler is registered: only then is the handshake hook worth patching in. */
+    private static volatile boolean armed = false;
+
     /**
      * GT5-Unofficial registers the Super Tank (LV..IV) at metas 130-134 and the
      * Super Chest at 135-139 (MetaTileEntityIDs). GT itself keys off the item's
@@ -93,10 +106,12 @@ public final class SuperTankFeature implements Feature {
     @Override
     public String description() {
         return "Feature: no debuffs from carrying a GregTech Super Tank or Super Chest that has contents "
-            + "(hunger, slowness, mining fatigue, weakness). true = the debuffs never stick. "
-            + "false = vanilla GregTech behaviour. Note: while a filled tank/chest is carried, "
-            + "those four effects are cleared whatever their source; and the full effect needs "
-            + "the player to have this same mod installed too (it is optional on clients).";
+            + "(hunger, slowness, mining fatigue, weakness). The server clears them only for players whose "
+            + "client listed this mod in its login handshake; the mod's own client half clears them locally. "
+            + "A stock client is never touched and keeps plain GregTech behaviour (debuffed while carrying, "
+            + "then fading on GT's timer, up to ten minutes, after the tank is put down). true = the fix is "
+            + "on. false = vanilla GregTech behaviour. Note: for a Patchee client, while a filled tank/chest "
+            + "is carried, those four effects are cleared whatever their source.";
     }
 
     @Override
@@ -127,14 +142,44 @@ public final class SuperTankFeature implements Feature {
                 Steps.note("[SuperTankFix] armed — carried GT Super Tanks/Chests " + "will not keep their debuffs")));
     }
 
-    /** Step one: put the per-tick cleaner on the FML bus. */
+    /** Step one: put the per-tick cleaner on the FML bus, and say the fix is armed. */
     private Step registerTickHandler() {
         return ctx -> {
+            markArmed();
             FMLCommonHandler.instance()
                 .bus()
                 .register(new Handler());
             return Outcome.APPLIED;
         };
+    }
+
+    /**
+     * Marks the fix armed: the tick handler is registered, so the FML handshake
+     * hook is worth patching in. Called by {@link #registerTickHandler()}.
+     */
+    public static void markArmed() {
+        armed = true;
+    }
+
+    /** Whether the tick handler is registered (the handshake transformer reads this). */
+    public static boolean isArmed() {
+        return armed;
+    }
+
+    /**
+     * Whether the client behind this player's connection listed Patchee in its FML
+     * handshake. A non-server player, an unbound connection or an unknown
+     * connection all answer false — the safe answer, a stock client.
+     */
+    private static boolean clientHasPatchee(EntityPlayer player) {
+        if (!(player instanceof EntityPlayerMP)) {
+            return false;
+        }
+        EntityPlayerMP mp = (EntityPlayerMP) player;
+        if (mp.playerNetServerHandler == null) {
+            return false;
+        }
+        return ClientModPresence.hasPatchee(mp.playerNetServerHandler.netManager);
     }
 
     /** Per-tick cleaner; server side is authoritative, client side kills the local copy. */
@@ -157,7 +202,10 @@ public final class SuperTankFeature implements Feature {
                     }
                 }
                 if (!hasAny) return; // fast path: nothing to clean
-                if (!carriesQualifyingTank(player)) return;
+                boolean logicalClient = player.worldObj.isRemote;
+                boolean patcheeClient = logicalClient || clientHasPatchee(player);
+                boolean carries = carriesQualifyingTank(player);
+                if (!SuperTankDecision.shouldClear(logicalClient, patcheeClient, carries, hasAny)) return;
                 for (int id : DEBUFF_IDS) {
                     player.removePotionEffect(id);
                 }

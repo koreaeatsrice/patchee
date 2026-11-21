@@ -30,8 +30,10 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  *
  * <p>
  * 3. <b>GregTech Super Tanks and Super Chests.</b> A filled one applies four
- * potion effects to whoever carries it; Patchee clears them
- * ({@link com.jointspaceforce.patchee.features.SuperTankFeature}).
+ * potion effects to whoever carries it. The server clears them only for a player
+ * whose client also listed Patchee in the FML handshake; Patchee's client half
+ * clears them locally. A stock client is never touched and keeps GregTech's own
+ * debuff and timer ({@link com.jointspaceforce.patchee.features.SuperTankFeature}).
  *
  * <p>
  * 4. <b>VeinMiner.</b> Patchee rewrites VeinMiner's own settings at every
@@ -98,19 +100,21 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * ({@link com.jointspaceforce.patchee.features.PollutionConfigFeature}).
  *
  * <p>
- * Most fixes are reflection-based against verified runtime names. Five of them
+ * Most fixes are reflection-based against verified runtime names. Six of them
  * cannot be, because the thing to change lives inside another mod's compiled
  * method with no hook and no config key: the F7 overlay comparison constant
  * (NEI), ServerUtilities' team-limit return value, Twilight Forest's castle and
- * thorn call sites, IC2's Quantum Chestplate flight edits and GraviSuite's
- * Advanced Jetpack flight edits. For those five, Patchee's coremod rewrites the
+ * thorn call sites, IC2's Quantum Chestplate flight edits, GraviSuite's
+ * Advanced Jetpack flight edits and the entry of FML's handshake mod-list step
+ * (for the Super Tank fix). For those six, Patchee's coremod rewrites the
  * class bytes as they load — see
  * {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
- * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
- * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest act
- * on the server, so clients need nothing installed to join
- * ({@code acceptableRemoteVersions = "*"}). Pollution visuals are hidden only on
- * clients that run Patchee; the server keeps sending the real numbers.
+ * {@code tools/matcher-check}. Four fixes are partly seen on the client (the F7
+ * overlay, the break speeds, the Fish Trap's middle-click sort and the Super
+ * Tank debuff clear); the rest act on the server, so clients need nothing
+ * installed to join ({@code acceptableRemoteVersions = "*"}). Pollution visuals
+ * are hidden only on clients that run Patchee; the server keeps sending the real
+ * numbers.
  */
 @Mod(
     modid = Patchee.MODID,
