@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.0] - 2026-11-21
+
+### Features
+- **pollution**: keep pollution on with no downsides and no smog ([`2e021db`](https://github.com/koreaeatsrice/patchee/commit/2e021db10a369c68caf13df13a707483f8d856a2))
+- **pollution**: stop GregTech sending pollution values to clients ([`355148e`](https://github.com/koreaeatsrice/patchee/commit/355148e847150e37de90b1664c79dfba5cc9e6be))
+
+### Documentation & Wiki
+- **readme**: one short sentence per feature bullet ([`7f84cfa`](https://github.com/koreaeatsrice/patchee/commit/7f84cfae9aeb97b20725651ab4d793d3cf3d6c94))
+
+### Tests & Verification
+- **fishtrap**: prove shift-click moves the clicked stack in and out of the Fish Trap (#1) ([`aab16ef`](https://github.com/koreaeatsrice/patchee/commit/aab16efc15e6e4f24ec4501472f4aaa05d528eba))
+
+### Maintenance & CI
+- remove stale handover reports from review/ ([`d8230ba`](https://github.com/koreaeatsrice/patchee/commit/d8230ba1e1ee3eec65430068c0b198ba289a6706))
+
+### Contributors
+
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.8.1...v1.9.0
+
 ## [1.8.1] - 2026-11-16
 
 ### Bug Fixes
