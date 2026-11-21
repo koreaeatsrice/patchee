@@ -29,11 +29,27 @@ written by the GTNH build from `coreModClass` in `gradle.properties`.
 | `FinalCastleBreakTransformer` | `twilightforest.block.BlockTFCastleBlock`, `twilightforest.block.BlockTFThorns` | `features/FinalCastleBreakPatch` | `1 + 2` (`FinalCastleBreakPatch.java:142-148`) | Re-points the castle's `Item.onBlockDestroyed` call and the thorn burst call sites to Patchee hooks. |
 | `ChestplateFlightTransformer` | `ic2.core.item.armor.ItemArmorQuantumSuit` | `features/ChestplateFlightPatch` | `SITE_COUNT = 1`, `SNEAK_SITE_COUNT = 1` (`ChestplateFlightPatch.java:238-244`) | Rewrites the hover jump clamp, adds a descent store after IC2's own `-0.1` store, adds the hold-altitude branch and a ground guard. |
 | `GraviSuiteFlightTransformer` | `gravisuite.ItemAdvancedJetPack` | `features/GraviSuiteFlightPatch` | `SITE_COUNT = 1` (`GraviSuiteFlightPatch.java:269`) | The same three flight edits for GraviSuite's jetpack. |
-| `HandshakeModListTransformer` | `cpw.mods.fml.common.network.handshake.FMLHandshakeServerState$2` | `features/HandshakeModListPatch` | 1 | Inserts `ALOAD 1 / ALOAD 2 / INVOKESTATIC SuperTankHandshake.observe` at the entry of `accept`, before the first frame. Frames kept; `COMPUTE_MAXS`. |
+| `HandshakeModListTransformer` | `cpw.mods.fml.common.network.handshake.FMLHandshakeServerState$2` | `features/HandshakeModListPatch` | one call site, the `accept` entry | Inserts `ALOAD 1 / ALOAD 2 / INVOKESTATIC SuperTankHandshake.observe` before the method's first instruction. Frames kept; `COMPUTE_MAXS`. |
 
 `GraviSuiteFlightTransformer` has no `Feature` class. It reads the three chestplate switches through
 `ChestplateFlightSettings.current()` (`GraviSuiteFlightTransformer.java:74-85`), so the three registered
 `Chestplate*Feature` classes are its config and banner surface. That is why the banner has no `graviSuite` field.
+
+### What the handshake patch does
+
+FML reads the joining client's mod list exactly once, in the HELLO state's `accept`, and then keeps no copy. The
+patch adds one call at the top of that method, `SuperTankHandshake.observe(ctx, message)`. The hook records, per
+connection, whether that list named `patchee`, in `ClientModPresence` — a weak map keyed by the Netty
+`NetworkManager`, so the entry dies with the connection. Nothing else changes: the vanilla branch, the message
+handed on and the state returned are untouched.
+
+That is why a stock client is unaffected. The hook only reads the list. A client without Patchee is recorded as
+"no", and a connection never seen also answers "no", so the Super Tank clear never runs for it and GregTech's own
+debuff and timer stand. Whether to clear is a separate decision in `SuperTankFeature`, taken from
+`SuperTankDecision.shouldClear`.
+
+The target is FML's own **server-side** handshake handler. A client never loads it, so this patch adds no client
+requirement and no packet channel; a stock client is not asked for anything and not sent anything.
 
 ## The contract
 
