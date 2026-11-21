@@ -45,9 +45,12 @@ banner field and pipeline steps all follow from it.
   is the contract for the strings ops docs quote. Blood Arsenal is not on the dev
   runtime, so the dev check sees the skip line — the `[GlassBreak] armed …` line
   only appears on a server that has it. `PollutionVisuals` is not in this list:
-  it is client-side, and the dev server ships no GregTech, so CI can only ever
-  see its `GregTech is not installed - skipped` line; its decision logic is
-  proven by unit tests instead.
+  CI runs the dev pack as a dedicated server (`./gradlew runServer`), and the
+  feature checks the side before it looks for GregTech, so CI only ever sees its
+  `[PollutionVisuals] dedicated server - no client renderer, skipped` line; its
+  client decision logic is proven by `PollutionVisualsTest` instead. Setting
+  `PATCHEE_GREGTECH_JAR` also makes `PollutionVisualsRealJarTest` check the real
+  jar's field names; unset, that test is skipped.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
   `enableMattockFix`, `enableSuperTankFix`, `enableGlassBreakFix`,
   `enableVeinConfig`, `enableLightOverlayTweak`, `enableAuroraBreak`,

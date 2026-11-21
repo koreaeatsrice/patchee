@@ -30,7 +30,12 @@ import cpw.mods.fml.relauncher.Side;
  * them on every client tick and empties them again.
  *
  * <p>
- * The first step decides, then arms the guard and writes the current session.
+ * The first step decides, then arms the guard and writes the current session. It
+ * only logs {@code armed} when the write really took: both proxy flags read back
+ * {@code false} and all five tint tables are empty. The fog <b>colour</b> shift
+ * has no flag of its own - it reads the per-tick pollution value - and that value
+ * is only refreshed while the dirt particles run, so turning {@code Pollution
+ * Dirt} off keeps it at zero. Both flags must really be off for that reason.
  * The second step writes the two {@code Pollution Fog} / {@code Pollution Dirt}
  * lines in {@code config/GregTech/Client.cfg} when that file exists, with a
  * timestamped {@code .bak}; only those two lines change. A dedicated server
@@ -129,18 +134,25 @@ public final class PollutionVisualsFeature implements Feature {
                     .info(missingTargetMessage());
                 return Outcome.SKIPPED;
             }
-            int cleared = PollutionVisualsGuard.enforce(ctx.log());
+            PollutionVisualsGuard.State state = PollutionVisualsGuard.enforce(ctx.log());
             PollutionVisualsGuard.install(ctx.log());
-            if (cleared < 0) {
+            if (!state.armed()) {
                 ctx.log()
-                    .error("[PollutionVisuals] the block-tint pass threw - tint tables left as they are");
+                    .error(
+                        "[PollutionVisuals] failed - client visuals not fully off: fogOff={}, dirtOff={}, tint tables "
+                            + "{}/{} empty, tintPassFailed={} - pollution visuals may still be drawn",
+                        state.fogOff,
+                        state.dirtOff,
+                        state.tablesEmpty,
+                        state.tablesTotal,
+                        state.tintPassFailed);
                 return Outcome.FAILED;
             }
             ctx.log()
                 .info(
                     "[PollutionVisuals] armed - client: Pollution Fog=false, Pollution Dirt=false, {} tint table(s) "
                         + "emptied; pollution numbers still arrive unchanged",
-                    cleared);
+                    state.tablesEmpty);
             return Outcome.APPLIED;
         };
     }

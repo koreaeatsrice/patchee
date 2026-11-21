@@ -82,16 +82,48 @@ public final class PollutionVisualsGuard {
     }
 
     /**
+     * What the last {@link #enforce(Logger)} pass really achieved.
+     *
+     * <p>
+     * Every field is read back after it was written, so this says what the game
+     * objects hold now, not what this class tried to do.
+     */
+    public static final class State {
+
+        /** {@code GTMod.proxy.mRenderPollutionFog} exists and reads {@code false}. */
+        public final boolean fogOff;
+        /** {@code GTMod.proxy.mRenderDirtParticles} exists and reads {@code false}. */
+        public final boolean dirtOff;
+        /** How many of the five {@code Pollution} tint tables are empty now. */
+        public final int tablesEmpty;
+        /** How many tint tables there are to empty. */
+        public final int tablesTotal;
+        /** True when the tint pass threw before it could finish. */
+        public final boolean tintPassFailed;
+
+        State(boolean fogOff, boolean dirtOff, int tablesEmpty, int tablesTotal, boolean tintPassFailed) {
+            this.fogOff = fogOff;
+            this.dirtOff = dirtOff;
+            this.tablesEmpty = tablesEmpty;
+            this.tablesTotal = tablesTotal;
+            this.tintPassFailed = tintPassFailed;
+        }
+
+        /** True only when both flags really read {@code false} and every tint table is empty. */
+        public boolean armed() {
+            return PollutionVisuals.armed(fogOff, dirtOff, tablesEmpty, tablesTotal, tintPassFailed);
+        }
+    }
+
+    /**
      * Forces every switch off and every tint table empty, once.
      *
-     * @return the number of tint tables replaced, or {@code -1} when the tint
-     *         pass threw for a reason other than a missing GregTech class or
-     *         field
+     * @return what the pass really achieved, read back from the game objects
      */
-    static int enforce(Logger log) {
+    static State enforce(Logger log) {
         forceRenderFlags(log);
-        forceProxyFlags(log);
-        return clearTintTables(log);
+        boolean[] proxy = forceProxyFlags(log);
+        return clearTintTables(log, proxy[0], proxy[1]);
     }
 
     /** The two booleans GregTech copies onto its proxy at startup. */
@@ -120,8 +152,16 @@ public final class PollutionVisualsGuard {
         }
     }
 
-    /** The same two flags on {@code GTMod.proxy}, which the frame renderer reads. */
-    private static void forceProxyFlags(Logger log) {
+    /**
+     * The same two flags on {@code GTMod.proxy}, which the frame renderer reads.
+     *
+     * @return {@code {fogOff, dirtOff}}: each true only when the field exists and
+     *         reads {@code false} after the write. A missing field or a write that
+     *         threw is {@code false}, never assumed.
+     */
+    private static boolean[] forceProxyFlags(Logger log) {
+        boolean fogOff = false;
+        boolean dirtOff = false;
         Object proxy = null;
         try {
             Class<?> gtMod = Class.forName(GT_MOD_CLASS);
@@ -132,25 +172,44 @@ public final class PollutionVisualsGuard {
             log.debug("[PollutionVisuals] no GregTech proxy ({})", absent.toString());
         }
         if (proxy == null) {
-            return;
+            return new boolean[] { false, false };
         }
-        for (String name : PollutionVisuals.PROXY_FIELDS) {
+        for (int i = 0; i < PollutionVisuals.PROXY_FIELDS.size(); i++) {
+            String name = PollutionVisuals.PROXY_FIELDS.get(i);
+            boolean off;
             try {
                 Field flag = findField(proxy.getClass(), name);
                 flag.setAccessible(true);
                 flag.setBoolean(proxy, false);
+                off = !flag.getBoolean(proxy);
             } catch (ReflectiveOperationException | LinkageError absent) {
                 log.debug("[PollutionVisuals] {} is not settable on GregTech's proxy ({})", name, absent.toString());
+                off = false;
+            }
+            if (i == 0) {
+                fogOff = off;
+            } else {
+                dirtOff = off;
             }
         }
+        return new boolean[] { fogOff, dirtOff };
     }
 
-    /** Replaces a non-empty block-tint table with a fresh, empty {@code BlockMatcher}. */
-    private static int clearTintTables(Logger log) {
+    /**
+     * Replaces a non-empty block-tint table with a fresh, empty {@code BlockMatcher}
+     * and counts the tables that are empty afterwards.
+     *
+     * <p>
+     * Empty is read back from {@code blockIDs}, so a table that was already empty
+     * counts too: this says how many of the five tables can no longer tint a block.
+     */
+    private static State clearTintTables(Logger log, boolean fogOff, boolean dirtOff) {
+        int total = PollutionVisuals.MATCHER_FIELDS.size();
+        int empty = 0;
+        boolean failed = false;
         try {
             Class<?> pollution = Class.forName(POLLUTION_CLASS);
             Class<?> matcherClass = Class.forName(MATCHER_CLASS);
-            int replaced = 0;
             for (String name : PollutionVisuals.MATCHER_FIELDS) {
                 Field table = pollution.getDeclaredField(name);
                 table.setAccessible(true);
@@ -158,25 +217,30 @@ public final class PollutionVisualsGuard {
                 if (current == null) {
                     continue;
                 }
-                Field ids = findField(current.getClass(), BLOCK_IDS_FIELD);
-                ids.setAccessible(true);
-                Object raw = ids.get(current);
-                if (raw instanceof Map && !((Map<?, ?>) raw).isEmpty()) {
+                if (!isEmpty(current)) {
                     table.set(
                         null,
                         matcherClass.getDeclaredConstructor()
                             .newInstance());
-                    replaced++;
+                    current = table.get(null);
+                }
+                if (current != null && isEmpty(current)) {
+                    empty++;
                 }
             }
-            return replaced;
-        } catch (ClassNotFoundException | NoSuchFieldException absent) {
-            log.debug("[PollutionVisuals] no GregTech block-tint tables ({})", absent.toString());
-            return 0;
-        } catch (Throwable failure) {
-            log.debug("[PollutionVisuals] the block-tint pass threw ({})", failure.toString());
-            return -1;
+        } catch (ReflectiveOperationException | LinkageError | RuntimeException absent) {
+            log.debug("[PollutionVisuals] the block-tint pass threw ({})", absent.toString());
+            failed = true;
         }
+        return new State(fogOff, dirtOff, empty, total, failed);
+    }
+
+    /** True when the matcher's {@code blockIDs} map really holds no block ID. */
+    private static boolean isEmpty(Object matcher) throws ReflectiveOperationException {
+        Field ids = findField(matcher.getClass(), BLOCK_IDS_FIELD);
+        ids.setAccessible(true);
+        Object raw = ids.get(matcher);
+        return raw instanceof Map && ((Map<?, ?>) raw).isEmpty();
     }
 
     /** Where the field really lives: GregTech declares the proxy mirrors on a superclass. */

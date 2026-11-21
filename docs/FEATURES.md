@@ -45,9 +45,11 @@ Server-side only. A team gets its best member's own per-rank chunk limit, never 
 
 The server always sends every client GregTech's real pollution number. Patchee never changes that packet, in any setting.
 
-Hiding the visuals is a job for the client. On a client that runs Patchee, the default-on switch `enablePollutionNoVisuals` turns GregTech's own `Pollution Fog` and `Pollution Dirt` render flags off in memory every tick. When `config/GregTech/Client.cfg` already exists, it also writes `B:"Pollution Fog"=false` and `B:"Pollution Dirt"=false` into it, with a timestamped `.bak`, and touches only those two lines.
+Hiding the visuals is a job for the client. On a client that runs Patchee, the default-on switch `enablePollutionNoVisuals` turns GregTech's own `Pollution Fog` and `Pollution Dirt` render flags off in memory every tick. When `config/GregTech/Client.cfg` already exists, it also sets those two lines to `false` there, with a timestamped `.bak`, and touches only those two lines. The keys are `Pollution Fog` and `Pollution Dirt`; the writer keeps whichever spelling the line already has — `B:"Pollution Fog"` / `B:"Pollution Dirt"` on newer builds, or the older `B:renderPollutionFog` / `B:renderDirtParticles` — and does not rename anything.
 
 It also keeps GregTech's five block-tint tables empty: standard blocks, liquids, double plants, crossed squares and vines. So grass, leaf, water and flower tints are not drawn. GregTech can rebuild its tint tables when a world loads, so the guard checks them on every client tick and empties them again.
+
+The fog colour shift has no flag of its own: GregTech tints the fog from a per-tick pollution value, that value is only refreshed while the dirt particles run, and so the `Pollution Dirt` flag being off is what keeps the colour shift away too.
 
 A dedicated server does nothing here and logs `[PollutionVisuals] dedicated server - no client renderer, skipped`.
 

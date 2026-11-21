@@ -1,6 +1,7 @@
 package com.jointspaceforce.patchee.features;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,6 +51,22 @@ class PollutionVisualsTest {
         }
         assertEquals(names, PollutionVisuals.FLAG_LABELS);
         assertEquals(Arrays.asList("Pollution Fog", "Pollution Dirt"), PollutionVisuals.FLAG_LABELS);
+    }
+
+    @Test
+    void armedOnlyWhenEveryWriteReallyTook() {
+        // all five tint tables empty, both flags off, no throw
+        assertTrue(PollutionVisuals.armed(true, true, 5, 5, false));
+        // nothing emptied
+        assertFalse(PollutionVisuals.armed(true, true, 0, 5, false), "0 of 5 tables is not armed");
+        // near miss
+        assertFalse(PollutionVisuals.armed(true, true, 4, 5, false), "4 of 5 tables is not armed");
+        // the tint pass threw, even though the flags look right
+        assertFalse(PollutionVisuals.armed(true, true, 5, 5, true), "a thrown tint pass is never armed");
+        // each flag alone is not enough: the fog colour shift needs the dirt flag off too
+        assertFalse(PollutionVisuals.armed(false, true, 5, 5, false), "fog still on");
+        assertFalse(PollutionVisuals.armed(true, false, 5, 5, false), "dirt still on");
+        assertFalse(PollutionVisuals.armed(false, false, 5, 5, false));
     }
 
     @Test

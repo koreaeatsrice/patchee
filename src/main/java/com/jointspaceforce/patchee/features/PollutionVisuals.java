@@ -73,4 +73,27 @@ public final class PollutionVisuals {
         }
         return client ? Decision.RUN : Decision.SERVER;
     }
+
+    /**
+     * True only when the guard really turned the visuals off: both proxy flags
+     * read {@code false} and every tint table is empty.
+     *
+     * <p>
+     * The dirt-particle flag matters even beyond the particles. The fog <b>colour</b>
+     * shift has no flag of its own: GregTech's renderer reads the per-tick
+     * pollution value to tint the fog, and that value is only refreshed while the
+     * dirt particles run. With {@code Pollution Dirt} off the value stays at zero,
+     * so the colour shift stays away. That is why both flags must really be off
+     * before this feature may say it is armed.
+     *
+     * @param fogOff         {@code Pollution Fog} really reads {@code false}
+     * @param dirtOff        {@code Pollution Dirt} really reads {@code false}
+     * @param tablesEmpty    how many block-tint tables are empty now
+     * @param tablesTotal    how many block-tint tables there are
+     * @param tintPassFailed true when the tint pass threw
+     */
+    public static boolean armed(boolean fogOff, boolean dirtOff, int tablesEmpty, int tablesTotal,
+        boolean tintPassFailed) {
+        return fogOff && dirtOff && !tintPassFailed && tablesEmpty == tablesTotal;
+    }
 }

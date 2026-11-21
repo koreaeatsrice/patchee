@@ -55,6 +55,8 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 
 The pollution-visuals step is client-only. On a dedicated server it does nothing and logs `[PollutionVisuals] dedicated server - no client renderer, skipped`.
 
+If the server's or a client's existing `config/patchee.cfg` already says `enablePollutionNoVisuals=false`, delete that line (or set it to `true`) to get the new default.
+
 - The `[FishTrapMoves]` line appears only when **Pam's HarvestCraft + InventoryBogoSorter** are installed. Without HarvestCraft the gate logs `[FishTrapMoves] Pam's HarvestCraft is not installed - Fish Trap moves skipped`; with HarvestCraft but no InventoryBogoSorter the feature logs `[FishTrapMoves] InventoryBogoSorter is not installed - skipped`. It runs on both sides; the move hotkeys (space/alt/ctrl-click) work from the server jar alone, while sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too.
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
