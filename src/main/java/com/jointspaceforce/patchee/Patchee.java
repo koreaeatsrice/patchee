@@ -76,18 +76,16 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * that GUI) needs Patchee on the client too. Plain shift-click already works.
  *
  * <p>
- * 10. <b>GregTech pollution visuals.</b> Off by default
- * ({@code enablePollutionNoVisuals}); with it on, pollution keeps running in
- * full on the server, but players see none of it: the single number GregTech
- * sends each client about a chunk is rewritten to 0 as the packet is built, so
- * the client draws no smog, no fog, no fog colour shift, no smoke particles and
- * no grass/leaf/water/flower tints
- * ({@link com.jointspaceforce.patchee.features.PollutionNoVisualsFeature}). Every
- * server-side read — damage, sour rain, vegetation, scanners, the pollution
- * detector, machines — keeps the real numbers; a client-side pollution readout
- * reads 0. A stock client needs nothing installed, but a client that also runs
- * Patchee applies the same rewrite to its own copy while the packet class loads,
- * but only while that copy's own switch is on too; both copies ship with it off.
+ * 10. <b>GregTech pollution visuals.</b> On by default
+ * ({@code enablePollutionNoVisuals}): the server always sends the real pollution
+ * numbers, and on a client that runs Patchee GregTech's two render flags
+ * (Pollution Fog and Pollution Dirt) are turned off and its five block-tint
+ * tables are kept empty, so no smog, no fog, no fog colour shift, no smoke
+ * particles and no grass/leaf/water/flower tints are drawn
+ * ({@link com.jointspaceforce.patchee.features.PollutionVisualsFeature}). A
+ * dedicated server does nothing. A client without Patchee still draws
+ * GregTech's own smog when pollution is high enough, because the real number
+ * reaches it.
  *
  * <p>
  * 11. <b>GregTech pollution settings.</b> Pollution stays on, but has no
@@ -100,20 +98,19 @@ import cpw.mods.fml.common.event.FMLServerStartedEvent;
  * ({@link com.jointspaceforce.patchee.features.PollutionConfigFeature}).
  *
  * <p>
- * Most fixes are reflection-based against verified runtime names. Six of them
+ * Most fixes are reflection-based against verified runtime names. Five of them
  * cannot be, because the thing to change lives inside another mod's compiled
  * method with no hook and no config key: the F7 overlay comparison constant
- * (NEI), ServerUtilities' team-limit return value, GregTech's pollution packet
- * constructor, Twilight Forest's castle and thorn call sites, IC2's Quantum
- * Chestplate flight edits and GraviSuite's Advanced Jetpack flight edits. For
- * those six, Patchee's coremod rewrites the class bytes as they load — see
+ * (NEI), ServerUtilities' team-limit return value, Twilight Forest's castle and
+ * thorn call sites, IC2's Quantum Chestplate flight edits and GraviSuite's
+ * Advanced Jetpack flight edits. For those five, Patchee's coremod rewrites the
+ * class bytes as they load — see
  * {@link com.jointspaceforce.patchee.asm.FMLPlugin} and
  * {@code tools/matcher-check}. Three fixes are partly seen on the client (the F7
  * overlay, the break speeds, and the Fish Trap's middle-click sort); the rest act
  * on the server, so clients need nothing installed to join
- * ({@code acceptableRemoteVersions = "*"}). The pollution rewrite is the exception
- * in the other direction: a client that also installs Patchee rewrites its own copy
- * only while that copy's own switch is on; both copies ship with it off.
+ * ({@code acceptableRemoteVersions = "*"}). Pollution visuals are hidden only on
+ * clients that run Patchee; the server keeps sending the real numbers.
  */
 @Mod(
     modid = Patchee.MODID,

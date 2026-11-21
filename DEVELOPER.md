@@ -42,19 +42,20 @@ banner field and pipeline steps all follow from it.
   `[TeamChunkCap] armed …`,
   `[GlassBreak] Blood Arsenal is not installed - skipped` and
   `[SelfTest] result: N passed, 0 failed`. Ops docs quote them too — this list
-  is the contract for the strings ops docs quote; a feature absent from CI, such
-  as PollutionNoVisuals, is covered by its own matcher tool and unit tests
-  instead. Blood Arsenal is not on the dev runtime, so the dev check sees the
-  skip line — the `[GlassBreak] armed …` line only appears on a server that has
-  it. `PollutionNoVisuals` is deliberately not in this grep list: the dev server
-  does not ship GregTech, so CI can only ever see its `GregTech is not
-  installed — pollution visuals left as they are` line. The packet rewrite is
-  proven instead by `tools/matcher-check/PollutionCheck` against the real jar
-  and by the unit tests.
+  is the contract for the strings ops docs quote. Blood Arsenal is not on the dev
+  runtime, so the dev check sees the skip line — the `[GlassBreak] armed …` line
+  only appears on a server that has it. `PollutionVisuals` is not in this list:
+  CI runs the dev pack as a dedicated server (`./gradlew runServer`), and the
+  feature checks the side before it looks for GregTech, so CI only ever sees its
+  `[PollutionVisuals] dedicated server - no client renderer, skipped` line; its
+  client decision logic is proven by `PollutionVisualsTest` instead. Setting
+  `PATCHEE_GREGTECH_JAR` also makes `PollutionVisualsRealJarTest` check the real
+  jar's field names; unset, that test is skipped.
 - **The config file keys/comment text** (`enabled`, `enableDollyFix`,
   `enableMattockFix`, `enableSuperTankFix`, `enableGlassBreakFix`,
   `enableVeinConfig`, `enableLightOverlayTweak`, `enableAuroraBreak`,
-  `enableArcticFurBreak`, `enableTeamChunkCap`, `enablePollutionNoVisuals`,
+  `enableArcticFurBreak`, `enableTeamChunkCap`, `enablePollutionNoVisuals` (on
+  by default, client-side),
   `extraDollyClasses`, `runSelfTest`, the `veinConfig.*` section keys
   (`veinConfig.blockLimit`, `veinConfig.radius`, `veinConfig.blocks`,
   `veinConfig.extraTools`), `glassBreak.minArmourPieces` and
@@ -68,31 +69,26 @@ banner field and pipeline steps all follow from it.
   malformed targets) and **config-gated**.
 - **The class-load patches are the exception to "no bytecode edits".**
   `LightOverlay` (client, NEI's F7 overlay), `TeamChunkCap` (server,
-  ServerUtilities' team limits), `PollutionNoVisuals` (server, GregTech's
-  pollution packet), `FinalCastleBreak` (server, Twilight Forest's castle and
-  thorns), `ChestplateFlight` (IC2's Quantum Chestplate) and `GraviSuiteFlight`
-  (GraviSuite's Advanced Jetpack) rewrite another mod's class bytes as those
-  bytes load, because the thing to change is a comparison constant, a return
-  value or a constructor argument with no hook and no config key. All six live
-  in `asm/` as `IClassTransformer`s registered by `asm/FMLPlugin`, all are
-  name-gated to their own classes, all report their site count, all leave a
-  class of any other shape **untouched** with an ERROR line, and all are
-  idempotent. `TeamChunkCap` is the one patch that injects a call (the JVM has
-  no "min" instruction) — three instructions per return site, with the class's
-  own stack map frames left alone. `PollutionNoVisuals` is a value rewrite in
-  place: one `ILOAD` becomes `ICONST_0`, same length and same stack effect, so
-  no frame moves and nothing client-side can be shown the real number through
-  GregTech's own packet afterwards. Verify a transformer against the REAL bytes
-  with `tools/matcher-check` (see its README) before believing it works: a
-  matcher that never fires is silent.
+  ServerUtilities' team limits), `FinalCastleBreak` (server, Twilight Forest's
+  castle and thorns), `ChestplateFlight` (IC2's Quantum Chestplate) and
+  `GraviSuiteFlight` (GraviSuite's Advanced Jetpack) rewrite another mod's class
+  bytes as those bytes load, because the thing to change is a comparison
+  constant, a return value or a constructor argument with no hook and no config
+  key. All five live in `asm/` as `IClassTransformer`s registered by
+  `asm/FMLPlugin`, all are name-gated to their own classes, all report their site
+  count, all leave a class of any other shape **untouched** with an ERROR line,
+  and all are idempotent. `TeamChunkCap` is the one patch that injects a call
+  (the JVM has no "min" instruction) — three instructions per return site, with
+  the class's own stack map frames left alone. Verify a transformer against the
+  REAL bytes with `tools/matcher-check` (see its README) before believing it
+  works: a matcher that never fires is silent.
 - **A class-load patch cannot reach Forge's config.** Its switches are parsed
   from `config/patchee.cfg` by the patch's own `*Settings` class at load time.
   `TeamChunkCap` seeds them into a small holder and the feature's arm step then
   publishes the authoritative `Toggles` values into that same holder, because
-  the injected hook reads it on every call; `PollutionNoVisuals` needs no holder
-  — its work is a one-time constructor rewrite, so the transformer reads the
-  settings and stops. When a holder is involved, publish to the exact object the
-  hot path reads, and log the effective values in the armed line.
+  the injected hook reads it on every call. When a holder is involved, publish to
+  the exact object the hot path reads, and log the effective values in the armed
+  line.
 - One jar must stay **client-optional** and **acceptableRemoteVersions = "*"**:
   clients never need it to join. Without a client copy, a client is out of step
   where a fix changes the same thing on both sides (e.g. the server clears the

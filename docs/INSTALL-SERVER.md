@@ -41,7 +41,7 @@ Stop the server, then start it again **the normal way**.
 Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You should see lines like:
 
 ```
-[patchee] Patchee <version> — enabled=true dollyFix=true mattockFix=true superTankFix=true glassBreak=true veinConfig=true pollutionNoNegatives=true lightOverlay=true auroraBreak=true arcticFurBreak=true teamChunkCap=true pollutionNoVisuals=false finalCastleBreak=true enrichedFertilizerRecipe=true fishTrapMoves=true chestplateHoverLift=true chestplateHoldAltitude=true chestplateGroundGuard=true selfTest=false
+[patchee] Patchee <version> — enabled=true dollyFix=true mattockFix=true superTankFix=true glassBreak=true veinConfig=true pollutionNoNegatives=true lightOverlay=true auroraBreak=true arcticFurBreak=true teamChunkCap=true pollutionVisuals=true finalCastleBreak=true enrichedFertilizerRecipe=true fishTrapMoves=true chestplateHoverLift=true chestplateHoldAltitude=true chestplateGroundGuard=true selfTest=false
 [DollyFix] Dolly now accepts 3 bee-housing class(es)
 [MattockFix] mattock shovel materials 3 -> 6 (+3)
 [SuperTankFix] armed — carried GT Super Tanks/Chests will not keep their debuffs
@@ -53,12 +53,14 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [GlassBreak] armed - a player wearing 1 or more armour piece(s) is not cut by glass, and Chisel's Transparent Technical Block never cuts; bleeding potion id 121
 ```
 
-With `enablePollutionNoVisuals=true` the log also carries `[PollutionNoVisuals] patched gregtech.api.net.GTPacketPollution …` and `[PollutionNoVisuals] armed …`; that switch is off by default, so a default boot logs neither.
+The pollution-visuals step is client-only. On a dedicated server it does nothing and logs `[PollutionVisuals] dedicated server - no client renderer, skipped`.
+
+If the server's or a client's existing `config/patchee.cfg` already says `enablePollutionNoVisuals=false`, delete that line (or set it to `true`) to get the new default.
 
 - The `[FishTrapMoves]` line appears only when **Pam's HarvestCraft + InventoryBogoSorter** are installed. Without HarvestCraft the gate logs `[FishTrapMoves] Pam's HarvestCraft is not installed - Fish Trap moves skipped`; with HarvestCraft but no InventoryBogoSorter the feature logs `[FishTrapMoves] InventoryBogoSorter is not installed - skipped`. It runs on both sides; the move hotkeys (space/alt/ctrl-click) work from the server jar alone, while sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too.
 - The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
-- The two `[PollutionNoVisuals]` lines — not in the sample above, which is a default boot — appear only when **GregTech** is installed (`GregTech is not installed — pollution visuals left as they are` otherwise) and only when the switch is on (it is off by default); with it off the transformer logs `[PollutionNoVisuals] switched off in … — pollution still sends its real value to clients` instead. The first says the packet constructor was rewritten, the second that the feature is armed; a stock client needs nothing, but a client that also runs Patchee applies the same rewrite to its own copy only while that copy's own switch is on.
+- The pollution visuals are hidden on **players' clients that install Patchee**, never on the server. A dedicated server logs only `[PollutionVisuals] dedicated server - no client renderer, skipped`. The server always sends the real pollution number, so a client without Patchee still sees GregTech's smog.
 - The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`not installed - skipped` otherwise). It ends with the side it ran on. On the **server** the recipe just works in the machine. On a **client that has Patchee** the line reads `(client)` and Patchee also asks GregTech to drop NEI's cached recipe pages, so the old recipe **shows up in NEI** too; a client without Patchee does not see it.
 - The `[GlassBreak]` line appears only when **Blood Arsenal** is installed (`[GlassBreak] Blood Arsenal is not installed - skipped` otherwise). It runs on the server only — clients need nothing.
 

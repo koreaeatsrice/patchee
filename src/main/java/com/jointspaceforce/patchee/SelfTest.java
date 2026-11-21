@@ -41,7 +41,6 @@ import com.jointspaceforce.patchee.features.FinalCastleBreakFeature;
 import com.jointspaceforce.patchee.features.FishTrapMovesFeature;
 import com.jointspaceforce.patchee.features.GlassBreak;
 import com.jointspaceforce.patchee.features.GlassBreakFeature;
-import com.jointspaceforce.patchee.features.PollutionNoVisualsFeature;
 import com.jointspaceforce.patchee.features.TeamChunkCapFeature;
 import com.jointspaceforce.patchee.features.VeinConfigFeature;
 
@@ -134,7 +133,6 @@ public final class SelfTest {
         checkAuroraBreak(toggles);
         checkArcticFurBreak(toggles);
         checkTeamChunkCap(toggles);
-        checkPollutionNoVisuals(toggles);
         checkFinalCastleBreak(toggles);
         checkEnrichedFertilizerRecipe(toggles);
         checkFishTrapMoves(toggles);
@@ -1023,44 +1021,6 @@ public final class SelfTest {
         } catch (Exception | LinkageError failure) {
             Patchee.LOG.error("[SelfTest] FAIL glassbreak - the check crashed", failure);
             failed++;
-        }
-    }
-
-    // ---- 11. PollutionNoVisuals (GregTech's pollution packet) -------------
-
-    /**
-     * Builds the real pollution packet with 12345 and checks that the patched
-     * constructor stored 0 while the chunk survived. Reflection only, so this
-     * class keeps no GregTech import; a server without GregTech is a skip, never
-     * a failure.
-     */
-    private void checkPollutionNoVisuals(Toggles toggles) {
-        if (!toggles.featureEnabled(PollutionNoVisualsFeature.ID)) {
-            Patchee.LOG.info("[SelfTest] SKIP pollution visuals — feature switched off");
-            return;
-        }
-        Class<?> packet;
-        try {
-            packet = Class.forName("gregtech.api.net.GTPacketPollution");
-        } catch (ClassNotFoundException | LinkageError absent) {
-            Patchee.LOG.info("[SelfTest] SKIP pollution visuals — GregTech is not installed");
-            return;
-        }
-        try {
-            Class<?> chunk = Class.forName("net.minecraft.world.ChunkCoordIntPair");
-            Object pair = chunk.getConstructor(int.class, int.class)
-                .newInstance(3, 7);
-            Object made = packet.getConstructor(chunk, int.class)
-                .newInstance(pair, 12345);
-            Field pollution = packet.getDeclaredField("pollution");
-            pollution.setAccessible(true);
-            Field storedChunk = packet.getDeclaredField("chunk");
-            storedChunk.setAccessible(true);
-            check("pollution visuals: the packet carries 0", pollution.getInt(made) == 0);
-            check("pollution visuals: the chunk is still carried", storedChunk.get(made) == pair);
-        } catch (Exception | LinkageError broken) {
-            Patchee.LOG.error("[SelfTest] pollution visuals check could not run", broken);
-            check("pollution visuals: the packet carries 0", false);
         }
     }
 
