@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.1] - 2026-11-21
+
+### Bug Fixes
+- **pollution**: ship the client packet rewrite off by default (#8) ([`9b13768`](https://github.com/koreaeatsrice/patchee/commit/9b13768bdb8d76d279d5694076b545d7f3f5b48f))
+
+### Contributors
+
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.9.0...v1.9.1
+
 ## [1.9.0] - 2026-11-21
 
 ### Features
