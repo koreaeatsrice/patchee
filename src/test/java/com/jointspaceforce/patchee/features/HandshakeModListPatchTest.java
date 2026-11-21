@@ -31,7 +31,8 @@ import org.objectweb.asm.tree.VarInsnNode;
 
 /**
  * The handshake byte patch, applied to the real Forge class as it sits on the
- * test runtime classpath.
+ * test runtime classpath. That resource is the build's recompiled Forge jar, and
+ * it carries the same HELLO shape as the shipped universal jar.
  *
  * <p>
  * The patched method is the HELLO state handler's

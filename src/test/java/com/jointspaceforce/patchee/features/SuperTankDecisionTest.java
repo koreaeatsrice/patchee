@@ -41,12 +41,22 @@ class SuperTankDecisionTest {
 
     @Test
     void everyCombinationFollowsTheRule() {
-        for (int bits = 0; bits < 16; bits++) {
-            boolean logicalClient = (bits & 1) != 0;
-            boolean clientHasPatchee = (bits & 2) != 0;
-            boolean carries = (bits & 4) != 0;
-            boolean hasEffects = (bits & 8) != 0;
-            boolean expected = carries && hasEffects && (logicalClient || clientHasPatchee);
+        // Hand-written expected values, one row per combination of the four inputs.
+        // Each row is {logicalClient, clientHasPatchee, carries, hasEffects, expected}.
+        Object[][] rows = { { false, false, false, false, false }, { true, false, false, false, false },
+            { false, true, false, false, false }, { true, true, false, false, false },
+            { false, false, true, false, false }, { true, false, true, false, false },
+            { false, true, true, false, false }, { true, true, true, false, false },
+            { false, false, false, true, false }, { true, false, false, true, false },
+            { false, true, false, true, false }, { true, true, false, true, false },
+            { false, false, true, true, false }, { true, false, true, true, true }, { false, true, true, true, true },
+            { true, true, true, true, true }, };
+        for (Object[] row : rows) {
+            boolean logicalClient = (Boolean) row[0];
+            boolean clientHasPatchee = (Boolean) row[1];
+            boolean carries = (Boolean) row[2];
+            boolean hasEffects = (Boolean) row[3];
+            boolean expected = (Boolean) row[4];
             assertEquals(
                 expected,
                 SuperTankDecision.shouldClear(logicalClient, clientHasPatchee, carries, hasEffects),

@@ -55,7 +55,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  * minutes — after the tank is put down. Nothing about their game changes.
  *
  * <p>
- * Honest side effect, documented in the README: for a Patchee client, while
+ * Honest side effect, documented in docs/SETTINGS.md: for a Patchee client, while
  * carrying a qualifying item, these four effects are cleared regardless of where
  * they came from (the pack's pollution system can also use them). The whole
  * feature is config-gated ({@code enableSuperTankFix}).

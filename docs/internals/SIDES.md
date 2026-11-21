@@ -15,7 +15,7 @@ cannot ask every player to install a mod.
 | Shape | Contract | Examples |
 |---|---|---|
 | **SERVER-ONLY** (default) | The server changes behaviour; a stock client needs nothing. | Dolly, GlassBreak, VeinConfig, TeamChunkCap, Fish Trap hotkeys. |
-| **BOTH-SIDES-OPTIONAL** | The server half is complete. A client copy only improves what that player sees or feels; a stock client keeps stock local behaviour. | Twilight Forest break-speed floors, the mattock's shovel speed (drops are server-side), the Super Tank effect clear, the fertilizer recipe's NEI refresh, IC2 and GraviSuite flight edits, pollution visuals. |
+| **BOTH-SIDES-OPTIONAL** | A client copy only improves what that player sees or feels. A stock client keeps stock behaviour on both sides and is never left worse off. | Twilight Forest break-speed floors, the mattock's shovel speed (drops are server-side), the Super Tank effect clear, the fertilizer recipe's NEI refresh, IC2 and GraviSuite flight edits, pollution visuals. |
 | **CLIENT-ONLY** | Cosmetic and inert without Patchee. The server is not involved. | NEI's F7 light overlay. |
 
 Choose the first shape that works. "Both sides" is not a way to make a server feature work; it is a way to make a
