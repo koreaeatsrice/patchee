@@ -31,8 +31,9 @@ Patchee registers nothing with `NetworkRegistry` and defines no `IMessage` or `I
 grep -rn "SimpleNetworkWrapper\|NetworkRegistry\|IMessage\|IPacket" src/main/java
 ```
 
-It must print nothing. Today the only match for the word `network` is a comment naming IC2's own packet
-(`features/ChestplateHoverLiftFeature.java:35`).
+It must print nothing. The plain word `network` does appear, in FML's own handshake classes the Super Tank patch
+reads (`cpw/mods/fml/common/network/...`) and in a comment naming IC2's own packet
+(`features/ChestplateHoverLiftFeature.java:35`); none of those is a channel Patchee registers.
 
 If a feature seems to need a packet, the design is wrong. Either the server can do it alone, or it is a client-only
 cosmetic and needs no server data.
