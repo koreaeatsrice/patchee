@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.9.1] - 2026-11-21
+
+### Bug Fixes
+- **supertank**: stop leaving a stuck debuff on clients without patchee (#11) ([`401c7d6`](https://github.com/koreaeatsrice/patchee/commit/401c7d671d605a13350ff89efac68f6b47fcc59e))
+
+### Documentation & Wiki
+- **supertank**: document the handshake-gated clear (#12) ([`0ba8084`](https://github.com/koreaeatsrice/patchee/commit/0ba8084f4b99ee21ea5cb067cc7e0ae4f5bc354c))
+- add AGENTS.md and comprehensive contributor documentation (#10) ([`dcada65`](https://github.com/koreaeatsrice/patchee/commit/dcada65b25ae8c9e8beaf56617686660aafca24b))
+
+### Contributors
+
+- @koreaeatsrice
+
+**Full changelog**: https://github.com/koreaeatsrice/patchee/compare/v1.9.0...v1.9.1
+
 ## [1.9.0] - 2026-11-21
 
 ### Features
