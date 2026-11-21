@@ -61,8 +61,9 @@ The work itself (`DollyFeature.java:121-168`):
 3. build the wanted names from the static `HOUSINGS` list plus `ctx.toggles().extraDollyClasses()`, keeping only
    names that resolve with `ctx.reflect().find(...)` and are `TileEntity` subclasses;
 4. append each name once, via `Reflective.appendIfAbsent`;
-5. log how many were added and how many were already there;
-6. return `APPLIED` unconditionally; the added and already-present counts are in the INFO line.
+5. log an INFO line with how many names were appended and which mods were absent, and a WARN line with the names
+   rejected as not `TileEntity`;
+6. return `APPLIED` unconditionally; the counters are in those log lines.
 
 Two rules are visible in that code and apply to every feature:
 

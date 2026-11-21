@@ -51,7 +51,7 @@ Three features rewrite another mod's config, because that mod has no API for the
 | File | Written by | Keeps a backup |
 |---|---|---|
 | `config/GregTech/Pollution.cfg` | `PollutionPreload` (coremod) and `PollutionConfigFeature` | Yes, a timestamped `.bak` |
-| `config/GregTech/Client.cfg` | `PollutionPreload` (only if the file exists) | Yes, a timestamped `.bak` |
+| `config/GregTech/Client.cfg` | `PollutionPreload` (if the file exists) and the pollution features: `PollutionConfigFeature` at postInit, `PollutionVisualsFeature` on the client tick | Yes, a timestamped `.bak` |
 | `config/veinminer/*.cfg` | `VeinConfigFeature` | No |
 
 Each writer changes only its own keys and re-reads the file to log what is actually there. If a pack update replaces

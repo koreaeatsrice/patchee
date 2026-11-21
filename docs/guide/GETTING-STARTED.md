@@ -48,8 +48,8 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [MattockFix] mattock shovel materials 3 -> 6 (+3)
 [SuperTankFix] armed — carried GT Super Tanks/Chests will not keep their debuffs
 [VeinConfig] wrote config/veinminer/general.cfg + tools-and-blocks.json (blocks=4, cap=64, radius=20, autodetect=off)
-[TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits clamped to 1500 claimed / 500 loaded chunks (4 return sites; …)
-[TeamChunkCap] armed — every team is capped at 1500 claimed / 500 loaded chunks in total (…)
+[TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits will be read from the members' per-rank settings (4 return sites; …)
+[TeamChunkCap] armed — a team's limit is its best member's own per-rank limit (member limits are never added up …; switches from config/patchee.cfg)
 [EnrichedFertilizerRecipe] armed - old recipe added: 4 fertilizer + 1000 mB fertilizer -> 1000 mB enriched fertilizer (Chemical Reactor and LCR, LV, 20 ticks) (server)
 [FishTrapMoves] armed - Fish Trap is sortable (outputs 0-17, 6 per row); move hotkeys accept bait into slot 18
 [GlassBreak] armed - a player wearing 1 or more armour piece(s) is not cut by glass, and Chisel's Transparent Technical Block never cuts; bleeding potion id 121
