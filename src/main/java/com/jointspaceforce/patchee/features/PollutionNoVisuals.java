@@ -44,8 +44,11 @@ public final class PollutionNoVisuals {
     /** The feature switch Forge writes, e.g. {@code B:enablePollutionNoVisuals=true}. */
     public static final String ENABLE_KEY = "enablePollutionNoVisuals";
 
-    /** Used when the config file or the key is not there yet. */
-    public static final boolean DEFAULT_ENABLED = true;
+    /**
+     * Used when the config file or the key is not there yet. Off by default: the
+     * packet rewrite changes what every client is told about pollution, so it is opt-in.
+     */
+    public static final boolean DEFAULT_ENABLED = false;
 
     /**
      * Whether the packet's constructor was really rewritten this boot.

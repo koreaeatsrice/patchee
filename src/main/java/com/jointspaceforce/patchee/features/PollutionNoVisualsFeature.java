@@ -8,7 +8,7 @@ import com.jointspaceforce.patchee.core.Outcome;
 import com.jointspaceforce.patchee.core.Step;
 
 /**
- * Keeps GregTech pollution fully on, but makes players see none of it.
+ * Keeps GregTech pollution fully on, but makes players see none of it when the switch is on.
  *
  * <p>
  * Pollution itself is untouched: production, accumulation, decay, chunk
@@ -19,7 +19,8 @@ import com.jointspaceforce.patchee.core.Step;
  * chunk to each nearby client in {@code gregtech.api.net.GTPacketPollution}, and
  * the client's {@code PollutionRenderer} draws the smog, the fog, the fog colour
  * shift, the smoke particles and the grass/leaves/water/flower tints from that
- * one number and nothing else. {@link PollutionNoVisualsPatch} rewrites that
+ * one number, subject to GregTech's own Client.cfg fog and dirt-particle
+ * flags. {@link PollutionNoVisualsPatch} rewrites that
  * packet's constructor to store {@code 0} instead of the value it was given, so
  * every number the server sends is 0 and the client has nothing to draw with.
  *
@@ -52,7 +53,8 @@ public final class PollutionNoVisualsFeature implements Feature {
 
     @Override
     public String description() {
-        return "Feature: players see no pollution smog, no fog colour shift, no smoke particles and no "
+        return "Feature (OFF by default): when this switch is on, players see no pollution smog, no fog "
+            + "colour shift, no smoke particles and no "
             + "grass/leaf/water/flower tints, because the one number GregTech sends each client about a chunk is "
             + "rewritten to 0 as the packet is built. Pollution production, accumulation, decay, chunk storage, "
             + "damage, sour rain, vegetation checks, scanners, the pollution detector and every machine reading "
@@ -60,11 +62,11 @@ public final class PollutionNoVisualsFeature implements Feature {
             + "server-side and stay exactly as they were. This does not edit Pollution.cfg, does not lower or "
             + "remove pollution and does not touch the game world. Tradeoff: anything a CLIENT reads from that "
             + "number now reads 0 — a client-side pollution readout or debug display built on GregTech's map shows "
-            + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client is "
-            + "driven entirely by the value the server sends. A client that also runs Patchee applies the same "
-            + "rewrite to its own copy while the packet class loads, so that player keeps the visuals hidden even "
-            + "when this switch is off — remove the client copy, or turn the switch off there too, to give them "
-            + "pollution visuals back. Restart the server after changing this.";
+            + "nothing, while every server-side read is exact. Clients need nothing installed: a stock client "
+            + "draws from the value the server sends, and GregTech's own Client.cfg fog and dirt-particle "
+            + "flags decide whether those two are drawn. A client that also runs Patchee applies the same "
+            + "rewrite to its own copy while the packet class loads, but only when that copy's own "
+            + "enablePollutionNoVisuals is on too; both copies ship with it off. Restart the server after changing this.";
     }
 
     @Override

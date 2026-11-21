@@ -12,24 +12,25 @@ import org.junit.jupiter.api.Test;
  * the pure decision both the transformer and the test share.
  *
  * <p>
- * Both default to on, a missing file or key keeps the default, and the patch
- * only runs when the master switch and the feature switch are both on.
+ * The master switch defaults to on and the feature switch defaults to off; a
+ * missing file or key keeps those defaults, and the patch only runs when the
+ * master switch and the feature switch are both on.
  */
 class PollutionNoVisualsSettingsTest {
 
     @Test
-    void defaultsAreOnWhenThereIsNoFile() {
+    void theFeatureDefaultsToOffWhenThereIsNoFile() {
         PollutionNoVisualsSettings settings = PollutionNoVisualsSettings.parse("");
         assertTrue(settings.masterEnabled());
-        assertTrue(settings.enabled());
+        assertFalse(settings.enabled());
         assertFalse(settings.fromFile());
     }
 
     @Test
-    void nullConfigTextKeepsTheDefaults() {
+    void nullConfigTextKeepsTheFeatureOff() {
         PollutionNoVisualsSettings settings = PollutionNoVisualsSettings.parse(null);
         assertTrue(settings.masterEnabled());
-        assertTrue(settings.enabled());
+        assertFalse(settings.enabled());
     }
 
     @Test
@@ -63,7 +64,7 @@ class PollutionNoVisualsSettingsTest {
         PollutionNoVisualsSettings settings = PollutionNoVisualsSettings
             .parse("B:enabled=true\nB:enablePollutionNoVisuals=maybe\n");
         assertTrue(settings.masterEnabled());
-        assertTrue(settings.enabled(), "a typo must not switch the feature off");
+        assertFalse(settings.enabled(), "a typo must not switch the feature on");
 
         PollutionNoVisualsSettings masterTypo = PollutionNoVisualsSettings
             .parse("B:enabled=yes\nB:enablePollutionNoVisuals=true\n");
