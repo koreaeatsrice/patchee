@@ -64,11 +64,11 @@ A PR that breaks one of these is rejected, regardless of intent.
 Patchee is installed on the server. A player joins with a stock client and nothing installed. Every feature picks
 one shape:
 
-- **SERVER-ONLY** (default, preferred): the client needs nothing. Dolly, SuperTank, GlassBreak, VeinConfig,
-  TeamChunkCap, the recipe feature and the Fish Trap move hotkeys.
+- **SERVER-ONLY** (default, preferred): the client needs nothing. Dolly, GlassBreak, VeinConfig, TeamChunkCap,
+  the Fish Trap move hotkeys.
 - **BOTH-SIDES-OPTIONAL**: the server half is complete; a client copy only improves what that player sees or
-  feels. The Twilight Forest break-speed floors, the mattock's shovel speed (its drops are server-side), the
-  IC2/GraviSuite flight edits, the pollution visuals.
+  feels. The Twilight Forest break-speed floors, the mattock's shovel speed (its drops are server-side), the tank
+  effect clear, the fertilizer recipe's NEI refresh, the IC2/GraviSuite flight edits, the pollution visuals.
 - **CLIENT-ONLY**: allowed only when cosmetic and inert without Patchee. NEI's F7 overlay.
 
 Patchee registers no network channel and no packet. This must stay true:

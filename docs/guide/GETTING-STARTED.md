@@ -60,13 +60,13 @@ The pollution-visuals step is client-only. On a dedicated server it does nothing
 If the server's or a client's existing `config/patchee.cfg` already says `enablePollutionNoVisuals=false`, delete that line (or set it to `true`) to get the new default.
 
 - The `[FishTrapMoves]` line appears only when **Pam's HarvestCraft + InventoryBogoSorter** are installed. Without HarvestCraft the gate logs `[FishTrapMoves] Pam's HarvestCraft is not installed - Fish Trap moves skipped`; with HarvestCraft but no InventoryBogoSorter the feature logs `[FishTrapMoves] InventoryBogoSorter is not installed - skipped`. It runs on both sides; the move hotkeys (space/alt/ctrl-click) work from the server jar alone, while sorting the trap's output with middle-click (and the sorter's sort button in that GUI) needs Patchee on the client too.
-- The `[VeinConfig]` line appears only when **VeinMiner** is installed (`not installed — skipped` otherwise — see the optional part below).
+- The `[VeinConfig]` line appears only when **VeinMiner** is installed (`[VeinConfig] VeinMiner not installed — skipped` otherwise — see the optional part below).
 - The two `[TeamChunkCap]` lines appear only when **ServerUtilities** is installed (`ServerUtilities is not installed — team chunk limits skipped` otherwise).
 - The pollution visuals are hidden on **players' clients that install Patchee**, never on the server. A dedicated server logs only `[PollutionVisuals] dedicated server - no client renderer, skipped`. The server always sends the real pollution number, so a client without Patchee still sees GregTech's smog.
-- The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`not installed - skipped` otherwise). It ends with the side it ran on. On the **server** the recipe just works in the machine. On a **client that has Patchee** the line reads `(client)` and Patchee also asks GregTech to drop NEI's cached recipe pages, so the old recipe **shows up in NEI** too; a client without Patchee does not see it.
+- The `[EnrichedFertilizerRecipe]` line appears only when **CropsNH + GregTech** are installed (`[EnrichedFertilizerRecipe] GregTech is not installed - old recipe skipped` or `[EnrichedFertilizerRecipe] CropsNH is not installed - old recipe skipped` otherwise). It ends with the side it ran on. On the **server** the recipe just works in the machine. On a **client that has Patchee** the line reads `(client)` and Patchee also asks GregTech to drop NEI's cached recipe pages, so the old recipe **shows up in NEI** too; a client without Patchee does not see it.
 - The `[GlassBreak]` line appears only when **Blood Arsenal** is installed (`[GlassBreak] Blood Arsenal is not installed - skipped` otherwise). It runs on the server only — clients need nothing.
 
-- A line that says **`not installed — skipped`** is fine — it just means that mod is not in your pack.
+- A line that quotes a mod as not installed — for example **`[VeinConfig] VeinMiner not installed — skipped`** — is fine — it just means that mod is not in your pack.
 - A line that says **`failed — … left unchanged`** means the other mod changed shape. See [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
 
 **Extra check (optional):** in the settings file set `runSelfTest=true`, restart once and look for:
