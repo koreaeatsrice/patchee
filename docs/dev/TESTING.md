@@ -47,7 +47,7 @@ join path depends on the shape of FML's own code.
 ### The handshake test never skips
 
 `HandshakeModListPatchTest` loads `cpw/mods/fml/common/network/handshake/FMLHandshakeServerState$2.class` from the
-test runtime classpath — the build's recompiled Forge jar, which carries the same HELLO shape as the shipped
+test runtime classpath — the build's recompiled Forge classes, which carry the same HELLO shape as the shipped
 universal jar. When the class is absent it fails with a message saying so; it does not skip.
 
 Skip-based green builds are banned for this path. A test that skips when the class is missing turns a broken patch
