@@ -54,6 +54,8 @@ Each feature has its own switch in `config/patchee.cfg`, plus a master switch. K
 - [Client mods](docs/CLIENT-MODS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
+Contributing: [AGENTS.md](AGENTS.md) for AI agents, [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for people.
+
 ## Build
 
 ```sh
