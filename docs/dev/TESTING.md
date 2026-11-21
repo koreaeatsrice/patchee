@@ -38,11 +38,12 @@ Each patch has a test that builds synthetic bytes with ASM and asserts:
 - a non-target class comes back byte-identical;
 - a right-name, wrong-shape class returns the original bytes and a failure state, not an exception.
 
-Existing examples: `LightOverlayPatchTest`, `TeamChunkCapPatchTest`, `FinalCastleBreakPatchTest`,
-`ChestplateFlightPatchTest`, `GraviSuiteFlightPatchTest`.
+Existing examples: `LightOverlayPatchTest`, `TeamChunkCapPatchTest`, `ChestplateFlightPatchTest`,
+`GraviSuiteFlightPatchTest`. `FinalCastleBreakPatchTest` builds its cases from committed Twilight Forest bytes
+in `src/test/resources/finalcastlebreak/`, not from synthetic classes.
 
-`HandshakeModListPatchTest` is the exception: it reads the real Forge class instead of synthetic bytes, because the
-join path depends on the shape of FML's own code.
+`HandshakeModListPatchTest` is different in one way: it reads FML's class from the build's own classpath rather
+than from committed fixture bytes, because the join path depends on the shape of FML's own code.
 
 ### The handshake test never skips
 
