@@ -30,7 +30,7 @@ purpose; where two pages touch the same subject, one owns it and the other links
 | Page | For | Answers |
 |---|---|---|
 | [internals/PIPELINE.md](internals/PIPELINE.md) | Implementer | `Feature`, `Step`, `Outcome`, decorators, factory, registry, context, policies, reflection. |
-| [internals/TRANSFORMERS.md](internals/TRANSFORMERS.md) | Implementer | The coremod, the five transformers, class-load order, the patch contract. |
+| [internals/TRANSFORMERS.md](internals/TRANSFORMERS.md) | Implementer | The coremod, the six transformers, class-load order, the patch contract. |
 | [internals/SIDES.md](internals/SIDES.md) | Implementer | The client-optional mechanics, the decision table, how each shape is proven. |
 | [internals/SELFTEST.md](internals/SELFTEST.md) | Implementer | What the self-test runs and what a PASS means. |
 | [internals/CONFIG-AND-TOGGLES.md](internals/CONFIG-AND-TOGGLES.md) | Implementer | The registry-driven config, the `Toggles` snapshot, early readers. |

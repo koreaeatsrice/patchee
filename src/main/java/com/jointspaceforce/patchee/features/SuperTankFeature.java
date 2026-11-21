@@ -42,8 +42,9 @@ import cpw.mods.fml.common.gameevent.TickEvent;
  *
  * <p>
  * The clearing is per side. On the <b>logical client</b> it always runs — that
- * client is running Patchee, so it wipes its own local copy of the effects and
- * the HUD/slowness goes away. On the <b>server</b> it runs only for a client
+ * client is running Patchee, so it wipes the local copies on that client (every
+ * player entity it ticks, a screen-only cleanup) and the HUD/slowness goes away.
+ * On the <b>server</b> it runs only for a client
  * whose FML handshake listed Patchee: the server reads that list at the entry of
  * FML's own handshake step (one tiny bytecode hook, no packet channel and no
  * client-only requirement added), remembers the answer per connection, and a
@@ -139,7 +140,9 @@ public final class SuperTankFeature implements Feature {
         return Arrays.<Step>asList(
             Steps.sequence(
                 registerTickHandler(),
-                Steps.note("[SuperTankFix] armed — carried GT Super Tanks/Chests " + "will not keep their debuffs")));
+                Steps.note(
+                    "[SuperTankFix] armed — clears the debuffs only for clients that run Patchee; "
+                        + "a stock client keeps GregTech's own debuff and timer")));
     }
 
     /** Step one: put the per-tick cleaner on the FML bus, and say the fix is armed. */

@@ -137,8 +137,8 @@ The composition root picks one of each (`CommonProxy.java:51-52`). A feature nev
 
 ## Startup, in order
 
-1. `FMLPlugin` is constructed; `injectData` runs `PollutionPreload` (`asm/FMLPlugin.java:65-82`).
-2. Classes load through the five transformers, in registration order.
+1. `FMLPlugin` is constructed; `injectData` runs `PollutionPreload` (`asm/FMLPlugin.java:68-86`).
+2. Classes load through the six transformers, in registration order.
 3. `preInit`: load config, snapshot `Toggles`, build context, build both pipelines, log the banner, run the early
    pipeline when the master switch is on and the side is `SERVER` (`CommonProxy.java:43-70`).
 4. `postInit`: master switch off means one INFO line (`CommonProxy.java:72-77`); on means the normal pipeline runs.

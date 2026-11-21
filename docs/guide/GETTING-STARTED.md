@@ -46,7 +46,7 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [patchee] Patchee <version> — enabled=true dollyFix=true mattockFix=true superTankFix=true glassBreak=true veinConfig=true pollutionNoNegatives=true lightOverlay=true auroraBreak=true arcticFurBreak=true teamChunkCap=true pollutionVisuals=true finalCastleBreak=true enrichedFertilizerRecipe=true fishTrapMoves=true chestplateHoverLift=true chestplateHoldAltitude=true chestplateGroundGuard=true selfTest=false
 [DollyFix] Dolly now accepts 3 bee-housing class(es)
 [MattockFix] mattock shovel materials 3 -> 6 (+3)
-[SuperTankFix] armed — carried GT Super Tanks/Chests will not keep their debuffs
+[SuperTankFix] armed — clears the debuffs only for clients that run Patchee; a stock client keeps GregTech's own debuff and timer
 [VeinConfig] wrote config/veinminer/general.cfg + tools-and-blocks.json (blocks=4, cap=64, radius=20, autodetect=off)
 [TeamChunkCap] patched serverutils.data.ServerUtilitiesTeamData — team limits will be read from the members' per-rank settings (4 return sites; …)
 [TeamChunkCap] armed — a team's limit is its best member's own per-rank limit (member limits are never added up …; switches from config/patchee.cfg)

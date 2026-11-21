@@ -34,12 +34,13 @@ the reason, never a silent pass.
 
 ## What it checks
 
-The checks are grouped by feature area and call one after another in `runChecks` (`SelfTest.java:127-140`):
+The checks are grouped by feature area and call one after another in `runChecks` (`SelfTest.java:131-147`):
 
 | Check | What it does |
 |---|---|
 | Dolly gate | Runs JABBA's own final loop against the live `classExtensions` list, and requires a natural hive and a furnace to stay refused (`SelfTest.java:157-230`). |
 | Mattock | Reads the live shovel-material array and checks the shovel material is present once. |
+| SuperTankFix | Calls `SuperTankDecision.shouldClear` with plain booleans: the rule is a pure function, a Patchee client clears and a local client clears, while a stock client, a player carrying nothing and a player with no effects are left alone. The armed flag is reported by the feature's own arm line. |
 | VeinConfig | Checks the written VeinMiner files, then re-reads them. |
 | Aurora break | Runs the break-speed decision on a synthetic player and block. |
 | Arctic fur break | The same for the fur set. |
