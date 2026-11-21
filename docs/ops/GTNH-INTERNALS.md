@@ -131,8 +131,8 @@ The costs of ASM, and what this repo does about them:
   ServerUtilities builds its claim data there, and the order of two handlers for one event is arbitrary, so
   `SelfTest` waits for the first server tick (`SelfTest.java:80-120`).
 
-A feature that changes gameplay must say which side it runs on and what a stock client sees. `docs/ARCHITECTURE.md`,
-section 6, is the contract.
+A feature that changes gameplay must say which side it runs on and what a stock client sees.
+`docs/internals/SIDES.md` is the contract.
 
 ## 6. Inspecting a candidate mod jar
 
