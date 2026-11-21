@@ -48,8 +48,9 @@ That is why a stock client is unaffected. The hook only reads the list. A client
 debuff and timer stand. Whether to clear is a separate decision in `SuperTankFeature`, taken from
 `SuperTankDecision.shouldClear`.
 
-The target is FML's own **server-side** handshake handler. A client never loads it, so this patch adds no client
-requirement and no packet channel; a stock client is not asked for anything and not sent anything.
+The target is FML's own **server-side** handshake handler. A dedicated server runs it for the joining client's
+handshake; on a client the class only exists for the integrated server, so this patch adds no client requirement
+and no packet channel. A stock client is not asked for anything and not sent anything.
 
 ## The contract
 
