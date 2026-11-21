@@ -844,10 +844,6 @@ public final class SelfTest {
      * only: neither mod is a compile dependency.
      */
     private void checkFishTrapMoves(Toggles toggles) {
-        if (!toggles.featureEnabled(FishTrapMovesFeature.ID)) {
-            Patchee.LOG.info("[SelfTest] SKIP fishtrapmoves - feature disabled in config");
-            return;
-        }
         Class<?> tileClass;
         try {
             tileClass = Class.forName("com.pam.harvestcraft.TileEntityPamFishTrap");
@@ -886,7 +882,8 @@ public final class SelfTest {
             ItemStack baitSlot = trapInventory.getStackInSlot(18);
             check(
                 "fishtrap shift-click puts bait in slot 18",
-                baitSlot != null && baitSlot.getItem() == bait && baitSlot.stackSize == 2);
+                baitSlot != null && baitSlot.getItem() == bait && baitSlot.stackSize == 2
+                    && inv.mainInventory[9] == null);
 
             // (b) shift-click fish (slot 0) out to the player inventory
             trapInventory.setInventorySlotContents(0, new ItemStack(Items.apple, 3));
@@ -901,13 +898,23 @@ public final class SelfTest {
                 "fishtrap shift-click moves results to the player",
                 trapInventory.getStackInSlot(0) == null && apples == 3);
 
-            // Negative control: a non-bait stack shift-clicked from the player
-            // inventory must never land in the bait slot.
+            // Negative control: put a non-bait stack on the cursor and click it
+            // straight onto the bait slot. SlotPamFishTrap.isItemValid must
+            // refuse it, so neither the slot nor the cursor may change.
             trapInventory.setInventorySlotContents(18, null);
-            inv.mainInventory[9] = new ItemStack(Items.apple, 2);
-            container.slotClick(19, 0, 1, player);
-            check("fishtrap shift-click keeps non-bait out of slot 18", trapInventory.getStackInSlot(18) == null);
+            inv.setItemStack(new ItemStack(Items.apple, 2));
+            container.slotClick(18, 0, 0, player);
+            ItemStack stillOnCursor = inv.getItemStack();
+            check(
+                "fishtrap click refuses non-bait in slot 18",
+                trapInventory.getStackInSlot(18) == null && stillOnCursor != null
+                    && stillOnCursor.getItem() == Items.apple && stillOnCursor.stackSize == 2);
+            inv.setItemStack(null);
 
+            if (!toggles.featureEnabled(FishTrapMovesFeature.ID)) {
+                Patchee.LOG.info("[SelfTest] SKIP fishtrapmoves - feature disabled in config");
+                return;
+            }
             // (c) the sorter half, only when InventoryBogoSorter is installed
             Class<?> bogoApi;
             try {
