@@ -71,7 +71,7 @@ Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You
 [SelfTest] result: 27 passed, 0 failed
 ```
 
-The exact total depends on which mods are installed. On this pack it is **27** with VeinMiner and **22** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Six of the checks are the Fish Trap: 2 need HarvestCraft, and 4 more need InventoryBogoSorter. Four check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed. A missing mod is a **SKIP**, never a FAIL. One of them is the glass-cut fix, which is skipped when Blood Arsenal is not installed.
+The exact total depends on which mods are installed. On this pack it is **27** with VeinMiner and **22** without it (with no VeinMiner there is nothing to check for it — those checks are skipped, which is normal). Seven of the checks are the Fish Trap: 3 need HarvestCraft, and 4 more need InventoryBogoSorter. Four check the ServerUtilities team cap and are skipped (with a note) when ServerUtilities is not installed. A missing mod is a **SKIP**, never a FAIL. One of them is the glass-cut fix, which is skipped when Blood Arsenal is not installed.
 
 Then set it back to `false`. Settings explained: [SETTINGS.md](SETTINGS.md).
 

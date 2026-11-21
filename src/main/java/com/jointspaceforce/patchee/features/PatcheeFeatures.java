@@ -28,6 +28,7 @@ public final class PatcheeFeatures {
             .register(new PollutionNoVisualsFeature())
             .register(new FinalCastleBreakFeature())
             .register(new EnrichedFertilizerRecipeFeature())
+            .register(new FishTrapMovesFeature())
             .register(new ChestplateHoverLiftFeature())
             .register(new ChestplateHoldAltitudeFeature())
             .register(new ChestplateGroundGuardFeature());
