@@ -47,11 +47,11 @@ The server always sends every client GregTech's real pollution number. Patchee n
 
 Hiding the visuals is a job for the client. On a client that runs Patchee, the default-on switch `enablePollutionNoVisuals` turns GregTech's own `Pollution Fog` and `Pollution Dirt` render flags off in memory every tick. When `config/GregTech/Client.cfg` already exists, it also writes `B:"Pollution Fog"=false` and `B:"Pollution Dirt"=false` into it, with a timestamped `.bak`, and touches only those two lines.
 
-It also keeps GregTech's five block-tint tables empty: standard blocks, liquids, double plants, crossed squares and vines. So grass, leaf, water and flower tints are not drawn. A world load refills those tables, so Patchee empties them again each time.
+It also keeps GregTech's five block-tint tables empty: standard blocks, liquids, double plants, crossed squares and vines. So grass, leaf, water and flower tints are not drawn. GregTech can rebuild its tint tables when a world loads, so the guard checks them on every client tick and empties them again.
 
 A dedicated server does nothing here and logs `[PollutionVisuals] dedicated server - no client renderer, skipped`.
 
-The one honest caveat: a client without Patchee still draws GregTech's own smog when its pollution is high enough, because the real number really is sent to it. These flags only help players who install Patchee.
+The one honest caveat: a client without Patchee still draws GregTech's own smog when its pollution is high enough, because the real number really is sent to it. These flags only help players who install Patchee. With `enablePollutionNoVisuals=false`, the plant and water tints return on that client, but fog and particles stay off while the separate default-on `enablePollutionNoNegatives` is on.
 
 Pollution itself keeps running in full on the server: production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, the pollution detector and every machine reading it keep their exact numbers. It does not edit `Pollution.cfg` and does not touch the world. Switch: `enablePollutionNoVisuals` (default `true`).
 

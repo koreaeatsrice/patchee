@@ -13,6 +13,7 @@ import com.jointspaceforce.patchee.core.Outcome;
 import com.jointspaceforce.patchee.core.Step;
 
 import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.relauncher.Side;
 
 /**
@@ -24,9 +25,9 @@ import cpw.mods.fml.relauncher.Side;
  * rain, vegetation, scanners, the pollution detector and every machine reading
  * pollution keep working exactly as before. The feature only turns off what the
  * client draws: the two render flags on {@code Client.render} and their mirrors
- * on {@code GTMod.proxy}, plus the five block-tint tables. GregTech rebuilds the
- * tint tables on world load, so {@link PollutionVisualsGuard} repeats the writes
- * every client tick.
+ * on {@code GTMod.proxy}, plus the five block-tint tables. GregTech can rebuild
+ * its tint tables when a world loads, so {@link PollutionVisualsGuard} checks
+ * them on every client tick and empties them again.
  *
  * <p>
  * The first step decides, then arms the guard and writes the current session.
@@ -34,12 +35,19 @@ import cpw.mods.fml.relauncher.Side;
  * lines in {@code config/GregTech/Client.cfg} when that file exists, with a
  * timestamped {@code .bak}; only those two lines change. A dedicated server
  * skips both steps and says so once.
+ *
+ * <p>
+ * This feature declares no {@link #targetClass()}: GregTech's renderer class is
+ * client-only, so asking FML for it would fail on a dedicated server and report
+ * the wrong reason. The first step instead checks {@code Loader.isModLoaded}
+ * after the side check, which is where a missing GregTech is reported.
  */
 public final class PollutionVisualsFeature implements Feature {
 
     public static final String ID = PollutionVisuals.ID;
 
-    private static final String TARGET_CLASS = "gregtech.common.pollution.PollutionRenderer";
+    /** GregTech's mod id, as registered with FML. */
+    private static final String GT_MODID = "gregtech";
 
     @Override
     public String id() {
@@ -79,7 +87,7 @@ public final class PollutionVisualsFeature implements Feature {
 
     @Override
     public String targetClass() {
-        return TARGET_CLASS;
+        return null;
     }
 
     @Override
@@ -92,16 +100,20 @@ public final class PollutionVisualsFeature implements Feature {
         return Arrays.asList(applyStep(), fileStep());
     }
 
-    /** Decides, then arms the per-tick guard and does the first pass at once. */
+    /**
+     * Decides, then arms the per-tick guard and does the first pass at once. A missing GregTech is reported here,
+     * because {@link #targetClass()} is null - the target gate would ask for a client-only class.
+     */
     private Step applyStep() {
         return ctx -> {
+            boolean client = FMLCommonHandler.instance()
+                .getSide() == Side.CLIENT;
             PollutionVisuals.Decision decision = PollutionVisuals.decide(
                 ctx.toggles()
                     .masterEnabled(),
                 ctx.toggles()
                     .featureEnabled(ID),
-                FMLCommonHandler.instance()
-                    .getSide() == Side.CLIENT);
+                client);
             if (decision == PollutionVisuals.Decision.SERVER) {
                 ctx.log()
                     .info("[PollutionVisuals] dedicated server - no client renderer, skipped");
@@ -110,6 +122,11 @@ public final class PollutionVisualsFeature implements Feature {
             if (decision == PollutionVisuals.Decision.DISABLED) {
                 ctx.log()
                     .info(disabledMessage());
+                return Outcome.SKIPPED;
+            }
+            if (!Loader.isModLoaded(GT_MODID)) {
+                ctx.log()
+                    .info(missingTargetMessage());
                 return Outcome.SKIPPED;
             }
             int cleared = PollutionVisualsGuard.enforce(ctx.log());

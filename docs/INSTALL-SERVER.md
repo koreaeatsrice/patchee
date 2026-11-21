@@ -41,7 +41,7 @@ Stop the server, then start it again **the normal way**.
 Open the log file (`logs/latest.log`) and search for the word **`patchee`**. You should see lines like:
 
 ```
-[patchee] Patchee <version> — enabled=true dollyFix=true mattockFix=true superTankFix=true glassBreak=true veinConfig=true pollutionNoNegatives=true lightOverlay=true auroraBreak=true arcticFurBreak=true teamChunkCap=true pollutionNoVisuals=true finalCastleBreak=true enrichedFertilizerRecipe=true fishTrapMoves=true chestplateHoverLift=true chestplateHoldAltitude=true chestplateGroundGuard=true selfTest=false
+[patchee] Patchee <version> — enabled=true dollyFix=true mattockFix=true superTankFix=true glassBreak=true veinConfig=true pollutionNoNegatives=true lightOverlay=true auroraBreak=true arcticFurBreak=true teamChunkCap=true pollutionVisuals=true finalCastleBreak=true enrichedFertilizerRecipe=true fishTrapMoves=true chestplateHoverLift=true chestplateHoldAltitude=true chestplateGroundGuard=true selfTest=false
 [DollyFix] Dolly now accepts 3 bee-housing class(es)
 [MattockFix] mattock shovel materials 3 -> 6 (+3)
 [SuperTankFix] armed — carried GT Super Tanks/Chests will not keep their debuffs
