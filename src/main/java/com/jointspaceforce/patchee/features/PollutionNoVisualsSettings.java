@@ -16,8 +16,9 @@ import java.nio.file.Files;
  * ({@code B:key=true} inside a {@code general { ... }} block); comments and
  * unknown keys are ignored and the documented defaults are used for a missing
  * file, a missing key or an unreadable value. A value that is not true/false is
- * ignored and the current value stands, exactly like Forge's own
- * {@code Property.getBoolean}: a typo never changes the switch.
+ * ignored and whatever was parsed before it stands. Forge's own
+ * {@code Property.getBoolean} falls back to the key's default on a malformed value, so that is the one case where this
+ * reader and Forge can disagree.
  *
  * <p>
  * The key names live in {@link PollutionNoVisuals} and are reused by
@@ -103,8 +104,9 @@ public final class PollutionNoVisualsSettings {
     /**
      * A strict boolean: only {@code true} or {@code false}, in any case, is a
      * value. Anything else ({@code maybe}, {@code yes}, an empty string) is
-     * {@code null}, so the caller keeps what it already had — Forge's own
-     * {@code Property.getBoolean} treats a malformed value the same way.
+     * {@code null}, so the caller keeps what it already had. Forge's own
+     * {@code Property.getBoolean} falls back to the key's default on a malformed value instead, so the two can differ
+     * on a bad line.
      *
      * @param value    the text after the {@code =}
      * @param fallback the value to report when there is no text at all

@@ -11,13 +11,14 @@ import com.jointspaceforce.patchee.features.PollutionNoVisualsSettings;
 
 /**
  * Stops GregTech telling clients how polluted a chunk is, so players see no
- * pollution visuals while the server keeps the real numbers.
+ * pollution visuals while the switch is on and the server keeps the real numbers.
  *
  * <p>
  * GregTech sends one number per chunk to nearby clients in
  * {@code gregtech.api.net.GTPacketPollution}, and the client's
  * {@code PollutionRenderer} draws fog, a fog colour shift, smoke particles and
- * grass/leaves/water/flower tints from that number alone. Rewriting the
+ * grass/leaves/water/flower tints from that number, subject to GregTech's own
+ * Client.cfg fog and dirt-particle flags. Rewriting the
  * packet's {@code (chunk, int)} constructor to store {@code 0} makes every value
  * the server sends 0 — see {@link PollutionNoVisualsPatch} for the byte-level
  * detail. The real pollution is written to chunk storage before the packet is

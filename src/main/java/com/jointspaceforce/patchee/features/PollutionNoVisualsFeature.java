@@ -8,7 +8,7 @@ import com.jointspaceforce.patchee.core.Outcome;
 import com.jointspaceforce.patchee.core.Step;
 
 /**
- * Keeps GregTech pollution fully on, but makes players see none of it.
+ * Keeps GregTech pollution fully on, but makes players see none of it when the switch is on.
  *
  * <p>
  * Pollution itself is untouched: production, accumulation, decay, chunk
