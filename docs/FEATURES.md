@@ -43,7 +43,17 @@ Server-side only. A team gets its best member's own per-rank chunk limit, never 
 
 ## GregTech pollution visuals
 
-Off by default. With `enablePollutionNoVisuals` on, players see no pollution smog, no fog, no fog colour shift, no smoke particles and no grass/leaf/water/flower tints. Pollution itself keeps running in full — production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, the pollution detector and every machine reading it keep their exact numbers — because only the one number GregTech sends each client about a chunk is rewritten to 0. It does not edit `Pollution.cfg` and does not touch the world. A stock client needs nothing: the server decides what it is told, and GregTech's own `Client.cfg` fog and dirt-particle flags decide whether those two are drawn. A client that also runs Patchee applies the same rewrite locally only while its own switch is on; both copies ship with it off, though that client's default-on `enablePollutionNoNegatives` still turns GregTech's fog and dirt-particle flags off there. Tradeoff: anything a client reads from that number reads 0, so a client-side pollution readout shows nothing. Switch: `enablePollutionNoVisuals` (default `false`).
+The server always sends every client GregTech's real pollution number. Patchee never changes that packet, in any setting.
+
+Hiding the visuals is a job for the client. On a client that runs Patchee, the default-on switch `enablePollutionNoVisuals` turns GregTech's own `Pollution Fog` and `Pollution Dirt` render flags off in memory every tick. When `config/GregTech/Client.cfg` already exists, it also writes `B:"Pollution Fog"=false` and `B:"Pollution Dirt"=false` into it, with a timestamped `.bak`, and touches only those two lines.
+
+It also keeps GregTech's five block-tint tables empty: standard blocks, liquids, double plants, crossed squares and vines. So grass, leaf, water and flower tints are not drawn. A world load refills those tables, so Patchee empties them again each time.
+
+A dedicated server does nothing here and logs `[PollutionVisuals] dedicated server - no client renderer, skipped`.
+
+The one honest caveat: a client without Patchee still draws GregTech's own smog when its pollution is high enough, because the real number really is sent to it. These flags only help players who install Patchee.
+
+Pollution itself keeps running in full on the server: production, accumulation, decay, chunk storage, damage, sour rain, vegetation, scanners, the pollution detector and every machine reading it keep their exact numbers. It does not edit `Pollution.cfg` and does not touch the world. Switch: `enablePollutionNoVisuals` (default `true`).
 
 ## Enriched fertilizer
 
@@ -55,7 +65,7 @@ The HarvestCraft Fish Trap works with InventoryBogoSorter: space+click moves all
 
 ## GregTech pollution settings
 
-GregTech pollution stays on, but nothing comes of it. Patchee rewrites `config/GregTech/Pollution.cfg` with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. GregTech reads that file in its own coremod before Patchee can run, so the file change takes effect on the next boot; the same five values are forced in memory after GregTech loads, which is what fixes the current boot, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns the pollution fog and dirt particle flags off, in memory and in `config/GregTech/Client.cfg` once that file exists. Switch: `enablePollutionNoNegatives`.
+GregTech pollution stays on, but nothing comes of it. Patchee rewrites `config/GregTech/Pollution.cfg` with `Activate Pollution=true` and the four effect limits at 2147483647, so pollution still builds up and fades but no effect threshold is ever reached. Only those five lines change, and the original is kept next to it as a timestamped `.bak`. GregTech reads that file in its own coremod before Patchee can run, so the file change takes effect on the next boot; the same five values are forced in memory after GregTech loads, which is what fixes the current boot, so a read-only file or a hand edit cannot bring the effects back. On a client it also turns the pollution fog and dirt particle flags off, in memory and in `config/GregTech/Client.cfg` once that file exists, but it does not empty the block-tint tables: plant, grass and water tints need `enablePollutionNoVisuals`. Switch: `enablePollutionNoNegatives`.
 
 ## IC2 and GraviSuite jetpacks
 

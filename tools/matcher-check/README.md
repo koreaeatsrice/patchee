@@ -54,51 +54,6 @@ After patching, `javap -p -c` on the patched class is the cheap eyeball check;
 the JVM verifier is the real one, and the dev server (or the unit test that loads
 the patched bytes) is what proves the patched class still verifies.
 
-## The PollutionNoVisuals variant (`PollutionCheck.java`)
-
-The same idea for GregTech's pollution packet: run the REAL
-`com.jointspaceforce.patchee.asm.PollutionNoVisualsTransformer` over the REAL
-bytes of `gregtech/api/net/GTPacketPollution.class` from the GT5-Unofficial jar
-the live server runs (5.09.54.265), so a shape mismatch shows up here instead of
-as pollution visuals that quietly stay on.
-
-It checks, on the live bytes:
-
-1. the class is patched: exactly `PollutionNoVisualsPatch.SITE_COUNT` (=1)
-   constructor site, and the bytes really changed;
-2. the `(ChunkCoordIntPair, int)` constructor is the real one with exactly one
-   opcode replaced — the `ILOAD` of the int argument (local slot 2) becomes
-   `ICONST_0` — same instruction count, nothing else moved;
-3. a `PUTFIELD pollution: I` still follows it (fed by `ICONST_0`);
-4. every other method's opcode sequence is identical (no frames recomputed);
-5. a second pass is idempotent: `ALREADY_PATCHED`, bytes identical;
-6. a non-target class of the same jar (`gregtech/common/pollution/Pollution`)
-   passes through byte-identical;
-7. a class of any other shape is refused with a reason and returned
-   byte-identical.
-
-## Run (pollution variant)
-
-```sh
-WT=/path/to/patchee            # the worktree, after ./gradlew build
-GT=/root/.hermes/cache/scratch/gt/gt.jar
-OUT=/tmp/pcheck
-
-ASM=.../org.ow2.asm/asm/9.8/.../asm-9.8.jar
-ASMT=.../org.ow2.asm/asm-tree/9.8/.../asm-tree-9.8.jar
-LW=.../net.minecraft/launchwrapper/1.12/.../launchwrapper-1.12.jar
-LOG4J=.../org.apache.logging.log4j/log4j-api/2.0-beta9-fixed/.../log4j-api-2.0-beta9-fixed.jar
-MC=$WT/build/classes/java/main
-
-mkdir -p "$OUT"
-javac -d "$OUT" -cp "$ASM:$ASMT:$LW:$LOG4J:$MC" "$WT/tools/matcher-check/PollutionCheck.java"
-java -cp "$OUT:$ASM:$ASMT:$LW:$LOG4J:$MC" PollutionCheck "$GT" "$OUT"
-```
-
-Expected: `RESULT: 7/7 PASS`, with the patched class written next to the tool for
-`javap -p -c` inspection. Patchee does not depend on GregTech: the transformer
-works on raw bytes, so this tool is the only thing that needs the jar.
-
 ## The FinalCastleBreak variant (`CastleCheck.java`)
 
 The same idea for the Twilight Forest castle/thorn patch: run the REAL

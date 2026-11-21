@@ -25,7 +25,7 @@ public final class PatcheeFeatures {
             .register(new AuroraBreakFeature())
             .register(new ArcticFurBreakFeature())
             .register(new TeamChunkCapFeature())
-            .register(new PollutionNoVisualsFeature())
+            .register(new PollutionVisualsFeature())
             .register(new FinalCastleBreakFeature())
             .register(new EnrichedFertilizerRecipeFeature())
             .register(new FishTrapMovesFeature())

@@ -24,7 +24,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **NEI F7 overlay** — marks only pitch-dark blocks, on the client.
 - **Twilight Forest** — after the Snow Queen, aurora, deadrock and castle blocks break in 10 ticks.
 - **ServerUtilities** — a team gets its best member's per-rank chunk limit, never the sum.
-- **GregTech pollution visuals** — off by default; turn it on and players see no smog, fog or plant tints.
+- **GregTech pollution visuals** — the server sends real pollution numbers; clients running Patchee hide the smog, fog, particles and plant tints.
 - **Enriched fertilizer** — the old Chemical Reactor recipe works again, making 1000 L enriched fertilizer.
 - **Fish Trap** — the sorter's move hotkeys work in the trap; plain shift-click already moves bait in and fish out.
 - **GregTech pollution settings** — stays on, but the four effect limits are maxed, so no downsides.
@@ -40,7 +40,7 @@ Full steps and the log lines to expect: [docs/INSTALL-SERVER.md](docs/INSTALL-SE
 
 ## Client (optional)
 
-Players join with nothing. Without the jar a client still sees the tank debuffs and the old Twilight Forest break speed; the F7 overlay only works with the jar installed. Per-mod detail: [docs/CLIENT-MODS.md](docs/CLIENT-MODS.md).
+Players join with nothing. Without the jar a client still sees the tank debuffs and the old Twilight Forest break speed; the F7 overlay only works with the jar installed. A client without the jar still sees GregTech's pollution smog when pollution is high enough, because the server sends the real number. Per-mod detail: [docs/CLIENT-MODS.md](docs/CLIENT-MODS.md).
 
 ## Config
 
