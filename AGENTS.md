@@ -9,10 +9,10 @@ an AI agent or a human about to change the repo. The detail lives in `docs/`; th
 | Path | What it is |
 |---|---|
 | `Patchee.java` | The `@Mod` entry: `modid = "patchee"`, `version = Tags.VERSION`, `acceptableRemoteVersions = "*"`, `dependencies = "before:VeinMiner"`. |
-| `asm/FMLPlugin.java` | The coremod entry: registers five `IClassTransformer`s, runs `PollutionPreload` from `injectData`. |
+| `asm/FMLPlugin.java` | The coremod entry: registers six `IClassTransformer`s, runs `PollutionPreload` from `injectData`. |
 | `core/` | The pipeline: `Feature`, `Step`, `Outcome`, `Steps`, `StepDecorators`, `PatchFactory`, `FeaturePipeline`, `FeatureRegistry`, `Toggles`, `PatchContext`, `policy/`, `reflect/`. |
 | `features/` | One class per feature; `PatcheeFeatures.java` is the only registration point. |
-| `asm/` | The five transformers; each delegates byte work to a `features/*Patch.java`. |
+| `asm/` | The six transformers; each delegates byte work to a `features/*Patch.java`. |
 | `SelfTest.java` | The opt-in behavioural check (`runSelfTest=true`) on the first server tick. |
 | `src/test/java/` | JUnit 5 tests. `src/test/resources/` holds test bytes, never a third-party jar. |
 | `tools/matcher-check/` | Runs a transformer over a real jar and asserts the result. |
@@ -108,6 +108,6 @@ for the switch, banner and self-test. The full recipe, with the doc rows and the
 - `docs/README.md` — the index, one line per page.
 - `docs/dev/WORKFLOW.md` — branch, commit, review and merge.
 - `docs/internals/PIPELINE.md` — how a feature actually runs.
-- `docs/internals/TRANSFORMERS.md` — the five class patches and their safety rules.
+- `docs/internals/TRANSFORMERS.md` — the six class patches and their safety rules.
 - `docs/ops/RELEASING.md` — versions, tags and drafts.
 - `docs/FEATURES.md`, `docs/SETTINGS.md` — what a player and an operator see.

@@ -118,8 +118,11 @@ The costs of ASM, and what this repo does about them:
   refusing the faster break.
 - **Key state.** IC2 and GraviSuite send their own key-state packets to the server. A patched server and an
   unpatched client disagree in both directions, not just the climb. The same jar on both sides is the fix.
-- **Potion effects and movement.** A server can clear an effect; a client without the mod can still render it and
-  predict movement differently. That is the documented tank-effect mismatch.
+- **Potion effects and movement.** FML 1.7.10 throws the client mod list away after the handshake, so Patchee
+  reads it at the entry of the HELLO accept step in `FMLHandshakeServerState` (compiled as
+  `FMLHandshakeServerState$2.accept`) with a three-instruction hook, and remembers it per `NetworkManager`. The
+  server clears the four effects only for a client that runs Patchee. A stock client keeps GregTech's own effect
+  and timer (up to 12000 ticks), and Patchee never leaves it with a stuck effect.
 - **Client-only classes.** `@SideOnly(Side.CLIENT)` classes do not exist on a dedicated server. Calling one, or
   resolving a method whose signature mentions one, throws `NoClassDefFoundError`. `SelfTest` records a live case:
   resolving `ItemBarrelMover.isTEMovable` pulled in `IIconRegister` and died on a dedicated server, so the test
