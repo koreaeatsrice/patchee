@@ -9,21 +9,23 @@ import com.jointspaceforce.patchee.features.ChestplateFlightSettings;
 import com.jointspaceforce.patchee.features.GraviSuiteFlightPatch;
 
 /**
- * Applies the same three flight edits to GraviSuite's Advanced Jetpack as its
- * class loads. The Advanced Nano Chestplate inherits that code path, so one
- * class is all that has to change; {@code ItemGraviChestPlate} is a different
- * method and is deliberately left alone.
+ * Applies Patchee's two GraviSuite flight extras to the Advanced Jetpack as its
+ * class loads: a shift+space hold and a ground guard. The Advanced Nano
+ * Chestplate inherits that code path, so one class is all that has to change;
+ * {@code ItemGraviChestPlate} is a different method and is deliberately left
+ * alone.
  *
  * <p>
  * The edits live in {@code ItemAdvancedJetPack.useJetpack(EntityPlayer,
- * boolean)}: the two hover key clamps are rewritten so jump rises and sneak
- * sinks at GraviSuite's own hover sideways speed, a shift+space branch holds
- * altitude instead of sinking, and an early return keeps a player standing on
- * the ground from being treated as flying. See {@link GraviSuiteFlightPatch} for
- * the byte-level detail.
+ * boolean)}. The Advanced Nano keeps GraviSuite's own stock hover clamps — 0.2 up,
+ * 0.2 down — so nothing here changes its rise or sink; that is the lowest rung of
+ * the flight ladder, below the IC2 Quantum's 0.4. What this adds is a shift+space
+ * branch that holds altitude instead of sinking, and an early return that keeps a
+ * player standing on the ground from being treated as flying. See
+ * {@link GraviSuiteFlightPatch} for the byte-level detail.
  *
  * <p>
- * The two keyboard-driven edits are applied on <b>both</b> sides, because
+ * The keyboard-driven hold is applied on <b>both</b> sides, because
  * GraviSuite forwards the player's key state to the server in its own packet
  * ({@code PacketKeyboardUpdate}), one tick late and only after a key change; the
  * ground guard runs on both sides as well.
@@ -89,6 +91,18 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 source);
             return original;
         }
+        // Logged before the apply switch, so it is reached whatever the result:
+        // the lift switch cannot change this item, and a reader should not have to
+        // infer that from a missing edit.
+        if (lift) {
+            LOG.info(
+                "[GraviSuiteFlight] {} — the hover-lift switch does not change GraviSuite's Advanced Nano: it keeps "
+                    + "its stock {} up and {} down per tick. Switches from {}",
+                className,
+                GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
+                GraviSuiteFlightPatch.SNEAK_CLAMP,
+                source);
+        }
 
         GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(original, lift, guard, hold);
         switch (result.state()) {
@@ -96,19 +110,6 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
             case PARTIAL:
                 // One line per edit this pass made, so a log reader can see which
                 // switches fired without reading the detail string.
-                if (result.liftApplied()) {
-                    LOG.info(
-                        "[GraviSuiteFlight] {} — in hover mode, jump rises at {} and sneak sinks at {} per tick — "
-                            + "the same speed GraviSuite's own hover flight moves the player sideways (stock "
-                            + "GraviSuite was {} up / {} down with sneak, and the previous Patchee release climbed "
-                            + "at 0.6; no key still sinks at the stock hover fall speed). Switches from {}",
-                        className,
-                        GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
-                        GraviSuiteFlightPatch.SNEAK_LIFTED,
-                        GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
-                        GraviSuiteFlightPatch.SNEAK_CLAMP,
-                        source);
-                }
                 if (result.holdApplied()) {
                     LOG.info(
                         "[GraviSuiteFlight] {} — in hover mode, sneak + jump holds height at {} instead of sinking. "
@@ -126,37 +127,35 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 }
                 if (result.state() == GraviSuiteFlightPatch.State.PARTIAL) {
                     LOG.warn(
-                        "[GraviSuiteFlight] {} — rise, sink and shift+space were skipped together: {} (another mixin may already handle shift+space, and raising the rise alone would put the asymmetry back)",
+                        "[GraviSuiteFlight] {} — the shift+space hold could not be placed: the hover+sneak "
+                            + "clamp site is not in these bytes. The Advanced Nano keeps its stock hover "
+                            + "clamps, and the ground guard (if it was applied) still is. Switches from {}",
                         className,
-                        result.detail());
+                        source);
                 }
                 return result.bytes();
             case ALREADY_PATCHED:
                 if (result.skipped()) {
                     LOG.warn("[GraviSuiteFlight] {} — nothing applied: {}", className, result.detail());
-                } else if (result.detail() != null && result.detail()
-                    .length() > 0) {
-                        LOG.info(
-                            "[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged ({})",
-                            className,
-                            result.detail());
-                    } else {
-                        LOG.info(
-                            "[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged",
-                            className);
-                    }
+                } else if (lift && !hold && !guard) {
+                    LOG.info(
+                        "[GraviSuiteFlight] {} — bytes unchanged: only the hover-lift switch is on, and it has no "
+                            + "effect on GraviSuite's Advanced Nano",
+                        className);
+                } else {
+                    LOG.info("[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged", className);
+                }
                 return original;
             default:
                 LOG.error(
                     "[GraviSuiteFlight] {} does not have the shape this patch knows — GraviSuite's jetpack left "
                         + "exactly as it ships ({}). "
-                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site (jump {} or {}, "
+                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site (jump {}, "
                         + "next to one sneak {}).",
                     className,
                     result.detail(),
                     GraviSuiteFlightPatch.METHOD_NAME + GraviSuiteFlightPatch.METHOD_DESC,
                     GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
-                    GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
                     GraviSuiteFlightPatch.SNEAK_CLAMP);
                 LOG.error("[GraviSuiteFlight] observed shape: {}", GraviSuiteFlightPatch.dump(original));
                 return original;

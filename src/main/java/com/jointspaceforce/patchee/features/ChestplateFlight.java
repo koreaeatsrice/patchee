@@ -12,8 +12,8 @@ package com.jointspaceforce.patchee.features;
  *
  * <pre>
  * v = -0.025f                                  // no key: sink slowly
- * if (isSneakKeyDown) v = -0.1f                // sneak: sink faster
- * if (isJumpKeyDown)  v = 0.1f                 // jump: climb at 0.1/tick
+ * if (isSneakKeyDown) v = -0.1f                // sneak: stock sink
+ * if (isJumpKeyDown)  v = 0.1f                 // jump: stock climb
  * </pre>
  *
  * <p>
@@ -21,19 +21,19 @@ package com.jointspaceforce.patchee.features;
  * switch:
  *
  * <ol>
- * <li><b>Hover climb and sink did not match the sideways speed.</b> Stock IC2
+ * <li><b>Hover climb and sink now sit on the flight ladder.</b> Stock IC2
  * climbs at {@value #IC2_HOVER_JUMP_CLAMP} with jump held and sinks at
- * {@value #IC2_SNEAK_CLAMP} with sneak held — equal to each other in magnitude, but
- * not to the {@value #HOVER_HORIZONTAL_SPEED} a tick its own hover flight already
- * moves the player sideways at. The previous release's {@code 0.6} climb is what
- * broke the 0.1 / -0.1 pairing. The new rule is one speed for all three: jump rises
- * at {@value #HOVER_HORIZONTAL_SPEED}, sneak sinks at the same magnitude. Up and
- * down are deliberately equal, and equal to sideways. <b>No-input hover is left at stock {@value
- * #HOVER_DEFAULT_TARGET}</b>, so hovering without a key still hovers. IC2's
- * horizontal axis has no ramp of its own — its speed comes from vanilla adding a
- * constant each tick and multiplying by air drag — so the constant is applied
- * directly here; IC2's existing {@code oldMotionY} clamp still restores a larger
- * motion already in progress, which is what damps it instead of cutting it dead.</li>
+ * {@value #IC2_SNEAK_CLAMP} with sneak held. This patch writes both at
+ * {@value FlightTiers#QUANTUM_HOVER_ASCENT} a tick: 0.4 up, 0.4 down. That is
+ * exactly twice the Advanced Nano's stock 0.2, so the two chestplates form one
+ * ascending ladder — Quantum above Advanced Nano (see {@link FlightTiers}). Up
+ * and down stay equal in magnitude. <b>No-input hover is left at stock {@value
+ * #HOVER_DEFAULT_TARGET}</b>, so hovering without a key still hovers. The
+ * sideways speed is not touched: IC2 keeps its own {@value
+ * #HOVER_HORIZONTAL_SPEED} a tick when moving sideways, which is a different
+ * number and a different axis. IC2's existing {@code oldMotionY} clamp still
+ * restores a larger motion already in progress, which is what damps the lift
+ * instead of cutting it dead.</li>
  * <li><b>Shift + space drifts upward.</b> The jump test runs after the sneak
  * test, so holding both keys gives the jump target and the player climbs. The
  * two-key case must win over the jump branch;
@@ -100,12 +100,11 @@ public final class ChestplateFlight {
      * IC2 has no ramp of its own; this is the accumulation.
      *
      * <p>
-     * The match only holds at load factor 1 — full charge and normal altitude. The
-     * vertical target this patch writes is fixed, while IC2 scales its own sideways
-     * speed by {@code load}, so the two differ by {@code 1/load}: 2.00x at 2.5%
-     * charge, 2.08x a dozen blocks under the build limit. Below {@code load} ~0.401
-     * the thrust {@code 0.2*load} a tick cannot reach 0.0889, so the clamp stops
-     * engaging and the climb turns into a fall (~0.98 a tick at 1.5% charge).
+     * Horizontal only. This is the sideways speed IC2's hover flight gives the
+     * player, not the vertical target. The vertical target this patch writes is
+     * {@link FlightTiers#QUANTUM_HOVER_ASCENT} (0.4), twice the Advanced Nano's
+     * stock 0.2; it happens to be a different number on purpose, because the
+     * ladder is vertical and the sideways axis is untouched.
      */
     public static final float HOVER_HORIZONTAL_SPEED = HORIZONTAL_FRICTION * HORIZONTAL_FORWARD / (1.0f - AIR_DRAG);
 
@@ -113,8 +112,8 @@ public final class ChestplateFlight {
      * The per-tick climb ceiling normal (non-hover) jetpack flight uses:
      * {@code Math.min(motionY + power * 0.2f, 0.6000000238418579d)}. This patch
      * no longer writes it anywhere — hover mode gets
-     * {@link #HOVER_HORIZONTAL_SPEED} instead — but the method must still carry
-     * exactly one such literal, which is part of the shape check.
+     * {@link FlightTiers#QUANTUM_HOVER_ASCENT} instead — but the method must
+     * still carry exactly one such literal, which is part of the shape check.
      */
     public static final float IC2_JETPACK_CEILING = 0.6f;
 
@@ -137,11 +136,12 @@ public final class ChestplateFlight {
     private ChestplateFlight() {}
 
     /**
-     * The clamp hover mode applies while the jump key is held: IC2's own hover
-     * horizontal speed, so the climb matches the sideways flight. Pure.
+     * The clamp hover mode applies while the jump key is held: the Quantum rung
+     * of the flight ladder, {@link FlightTiers#QUANTUM_HOVER_ASCENT} (0.4), twice
+     * the Advanced Nano's 0.2. Pure.
      */
     public static float hoverAscentTarget() {
-        return HOVER_HORIZONTAL_SPEED;
+        return FlightTiers.QUANTUM_HOVER_ASCENT;
     }
 
     /**
@@ -149,7 +149,7 @@ public final class ChestplateFlight {
      * negation of {@link #hoverAscentTarget()}, so up and down are equal. Pure.
      */
     public static float hoverDescentTarget() {
-        return -HOVER_HORIZONTAL_SPEED;
+        return -FlightTiers.QUANTUM_HOVER_ASCENT;
     }
 
     /**
@@ -158,9 +158,9 @@ public final class ChestplateFlight {
      * <pre>
      * sneak  jump   verticalFix   target
      *  no     no      either      -0.025  (IC2's default sink; Hodgepodge's optional fix makes it 0.0)
-     *  yes    no       on         -0.0888889 (hoverDescentTarget: sink as fast as sideways)
+     *  yes    no       on         -0.4    (hoverDescentTarget: Quantum sink)
      *  yes    no       off        -0.1    (IC2's stock sneak sink)
-     *  no     yes      on         +0.0888889 (hoverAscentTarget: rise as fast as sideways)
+     *  no     yes      on         +0.4    (hoverAscentTarget: Quantum climb, twice the Advanced Nano's 0.2)
      *  no     yes      off        0.1     (IC2's stock hover climb)
      *  yes    yes      either     0.0     (hold: target 0.0, an in-progress climb damps to it)
      * </pre>
@@ -172,8 +172,8 @@ public final class ChestplateFlight {
      *
      * @param sneak       sneak key held
      * @param jump        jump key held
-     * @param verticalFix true when this patch's symmetric hover speeds are in the
-     *                    class; false for stock IC2's 0.1 / -0.1 pair
+     * @param verticalFix true when this patch's ladder speeds (Quantum 0.4 both
+     *                    ways) are in the class; false for stock IC2's 0.1 / -0.1 pair
      */
     public static float hoverVerticalTarget(boolean sneak, boolean jump, boolean verticalFix) {
         if (sneak && jump) {

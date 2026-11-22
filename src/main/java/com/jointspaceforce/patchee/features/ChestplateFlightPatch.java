@@ -44,10 +44,11 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <p>
  * The fix rewrites <b>the jump clamp only</b>: that {@code 0.1f} becomes
- * {@code +}{@value ChestplateFlight#HOVER_HORIZONTAL_SPEED}, the speed IC2's own
- * hover flight already moves the player sideways at
- * ({@code 0.02f * 0.4f / (1 - 0.91f)}, offsets 306-318 are the
- * {@code func_70060_a(0.0f, 0.4f, 0.02f)} call, at load factor 1). The descent is
+ * {@code +}{@value FlightTiers#QUANTUM_HOVER_ASCENT}, the Quantum rung of the
+ * flight ladder — exactly twice the Advanced Nano's stock 0.2 (offsets 306-318
+ * are the
+ * {@code func_70060_a(0.0f, 0.4f, 0.02f)} call, left untouched; the sideways
+ * speed is a separate axis and is not part of the ladder). The descent is
  * <b>not</b> a rewrite: the stock {@code -0.1f} literal is deliberately kept in
  * the class (Hodgepodge matches {@code -0.025f} by value on this same method, and
  * keeping every stock literal is the rule for composing with value-matching
@@ -57,14 +58,15 @@ import org.objectweb.asm.tree.VarInsnNode;
  * <pre>
  * if (isSneakKeyDown(player)) {
  *     v = -0.1f; // stock, untouched
- *     v = -0.0888889f; // &lt;- inserted: LDC + FSTORE, same local
+ *     v = -0.4f; // &lt;- inserted: LDC + FSTORE, same local
  * }
  * </pre>
  *
  * The two writes are one decision: the climb is never raised without the sink
- * matching it. The no-input {@code -0.025f} literal is never touched either, so
- * hovering still hovers, and the {@code 0.6d} ceiling is left in place (the patch
- * does not write it any more; the shape check still requires exactly one).
+ * matching it, and both are the Quantum rung, twice the Advanced Nano's 0.2. The
+ * no-input {@code -0.025f} literal is never touched either, so hovering still
+ * hovers, and the {@code 0.6d} ceiling is left in place (the patch does not write
+ * it any more; the shape check still requires exactly one).
  *
  * <p>
  * Both sites are found by <i>shape</i>, never by the value of their neighbours:
@@ -72,7 +74,7 @@ import org.objectweb.asm.tree.VarInsnNode;
  * <pre>
  * INVOKEVIRTUAL ic2/core/util/Keyboard.isJumpKeyDown (LEntityPlayer;)Z
  * IFEQ ...
- * LDC &lt;float&gt;        // 0.1f stock, or +0.0888889 once this patch has run
+ * LDC &lt;float&gt;        // 0.1f stock, or +0.4 once this patch has run
  * FSTORE &lt;local&gt;     // the local both writes / the sneak store use
  * </pre>
  *
@@ -83,7 +85,7 @@ import org.objectweb.asm.tree.VarInsnNode;
  * the injected descent store is never mistaken for a second site: the site count
  * stays one on a patched class. Presence of the edit is decided separately, by
  * {@code descentPatched}: the exact sequence {@code LDC -0.1f, FSTORE local,
- * LDC -0.0888889f, FSTORE local}. A class that already carries it reports
+ * LDC -0.4f, FSTORE local}. A class that already carries it reports
  * {@link State#ALREADY_PATCHED}; it is never injected twice.
  *
  * <p>
@@ -100,7 +102,7 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <pre>
  * if (isJumpKeyDown(player)) {
- *     v = 0.1f; // or +0.0888889 with edit 1
+ *     v = 0.1f; // or +0.4 with edit 1
  *     if (isSneakKeyDown(player)) {
  *         v = 0.0f; // &lt;- inserted, checked last
  *     }
@@ -214,7 +216,7 @@ public final class ChestplateFlightPatch {
     /** IC2's stock hover+jump clamp. */
     public static final float HOVER_JUMP_CLAMP = ChestplateFlight.IC2_HOVER_JUMP_CLAMP;
 
-    /** The value this patch writes at the jump site: IC2's own hover horizontal speed. */
+    /** The value this patch writes at the jump site: the Quantum rung, twice the Advanced Nano's 0.2. */
     public static final float HOVER_JUMP_LIFTED = ChestplateFlight.hoverAscentTarget();
 
     /** IC2's stock hover+sneak clamp. */
@@ -338,11 +340,6 @@ public final class ChestplateFlightPatch {
     }
 
     private ChestplateFlightPatch() {}
-
-    /** Apply all three edits. */
-    public static Result apply(byte[] original) {
-        return apply(original, true, true, true);
-    }
 
     /**
      * Apply the requested edits.
@@ -622,7 +619,7 @@ public final class ChestplateFlightPatch {
 
     /**
      * True when the descent edit is already in these bytes: the exact sequence
-     * {@code LDC float -0.1f, FSTORE local, LDC float -0.0888889f, FSTORE local},
+     * {@code LDC float -0.1f, FSTORE local, LDC float -0.4f, FSTORE local},
      * with labels and line numbers allowed in between.
      *
      * <p>
@@ -663,7 +660,7 @@ public final class ChestplateFlightPatch {
      *
      * <pre>
      * v = -0.1f; // stock, left alone
-     * v = -0.0888889f; // &lt;- LDC + FSTORE, same local
+     * v = -0.4f; // &lt;- LDC + FSTORE, same local
      * </pre>
      *
      * No label, no jump, no frame: the store is a plain overwrite in a straight
@@ -845,7 +842,7 @@ public final class ChestplateFlightPatch {
      * jump-taken block:
      *
      * <pre>
-     * v = 0.1f; // or +0.0888889 with edit 1
+     * v = 0.1f; // or +0.4 with edit 1
      * if (isSneakKeyDown(player)) v = 0.0f;
      * </pre>
      *

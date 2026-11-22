@@ -8,6 +8,8 @@ import org.apache.logging.log4j.Logger;
 import com.jointspaceforce.patchee.features.ChestplateFlight;
 import com.jointspaceforce.patchee.features.ChestplateFlightPatch;
 import com.jointspaceforce.patchee.features.ChestplateFlightSettings;
+import com.jointspaceforce.patchee.features.FlightTiers;
+import com.jointspaceforce.patchee.features.GraviSuiteFlightPatch;
 
 /**
  * Applies the ChestplateFlight patches to IC2's Quantum Chestplate as its class
@@ -16,9 +18,10 @@ import com.jointspaceforce.patchee.features.ChestplateFlightSettings;
  * <p>
  * Three independent edits live in one method
  * ({@code useJetpack(EntityPlayer, boolean)}): the hover climb literal is rewritten
- * to IC2's own hover horizontal speed and a second store is injected after the
- * stock sneak store so the sink matches it (the stock sink literal itself stays,
- * for Hodgepodge), a shift+space branch holds altitude instead of drifting up,
+ * to {@link FlightTiers#QUANTUM_HOVER_ASCENT} and a second store is injected after
+ * the stock sneak store so the sink matches it (the stock sink literal itself stays,
+ * so mixins that match stock values keep their target; Hodgepodge's hover fix targets
+ * {@code -0.025f} on this method), a shift+space branch holds altitude instead of drifting up,
  * and an early return keeps a player standing on the ground from being treated as
  * flying. See {@link ChestplateFlightPatch} for the byte-level detail and the
  * Hodgepodge interaction.
@@ -96,11 +99,12 @@ public class ChestplateFlightTransformer implements IClassTransformer {
                 if (result.liftApplied()) {
                     ChestplateFlight.markLiftPatched();
                     LOG.info(
-                        "[ChestplateHoverLift] patched {} — in hover mode, jump rises and sneak sinks at the same "
-                            + "{} per tick, the speed IC2's hover flight already moves you sideways (IC2's own "
-                            + "clamps were {} and {}). Switches from {}",
+                        "[ChestplateHoverLift] patched {} — in hover mode, jump rises and sneak sinks at {} per "
+                            + "tick, twice the Advanced Nano's stock {}, so the Quantum sits above it on the ladder "
+                            + "(IC2's own clamps were {} and {}). Switches from {}",
                         className,
-                        ChestplateFlight.HOVER_HORIZONTAL_SPEED,
+                        ChestplateFlight.hoverAscentTarget(),
+                        GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
                         ChestplateFlight.IC2_HOVER_JUMP_CLAMP,
                         ChestplateFlight.IC2_SNEAK_CLAMP,
                         source);

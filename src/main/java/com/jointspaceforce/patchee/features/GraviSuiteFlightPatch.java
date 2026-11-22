@@ -20,8 +20,8 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
 /**
- * The GraviSuite counterpart of {@link ChestplateFlightPatch}: the same three
- * edits inside GraviSuite's
+ * The GraviSuite counterpart of {@link ChestplateFlightPatch}: what it adds is
+ * the shift+space hold and the ground guard inside GraviSuite's
  * {@code ItemAdvancedJetPack.useJetpack(EntityPlayer, boolean)}.
  *
  * <p>
@@ -38,14 +38,15 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <pre>
  * v = -hoverModeFallSpeed;
- * if (Keyboard.isJumpKeyDown(player)) v = 0.2d; // &lt;- the defect
+ * if (Keyboard.isJumpKeyDown(player)) v = 0.2d;
  * if (Keyboard.isSneakKeyDown(player)) v = -0.2d; // tested AFTER jump
  * </pre>
  *
  * followed by {@code if (motionY > v) { motionY = v; ... } } (offsets 443-472).
- * Holding jump therefore caps the climb at 0.2 a tick, a third of the 0.6 the
- * same method already allows, and holding shift + space <i>descends</i>,
- * because the sneak test runs last.
+ * Those two clamps are GraviSuite's stock numbers, and this patch leaves them
+ * exactly where they are: 0.2 up, 0.2 down. Holding both keys still
+ * <i>descends</i>, because the sneak test runs last — which is the one thing the
+ * hold edit below changes.
  *
  * <p>
  * GraviSuite's hover horizontal flight is not a literal: the same method calls
@@ -59,54 +60,31 @@ import org.objectweb.asm.tree.VarInsnNode;
  * {@value #HOVER_HORIZONTAL_SPEED} blocks a tick.
  *
  * <p>
- * <b>1. Lift, both directions.</b> One decision writes the jump clamp and the
- * descent: the jump site's {@code 0.2d} is rewritten to
- * {@code +}{@value #HOVER_HORIZONTAL_SPEED}, and the descent is <b>injected</b> as
- * an extra store after the stock sneak store rather than replacing the stock
- * {@code -0.2d} literal:
- *
- * <pre>
- * if (isSneakKeyDown(player)) {
- *     v = -0.2d; // stock, untouched
- *     v = -0.1155556; // &lt;- inserted: LDC2_W + DSTORE, same local
- * }
- * </pre>
+ * <b>1. No vertical rewrite.</b> The Advanced Nano keeps GraviSuite's own stock
+ * vertical hover clamps: {@value #HOVER_JUMP_CLAMP} up with jump and
+ * {@value #SNEAK_CLAMP} down with sneak, equal in magnitude. That is its rung on
+ * the flight ladder — the lowest one, below the IC2 Quantum's 0.4 — and it is not
+ * trimmed towards the 0.1156 sideways speed or towards any other number, because
+ * the ladder is vertical (see {@link FlightTiers}). This patch never rewrites
+ * either clamp.
  *
  * <p>
- * That literal has to survive: {@code Gravitation-Suite-Neo} 1.3.16 (shipped on
- * both sides of GTNH 2.9.0) has a {@code ModifyExpressionValue} on this method at
- * {@code CONSTANT} with {@code doubleValue=-0.2}, and a non-optional injector with
- * no target fails critically. Keeping the literal means Neo still finds it whether
- * it runs before or after Patchee. If Neo ran first and turned that store into an
- * expression ({@code -0.2 + maxHoverY}), there is no constant store left to anchor
- * on, so the sneak site is absent and the whole vertical edit (rise, sink and
- * shift+space) is skipped with a reason while the ground guard still applies.
+ * The {@code -0.2d} literal also has to survive for its own sake:
+ * {@code Gravitation-Suite-Neo} 1.3.16 (shipped on both sides of GTNH 2.9.0) has
+ * a {@code ModifyExpressionValue} on this method at {@code CONSTANT} with
+ * {@code doubleValue=-0.2}, and a non-optional injector with no target fails
+ * critically. Patchee never rewrites it, so Neo finds it whether it runs before
+ * or after Patchee. Patchee only reads it to find the sneak-clamp site that
+ * anchors the hold.
  *
  * <p>
- * Up and down are equal in magnitude and equal to the speed hover already moves
- * the player sideways at; the climb is never raised without the sink matching it.
- * GraviSuite's horizontal axis has no ramp of its own — its speed is vanilla's
- * tick-by-tick accumulation plus the 0.91 drag — so the constant is applied
- * directly, and GraviSuite's own {@code oldMotionY} clamp still restores a larger
- * motion already in progress, which damps it over a few ticks instead of cutting
- * it dead. The no-key sink stays GraviSuite's stock {@code -hoverModeFallSpeed},
- * and the boost key still doubles whichever vertical target was chosen
- * ({@code dload 13; ldc2_w 2.0d; dmul}), exactly as GraviSuite ships it. The
- * {@code 0.6d} ceiling is left in place — the patch no longer writes it, but the
- * shape check still requires exactly one.
- *
- * <p>
- * Both sites are found by <i>shape</i> — {@code GETSTATIC keyboard, POP, ALOAD
- * player, INVOKESTATIC key, IFEQ, LDC2_W double, DSTORE local} — never by their
- * neighbours. The value filter tells them apart: the jump site accepts
- * {@value #HOVER_JUMP_CLAMP} or {@value #HOVER_JUMP_LIFTED}, the sneak site accepts
- * only the <b>stock</b> {@value #SNEAK_CLAMP}. The hold branch's own {@code 0.0d}
- * store has the same shape as a jump site, so it is excluded by value; the
- * injected descent store is not preceded by a key branch at all, and its value is
- * not accepted, so it can never be mistaken for a second sneak site. Whether the
- * descent edit is already present is asked separately, by {@code descentPatched}
- * (the sequence {@code LDC2_W -0.2d, DSTORE local, LDC2_W -0.1155556, DSTORE
- * local}), which is what keeps a second pass idempotent.
+ * The clamp sites are still found by <i>shape</i> — {@code GETSTATIC keyboard,
+ * POP, ALOAD player, INVOKESTATIC key, IFEQ, LDC2_W double, DSTORE local} —
+ * because the shift+space hold is anchored inside the sneak-taken block. The
+ * value filter tells them apart: the jump site accepts only the stock
+ * {@value #HOVER_JUMP_CLAMP}, the sneak site only the stock {@value #SNEAK_CLAMP}.
+ * The hold branch's own {@code 0.0d} store has the same shape as a jump site, so
+ * it is excluded by value.
  *
  * <p>
  * <b>2. Hold.</b> Because sneak is tested after jump, holding both keys gives the
@@ -115,27 +93,19 @@ import org.objectweb.asm.tree.VarInsnNode;
  * to:
  *
  * <pre>
- * v = -0.2d; // stock
- * v = -0.1155556; // injected descent (edit 1)
+ * v = -0.2d; // stock, untouched
  * if (isJumpKeyDown(player)) v = 0.0d; // &lt;- inserted last, so it wins
  * </pre>
  *
- * Both edits go in as <b>one ordered list</b>, descent then hold, anchored inside
- * the sneak-taken block, so the hold still overrides the descent. When only one
- * of the two is missing, the list holds just that one and is anchored so the
- * order still comes out descent-then-hold: the hold is placed after the descent
- * store when the descent is already in the class, and the descent is placed in
- * front of the hold when the hold is already there. A pass can therefore never
- * leave the hold in front of the descent, which would let the descent overwrite
- * {@code 0.0} and make sneak + space sink instead of hold. Sneak alone keeps the
- * patched descent target, sneak + jump overrides it to {@code 0.0d}, and the clamp then
- * targets level flight. GraviSuite still restores a larger previous motion,
- * so a climb already in progress is damped to a stop over a few ticks, not cut dead.
- * The keyboard field and the player local are copied from the method's own
- * instructions — no name is guessed. The branch adds no {@code GOTO}, no new
- * label and no new frame: its {@code IFEQ} jumps to the sneak branch's own join
- * label, which already carries a frame. Sitting after the store also keeps the
- * sneak-clamp shape intact, so a second pass still finds the site.
+ * Sneak alone keeps the stock sink, sneak + jump overrides it to {@code 0.0d},
+ * and the clamp then targets level flight. GraviSuite still restores a larger
+ * previous motion, so a climb already in progress is damped to a stop over a few
+ * ticks, not cut dead. The keyboard field and the player local are copied from
+ * the method's own instructions — no name is guessed. The branch adds no
+ * {@code GOTO}, no new label and no new frame: its {@code IFEQ} jumps to the
+ * sneak branch's own join label, which already carries a frame. Sitting after
+ * the store also keeps the sneak-clamp shape intact, so a second pass still finds
+ * the site.
  *
  * <p>
  * <b>3. Ground guard.</b> The method ends (offsets 499-549) by clearing
@@ -169,19 +139,22 @@ import org.objectweb.asm.tree.VarInsnNode;
  * Everything is deliberately suspicious: the class name must match, the method
  * must exist with the expected descriptor and be static, exactly one 0.6
  * ceiling literal must exist, and exactly one jump-clamp site of the shape above
- * whose double is {@value #HOVER_JUMP_CLAMP} or {@value #HOVER_JUMP_LIFTED}, next
- * to at most one <b>stock</b> sneak site storing to the same local whose double is
- * {@value #SNEAK_CLAMP}. A jump clamp that this patch did not write (say an
- * already-retargeted {@code 0.6}) is therefore simply not a site, and such a class
- * is refused with the "expected exactly 1 hover+jump clamp site … found 0" message.
- * Any other shape is refused with a reason and the class is handed back untouched.
- * A <i>missing</i> sneaking
- * clamp is not a refusal: the climb, the sink and the shift+space edit are then
- * skipped <b>together</b> — raising the climb alone would turn another mixin's
- * hold into a climb — and only the ground guard is applied, so the result is
- * {@link State#PARTIAL}; with nothing left to apply the bytes are unchanged and
- * the reason says so. Idempotent: a second pass over patched bytes reports
- * {@link State#ALREADY_PATCHED}.
+ * whose double is {@value #HOVER_JUMP_CLAMP}, next to at most one <b>stock</b>
+ * sneak site storing to the same local whose double
+ * is {@value #SNEAK_CLAMP}. A jump clamp with any other value (say one already
+ * retargeted to {@code 0.6}) is simply not a site, and such a class is refused
+ * with the "expected exactly 1 hover+jump clamp site … found 0" message. Any
+ * other shape is refused with a reason and the class is handed back untouched.
+ *
+ * <p>
+ * A <i>missing</i> sneak clamp is not a refusal. The shift+space hold is anchored
+ * inside the sneak-taken block, so when the hold switch is on and that site is
+ * absent the hold cannot be placed: it is skipped with a reason while the ground
+ * guard, if requested, still applies, which makes the result
+ * {@link State#PARTIAL}. With the hold switch off the missing site is irrelevant:
+ * the guard alone still applies and there is no PARTIAL. With nothing left to
+ * apply the bytes are unchanged and the reason says so. Idempotent: a second pass
+ * over patched bytes reports {@link State#ALREADY_PATCHED}.
  */
 public final class GraviSuiteFlightPatch {
 
@@ -239,28 +212,33 @@ public final class GraviSuiteFlightPatch {
     public static final float AIR_DRAG = 0.91f;
 
     /**
-     * The speed GraviSuite's hover flight already moves the player sideways at,
-     * derived from its own bytecode: vanilla's {@code moveFlying} adds {@code
-     * friction * forward / max(1, length)} = {@code 0.02f * 0.52f = 0.0104f} to
+     * The speed GraviSuite's hover flight moves the player sideways at, derived
+     * from its own bytecode: vanilla's {@code moveFlying} adds {@code friction *
+     * forward / max(1, length)} = {@code 0.02f * 0.52f = 0.0104f} to
      * {@code motionX}/{@code motionZ} each tick and then multiplies by
      * {@value #AIR_DRAG}, so the steady state is {@code 0.0104f / (1 - 0.91f)}.
-     * GraviSuite has no ramp of its own; this is the accumulation. The vertical
-     * fix writes this number and its negation, so rising and sinking match the
-     * sideways speed the player already has.
+     * GraviSuite has no ramp of its own; this is the accumulation.
+     *
+     * <p>
+     * Horizontal only. The vertical hover clamps are GraviSuite's stock 0.2 up /
+     * 0.2 down and are not written from this number — the ladder is vertical
+     * (see {@link FlightTiers}), the sideways axis is not.
      */
     public static final double HOVER_HORIZONTAL_SPEED = HORIZONTAL_FRICTION * HORIZONTAL_FORWARD / (1.0f - AIR_DRAG);
 
-    /** GraviSuite's stock hover+jump clamp, kept as the "was" value for the logs. */
+    /**
+     * GraviSuite's stock hover+jump clamp, {@code 0.2d}. This patch reads it to
+     * find the jump-clamp site and names it in the log as the value it leaves
+     * alone; it never rewrites it.
+     */
     public static final double HOVER_JUMP_CLAMP = 0.2d;
 
-    /** The value written at the jump site: GraviSuite's own hover horizontal speed. */
-    public static final double HOVER_JUMP_LIFTED = HOVER_HORIZONTAL_SPEED;
-
-    /** GraviSuite's stock hover+sneak clamp, kept as the "was" value for the logs. */
+    /**
+     * GraviSuite's stock hover+sneak clamp, {@code -0.2d}. This patch reads it to
+     * find the sneak-clamp site that anchors the hold and names it in the log as
+     * the value it leaves alone; it never rewrites it.
+     */
     public static final double SNEAK_CLAMP = -0.2d;
-
-    /** The descent value written just after the stock sneak store: the exact negation of the jump value. */
-    public static final double SNEAK_LIFTED = -HOVER_HORIZONTAL_SPEED;
 
     /** The vertical target for shift + space: hold altitude, no drift either way. */
     public static final double HOLD_ALTITUDE_TARGET = 0.0d;
@@ -272,13 +250,13 @@ public final class GraviSuiteFlightPatch {
     public static final int ASCENT_CEILING_SITES = 1;
 
     /**
-     * The detail when only vertical edits were requested and the hover+sneak
+     * The detail when the shift+space hold was requested and the hover+sneak
      * clamp site is not in these bytes.
      */
-    static final String VERTICAL_SKIPPED_ALONE = "the hover+sneak clamp site is not in these bytes, so the climb, the sink and the shift+space edits were skipped together (another mixin may already handle shift+space, and raising the climb without it would put the asymmetry back); nothing else was requested";
+    static final String VERTICAL_SKIPPED_ALONE = "the hover+sneak clamp site is not in these bytes, so the shift+space hold could not be placed (another mixin may already handle shift+space); the ground guard still applies if it was requested";
 
-    /** Appended to the detail when other edits were made but neither vertical edit could be. */
-    static final String VERTICAL_SKIPPED_SUFFIX = ", climb, sink and shift+space skipped: the hover+sneak clamp site is not in these bytes, so raising the climb alone would put the asymmetry back";
+    /** Appended to the detail when the guard went in but the hold could not be placed. */
+    static final String VERTICAL_SKIPPED_SUFFIX = ", shift+space hold skipped: the hover+sneak clamp site is not in these bytes, so the hold could not be anchored";
 
     /** What {@link #apply} found and did. */
     public enum State {
@@ -332,7 +310,10 @@ public final class GraviSuiteFlightPatch {
             return state;
         }
 
-        /** The class bytes to hand back to the loader (never null). */
+        /**
+         * The class bytes to hand back to the loader. Only null when the input was
+         * null, which is refused and handed back as-is.
+         */
         public byte[] bytes() {
             return bytes;
         }
@@ -342,7 +323,11 @@ public final class GraviSuiteFlightPatch {
             return sites;
         }
 
-        /** True when this pass rewrote the hover+jump clamp and injected the descent store. */
+        /**
+         * Always false. This patch never rewrites the vertical clamps of the
+         * Advanced Nano, so no pass ever applies a lift. Kept so callers can ask
+         * the question without special-casing this patch.
+         */
         public boolean liftApplied() {
             return liftApplied;
         }
@@ -357,7 +342,7 @@ public final class GraviSuiteFlightPatch {
             return holdApplied;
         }
 
-        /** True when a requested vertical edit was skipped because its site is absent. */
+        /** True when the requested shift+space hold was skipped because its site is absent. */
         public boolean skipped() {
             return skipped;
         }
@@ -370,17 +355,13 @@ public final class GraviSuiteFlightPatch {
 
     private GraviSuiteFlightPatch() {}
 
-    /** Apply all three edits. */
-    public static Result apply(byte[] original) {
-        return apply(original, true, true, true);
-    }
-
     /**
      * Apply the requested edits.
      *
-     * @param original the class bytes as the loader sees them
-     * @param lift     rewrite <b>both</b> hover clamps: jump to
-     *                 {@link #HOVER_JUMP_LIFTED}, sneak to {@link #SNEAK_LIFTED}
+     * @param original the class bytes as the loader sees it
+     * @param lift     the hover-lift switch; accepted for a common call shape but
+     *                 it has no effect here, because this patch never rewrites the
+     *                 Advanced Nano's stock vertical clamps
      * @param guard    inject the on-the-ground early return
      * @param hold     inject the shift + space hold-altitude branch
      */
@@ -506,33 +487,31 @@ public final class GraviSuiteFlightPatch {
                     + sneaks);
         }
 
-        // The climb, the sink and the shift+space hold write the SAME local, so they
-        // are one decision: another mixin may keep the sneak clamp as "jump value
-        // minus a constant", which would hold at the stock 0.2 and climb faster once
-        // the jump value is raised. When the stock sneak clamp is not there, no
-        // vertical edit goes in; the ground guard still can.
+        // The Advanced Nano sits on the lowest rung of the flight ladder, so this
+        // patch never rewrites the vertical clamps: the jump clamp keeps
+        // GraviSuite's stock 0.2d and the stock -0.2d sink stays as it ships. The
+        // shift+space hold still has to be anchored inside the sneak-taken block,
+        // so the stock sneak site is still required for it; the ground guard does
+        // not need it.
         //
         // This is the one place the twin classes differ, and it is geometry, not
         // intent: GraviSuite's hold can only be anchored on the sneak-taken block's
         // join label, which is not there when the stock sneak clamp site is gone, so
-        // the hold is skipped with the lift. IC2's hold is anchored on the jump
+        // the hold is skipped without the site. IC2's hold is anchored on the jump
         // store instead, so ChestplateFlightPatch still places it in that case.
         boolean verticalApplicable = sneak != null;
-        // The climb and the sink move together: the jump clamp is never rewritten
-        // without the injected descent store right after the stock sneak store.
-        boolean descentDone = verticalApplicable && descentPatched(method, clampLocal);
-        boolean liftDone = clamp.value() == HOVER_JUMP_LIFTED && descentDone;
+        // The lift argument is deliberately not consulted: no vertical rewrite ships
+        // for this item, so liftApplied is false on every path.
         boolean guardDone = hasGuardHook(method);
         boolean holdDone = verticalApplicable && hasHoldBranch(method, sneak);
-        boolean needLift = lift && verticalApplicable && !liftDone;
-        // The hold is added on top of the descent, and never before it: both are
-        // placed by one ordered list inside placeSneakStores.
+        // The hold is added inside the sneak-taken block by placeHold.
         boolean needHold = hold && verticalApplicable && !holdDone;
         boolean needGuard = guard && !guardDone;
-        boolean liftBlocked = lift && !verticalApplicable;
+        // A missing sneak site is not a refusal: the guard still applies, and only a
+        // hold that really could not be placed is PARTIAL.
         boolean holdBlocked = hold && !verticalApplicable;
-        boolean skipped = liftBlocked || holdBlocked;
-        if (!needLift && !needGuard && !needHold) {
+        boolean skipped = holdBlocked;
+        if (!needGuard && !needHold) {
             return new Result(
                 State.ALREADY_PATCHED,
                 original,
@@ -545,10 +524,8 @@ public final class GraviSuiteFlightPatch {
         }
 
         int sitesChanged = 0;
-        if (needLift || needHold) {
-            AbstractInsnNode stockStore = nextReal(sneak.value.getNext());
-            if (stockStore == null || stockStore.getOpcode() != Opcodes.DSTORE
-                || ((VarInsnNode) stockStore).var != clampLocal) {
+        if (needHold) {
+            if (!placeHold(method, sneak, clampLocal)) {
                 return new Result(
                     State.UNEXPECTED_SHAPE,
                     original,
@@ -557,70 +534,33 @@ public final class GraviSuiteFlightPatch {
                     false,
                     false,
                     false,
-                    "the stock hover+sneak clamp value is not stored to the jump clamp's local, so the "
-                        + "vertical edits cannot be placed");
+                    "the sneak branch's stock store is not a DSTORE to the jump clamp's local, or its join "
+                        + "label is not the target of exactly one jump, so the shift+space branch cannot be placed");
             }
-            if (needLift) {
-                // Rewrite the jump clamp in place; the descent is an extra store, so
-                // the stock -0.2d literal survives for Neo's CONSTANT matcher.
-                clamp.value.cst = Double.valueOf(HOVER_JUMP_LIFTED);
-                sitesChanged++;
-            }
-            boolean addDescent = needLift && !descentDone;
-            if (addDescent || needHold) {
-                if (!placeSneakStores(method, sneak, clampLocal, addDescent, needHold)) {
-                    return new Result(
-                        State.UNEXPECTED_SHAPE,
-                        original,
-                        0,
-                        false,
-                        false,
-                        false,
-                        false,
-                        "the sneak branch's join label is not the target of exactly one jump, so the shift+space "
-                            + "branch cannot be placed");
-                }
-            }
-            if (needHold) {
-                sitesChanged++;
-            }
+            sitesChanged++;
         }
         if (needGuard) {
             insertGuard(method);
             sitesChanged++;
         }
-        String detail = describe(needLift, needGuard, needHold);
+        String detail = describe(needGuard, needHold);
         if (skipped) {
             return new Result(
                 State.PARTIAL,
                 write(node),
                 sitesChanged,
-                needLift,
+                false,
                 needGuard,
                 needHold,
                 true,
                 detail + VERTICAL_SKIPPED_SUFFIX);
         }
-        return new Result(State.PATCHED, write(node), sitesChanged, needLift, needGuard, needHold, false, detail);
+        return new Result(State.PATCHED, write(node), sitesChanged, false, needGuard, needHold, false, detail);
     }
 
-    private static String describe(boolean lift, boolean guard, boolean hold) {
+    private static String describe(boolean guard, boolean hold) {
         StringBuilder text = new StringBuilder();
-        if (lift) {
-            text.append("hover vertical +")
-                .append(HOVER_JUMP_LIFTED)
-                .append(" / ")
-                .append(SNEAK_LIFTED)
-                .append(" (jump up, sneak down; was ")
-                .append(HOVER_JUMP_CLAMP)
-                .append(" / ")
-                .append(SNEAK_CLAMP)
-                .append(')');
-        }
         if (hold) {
-            if (text.length() > 0) {
-                text.append(", ");
-            }
             text.append("shift+space target ")
                 .append(HOLD_ALTITUDE_TARGET);
         }
@@ -644,13 +584,13 @@ public final class GraviSuiteFlightPatch {
     }
 
     /**
-     * How many {@code (double) 0.6f} literals the method carries. The lift no
-     * longer writes this value, so a patched class carries exactly the one ceiling;
-     * no jump-site subtraction is needed, because {@link #clampSites} only accepts
-     * the two values this patch writes at a jump site ({@value #HOVER_JUMP_CLAMP} or
-     * {@value #HOVER_JUMP_LIFTED}), never the ceiling. A class whose jump clamp was
-     * retargeted to {@code 0.6} by something else therefore has zero jump sites and
-     * is refused by the site check, not by this count.
+     * How many {@code (double) 0.6f} literals the method carries. The patch never
+     * writes this value, so a patched class carries exactly the one ceiling; no
+     * jump-site subtraction is needed, because {@link #clampSites} only accepts the
+     * stock {@value #HOVER_JUMP_CLAMP} at a jump site, never the ceiling. The
+     * ceiling count is checked before the jump-site count, so a class whose jump
+     * clamp was retargeted to {@code 0.6} by something else carries two ceilings
+     * and is refused by this count, not by the site check.
      */
     private static int countAscentCeilings(MethodNode method) {
         int count = 0;
@@ -666,52 +606,15 @@ public final class GraviSuiteFlightPatch {
     }
 
     /**
-     * True when the descent edit is already in these bytes: the exact sequence
-     * {@code LDC2_W -0.2d, DSTORE local, LDC2_W -0.1155556, DSTORE local}, with
-     * labels and line numbers allowed in between.
-     *
-     * <p>
-     * The stock literal stays, so the site is still found on a second pass; this
-     * check is what stops the descent store being injected twice.
-     */
-    static boolean descentPatched(MethodNode method, int local) {
-        for (AbstractInsnNode insn : method.instructions.toArray()) {
-            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
-                continue;
-            }
-            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != SNEAK_CLAMP) {
-                continue;
-            }
-            AbstractInsnNode store = nextReal(insn.getNext());
-            if (store == null || store.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) store).var != local) {
-                continue;
-            }
-            AbstractInsnNode value = nextReal(store.getNext());
-            if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Double)) {
-                continue;
-            }
-            if (((Double) ((LdcInsnNode) value).cst).doubleValue() != SNEAK_LIFTED) {
-                continue;
-            }
-            AbstractInsnNode again = nextReal(value.getNext());
-            if (again != null && again.getOpcode() == Opcodes.DSTORE && ((VarInsnNode) again).var == local) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * The clamp constants one key guard writes:
      * {@code GETSTATIC keyboard, POP, ALOAD player, INVOKESTATIC key,
      * IFEQ join, LDC2_W double, DSTORE local}.
      *
      * <p>
-     * The value is filtered by the caller: the jump site accepts the stock
-     * {@value #HOVER_JUMP_CLAMP} or the patched {@value #HOVER_JUMP_LIFTED}, the
-     * sneak site only the stock {@value #SNEAK_CLAMP}. A jump query with any other
-     * value (including the 0.0 the hold branch writes) is not this shape, and the
-     * injected descent store has no key branch in front of it at all.
+     * The value is filtered by the caller: the jump site accepts only the stock
+     * {@value #HOVER_JUMP_CLAMP}, the sneak site only the stock
+     * {@value #SNEAK_CLAMP}. A jump query with any other value (including the 0.0
+     * the hold branch writes) is not this shape.
      */
     private static List<ClampSite> clampSites(MethodNode method, String key) {
         List<ClampSite> sites = new ArrayList<ClampSite>();
@@ -749,7 +652,7 @@ public final class GraviSuiteFlightPatch {
             }
             double constant = ((Double) ((LdcInsnNode) value).cst).doubleValue();
             if (JUMP_KEY.equals(key)) {
-                if (constant != HOVER_JUMP_CLAMP && constant != HOVER_JUMP_LIFTED) {
+                if (constant != HOVER_JUMP_CLAMP) {
                     continue;
                 }
             } else if (constant != SNEAK_CLAMP) {
@@ -837,90 +740,45 @@ public final class GraviSuiteFlightPatch {
     }
 
     /**
-     * Put the two injected stores inside the sneak-taken block, in the order they
-     * must run at runtime — the descent first, the shift+space hold last:
+     * Put the shift+space hold inside the sneak-taken block, right after the stock
+     * sneak store:
      *
      * <pre>
      * v = -0.2d; // stock, untouched
-     * v = -0.1155556; // injected descent
      * if (isJumpKeyDown(player)) v = 0.0d; // hold, so it wins
      * </pre>
      *
      * <p>
-     * One ordered list is built per pass and inserted at one anchor, so the hold
-     * can never end up in front of the descent, whatever these bytes already
-     * carry:
-     * <ul>
-     * <li>neither store present: both go in, in order, right after the stock store;
-     * <li>descent present, hold missing (an earlier pass only lifted): the hold is
-     * inserted after the descent store, so it still lands before the join label,
-     * and the descent keeps winning nothing — the hold wins, as intended;
-     * <li>hold present, descent missing: the descent goes in right after the stock
-     * store, which is in front of the hold, so the pair is in order again without
-     * the hold being moved;
-     * <li>both present: the caller has already decided {@link State#ALREADY_PATCHED}
-     * and never reaches here.
-     * </ul>
-     *
      * The {@code IFEQ} jumps to the sneak branch's own join label, so no
      * {@code GOTO}, no new label and no new frame is added. Refuses - the caller
      * fails the whole patch - unless exactly one jump targets that join label.
      *
-     * @param addDescent true when the descent store is not in these bytes yet
-     * @param addHold    true when the shift+space hold is not in these bytes yet
-     * @return true when the list was placed (or was empty because nothing was asked)
+     * <p>
+     * Refuses - the caller fails the whole patch - unless the stock sneak store is
+     * a {@code DSTORE} to the jump clamp's local and exactly one jump targets the
+     * join label.
+     *
+     * @return true when the hold was placed
      */
-    private static boolean placeSneakStores(MethodNode method, ClampSite sneak, int local, boolean addDescent,
-        boolean addHold) {
+    private static boolean placeHold(MethodNode method, ClampSite sneak, int local) {
         AbstractInsnNode stockStore = nextReal(sneak.value.getNext());
         if (stockStore == null || stockStore.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) stockStore).var != local) {
             return false;
         }
         InsnList ordered = new InsnList();
-        AbstractInsnNode anchor = stockStore;
-        if (addDescent) {
-            ordered.add(new LdcInsnNode(Double.valueOf(SNEAK_LIFTED)));
-            ordered.add(new VarInsnNode(Opcodes.DSTORE, local));
-        } else {
-            // The descent pair is already in the class; the hold has to go after
-            // it, never between the stock store and the descent.
-            AbstractInsnNode descentStore = descentStore(method, local);
-            if (descentStore != null) {
-                anchor = descentStore;
-            }
-        }
-        if (addHold && !appendHold(method, sneak, local, ordered)) {
+        if (!appendHold(method, sneak, local, ordered)) {
             return false;
         }
-        if (ordered.size() > 0) {
-            method.instructions.insert(anchor, ordered);
-        }
+        method.instructions.insert(stockStore, ordered);
         return true;
-    }
-
-    /** The injected descent store already in these bytes, or null when it is not. */
-    private static AbstractInsnNode descentStore(MethodNode method, int local) {
-        for (AbstractInsnNode insn : method.instructions.toArray()) {
-            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Double)) {
-                continue;
-            }
-            if (((Double) ((LdcInsnNode) insn).cst).doubleValue() != SNEAK_LIFTED) {
-                continue;
-            }
-            AbstractInsnNode store = nextReal(insn.getNext());
-            if (store != null && store.getOpcode() == Opcodes.DSTORE && ((VarInsnNode) store).var == local) {
-                return store;
-            }
-        }
-        return null;
     }
 
     /**
      * Append the shift+space overwrite to the ordered edit list that goes inside
-     * the sneak-taken block, after the descent pair:
+     * the sneak-taken block:
      *
      * <pre>
-     * v = -0.1155556; // descent, already in the list or already in the class
+     * v = -0.2d; // stock, untouched
      * if (isJumpKeyDown(player)) v = 0.0d; // &lt;- appended, so it wins
      * </pre>
      *
@@ -931,10 +789,6 @@ public final class GraviSuiteFlightPatch {
      * @return true when the seven instructions were appended
      */
     private static boolean appendHold(MethodNode method, ClampSite sneak, int local, InsnList inserted) {
-        AbstractInsnNode store = nextReal(sneak.value.getNext());
-        if (store == null || store.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) store).var != local) {
-            return false;
-        }
         LabelNode join = sneak.join;
         // the join label must belong to the sneak branch and nothing else
         int joins = 0;
@@ -1026,10 +880,6 @@ public final class GraviSuiteFlightPatch {
             this.keyboard = keyboard;
             this.playerLocal = playerLocal;
             this.jumpCall = jumpCall;
-        }
-
-        double value() {
-            return ((Double) value.cst).doubleValue();
         }
     }
 
