@@ -16,8 +16,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FrameNode;
+import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
+import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
@@ -90,10 +93,17 @@ public class ChestplateCheck {
         MethodNode after = method(result.bytes());
         float ascent = ChestplateFlightPatch.HOVER_JUMP_LIFTED;
         float descent = ChestplateFlightPatch.SNEAK_LIFTED;
+        VarInsnNode jumpStore = jumpClampStore(after);
+        Float jumpValue = jumpClampValue(after);
         check(
-            "two 0.4f literals, exactly one of them the stored ascent clamp",
-            count(after, Float.valueOf(ascent)) == 2 && floatStores(after, ascent) == 1,
-            floats(after) + " stores=" + floatStores(after, ascent));
+            "the stored 0.4f is anchored at the jump site (isJumpKeyDown -> ifeq -> ldc 0.4f -> fstore)",
+            jumpStore != null && jumpValue != null
+                && Float.compare(jumpValue.floatValue(), ascent) == 0
+                && count(after, Float.valueOf(ascent)) == 2
+                && floatStores(after, ascent) == 1
+                && onlyFloatStoreIs(after, ascent, jumpStore),
+            floats(after) + " stores=" + floatStores(after, ascent) + " jumpStore="
+                + (jumpStore == null ? "none" : "var " + jumpStore.var));
         check(
             "exactly one exact -ascent hover constant (same magnitude)",
             count(after, Float.valueOf(descent)) == 1 && Float.compare(ascent, -descent) == 0,
@@ -254,8 +264,78 @@ public class ChestplateCheck {
         return n;
     }
 
-    /** The float stored right after the stock {@code -0.1f} store, or {@code NaN}. */
+    /** Whether the only {@code ldc float <value> -> FSTORE} pair is exactly {@code expected}. */
+    private static boolean onlyFloatStoreIs(MethodNode method, float value, VarInsnNode expected) {
+        int n = 0;
+        AbstractInsnNode found = null;
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) insn).cst).floatValue() != value) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store != null && store.getOpcode() == Opcodes.FSTORE) {
+                n++;
+                found = store;
+            }
+        }
+        return n == 1 && found == expected;
+    }
+
+    /**
+     * The jump clamp store: {@code isJumpKeyDown -> IFEQ -> LDC float -> FSTORE}. Returns
+     * the {@code FSTORE}, or {@code null} when that exact shape is not there.
+     */
+    private static VarInsnNode jumpClampStore(MethodNode method) {
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof MethodInsnNode)) {
+                continue;
+            }
+            MethodInsnNode call = (MethodInsnNode) insn;
+            if (call.getOpcode() != Opcodes.INVOKEVIRTUAL
+                || !ChestplateFlightPatch.KEYBOARD_OWNER.equals(call.owner)
+                || !ChestplateFlightPatch.JUMP_KEY.equals(call.name)) {
+                continue;
+            }
+            AbstractInsnNode branch = nextReal(insn.getNext());
+            if (branch == null || branch.getOpcode() != Opcodes.IFEQ) {
+                continue;
+            }
+            AbstractInsnNode value = nextReal(branch.getNext());
+            if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Float)) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(value.getNext());
+            if (store instanceof VarInsnNode && store.getOpcode() == Opcodes.FSTORE) {
+                return (VarInsnNode) store;
+            }
+        }
+        return null;
+    }
+
+    /** The float the jump clamp stores, or {@code null}. */
+    private static Float jumpClampValue(MethodNode method) {
+        VarInsnNode store = jumpClampStore(method);
+        if (store == null) {
+            return null;
+        }
+        AbstractInsnNode value = prevReal(store);
+        return value instanceof LdcInsnNode && ((LdcInsnNode) value).cst instanceof Float
+            ? (Float) ((LdcInsnNode) value).cst
+            : null;
+    }
+
+    /**
+     * The float stored between the stock {@code -0.1f} sneak store and that branch's join
+     * label, in the same local as both that store and the jump clamp store, or {@code NaN}.
+     */
     private static float descentAfterStock(MethodNode method) {
+        VarInsnNode jumpStore = jumpClampStore(method);
+        if (jumpStore == null) {
+            return Float.NaN;
+        }
         for (AbstractInsnNode insn : method.instructions.toArray()) {
             if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
                 continue;
@@ -263,18 +343,34 @@ public class ChestplateCheck {
             if (((Float) ((LdcInsnNode) insn).cst).floatValue() != -0.1f) {
                 continue;
             }
-            AbstractInsnNode store = nextReal(insn.getNext());
-            if (store == null || store.getOpcode() != Opcodes.FSTORE) {
+            // the stock literal must be the branch body of an IFEQ, not a bare constant
+            AbstractInsnNode branch = prevReal(insn);
+            if (branch == null || branch.getOpcode() != Opcodes.IFEQ || !(branch instanceof JumpInsnNode)) {
                 continue;
             }
+            LabelNode join = ((JumpInsnNode) branch).label;
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (!(store instanceof VarInsnNode) || store.getOpcode() != Opcodes.FSTORE) {
+                continue;
+            }
+            int stockVar = ((VarInsnNode) store).var;
             AbstractInsnNode value = nextReal(store.getNext());
             if (!(value instanceof LdcInsnNode) || !(((LdcInsnNode) value).cst instanceof Float)) {
                 continue;
             }
             AbstractInsnNode again = nextReal(value.getNext());
-            if (again != null && again.getOpcode() == Opcodes.FSTORE) {
-                return ((Float) ((LdcInsnNode) value).cst).floatValue();
+            if (!(again instanceof VarInsnNode) || again.getOpcode() != Opcodes.FSTORE) {
+                continue;
             }
+            int injectedVar = ((VarInsnNode) again).var;
+            if (injectedVar != stockVar || injectedVar != jumpStore.var) {
+                continue;
+            }
+            // the injected store must run before the branch's join label
+            if (method.instructions.indexOf(again) >= method.instructions.indexOf(join)) {
+                continue;
+            }
+            return ((Float) ((LdcInsnNode) value).cst).floatValue();
         }
         return Float.NaN;
     }
@@ -283,6 +379,14 @@ public class ChestplateCheck {
         AbstractInsnNode cursor = insn;
         while (cursor != null && cursor.getOpcode() < 0) {
             cursor = cursor.getNext();
+        }
+        return cursor;
+    }
+
+    private static AbstractInsnNode prevReal(AbstractInsnNode insn) {
+        AbstractInsnNode cursor = insn == null ? null : insn.getPrevious();
+        while (cursor != null && cursor.getOpcode() < 0) {
+            cursor = cursor.getPrevious();
         }
         return cursor;
     }
@@ -350,15 +454,23 @@ public class ChestplateCheck {
         return -1;
     }
 
+    /** The guard's first {@code ILOAD 2 -> IFEQ} join must open with an {@code F_SAME} frame. */
     private static boolean hasFrameAtJoin(MethodNode method) {
-        boolean sawReturn = false;
-        for (AbstractInsnNode insn : method.instructions.toArray()) {
-            if (!sawReturn) {
-                sawReturn = insn.getOpcode() == Opcodes.IRETURN;
-                continue;
+        AbstractInsnNode load = firstReal(method);
+        if (!isHoverLoad(load)) {
+            return false;
+        }
+        AbstractInsnNode branch = nextReal(load.getNext());
+        if (branch == null || branch.getOpcode() != Opcodes.IFEQ || !(branch instanceof JumpInsnNode)) {
+            return false;
+        }
+        LabelNode join = ((JumpInsnNode) branch).label;
+        for (AbstractInsnNode insn = join.getNext(); insn != null; insn = insn.getNext()) {
+            if (insn instanceof FrameNode) {
+                return ((FrameNode) insn).type == Opcodes.F_SAME;
             }
-            if (insn instanceof FrameNode && ((FrameNode) insn).type == Opcodes.F_SAME) {
-                return true;
+            if (insn.getOpcode() >= 0) {
+                return false;
             }
         }
         return false;
@@ -391,12 +503,46 @@ public class ChestplateCheck {
                 return false;
             }
             for (int i = 0; i < method.instructions.size(); i++) {
-                if (method.instructions.get(i)
-                    .getOpcode() != now.instructions.get(i)
-                        .getOpcode()) {
+                if (!sameInstruction(method.instructions.get(i), now.instructions.get(i))) {
                     return false;
                 }
             }
+        }
+        return true;
+    }
+
+    /** Same opcode and same operands: literal, member, local or int operand. */
+    private static boolean sameInstruction(AbstractInsnNode a, AbstractInsnNode b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        if (a.getOpcode() != b.getOpcode() || a.getType() != b.getType()) {
+            return false;
+        }
+        if (a instanceof LdcInsnNode) {
+            Object left = ((LdcInsnNode) a).cst;
+            Object right = ((LdcInsnNode) b).cst;
+            return left == null ? right == null : left.equals(right);
+        }
+        if (a instanceof MethodInsnNode) {
+            MethodInsnNode left = (MethodInsnNode) a;
+            MethodInsnNode right = (MethodInsnNode) b;
+            return left.owner.equals(right.owner)
+                && left.name.equals(right.name)
+                && left.desc.equals(right.desc);
+        }
+        if (a instanceof FieldInsnNode) {
+            FieldInsnNode left = (FieldInsnNode) a;
+            FieldInsnNode right = (FieldInsnNode) b;
+            return left.owner.equals(right.owner)
+                && left.name.equals(right.name)
+                && left.desc.equals(right.desc);
+        }
+        if (a instanceof VarInsnNode) {
+            return ((VarInsnNode) a).var == ((VarInsnNode) b).var;
+        }
+        if (a instanceof IntInsnNode) {
+            return ((IntInsnNode) a).operand == ((IntInsnNode) b).operand;
         }
         return true;
     }

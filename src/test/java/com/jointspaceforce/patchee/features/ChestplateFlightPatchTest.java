@@ -28,6 +28,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
+import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.LabelNode;
 import org.objectweb.asm.tree.LdcInsnNode;
@@ -822,8 +823,9 @@ class ChestplateFlightPatchTest {
     }
 
     /**
-     * The float this patch injected right after the stock sneak store:
-     * {@code LDC -0.1f, FSTORE local, LDC <descent>, FSTORE local}.
+     * The float this patch injected right after the stock sneak store, and before that
+     * branch's join label: {@code IFEQ ..., LDC -0.1f, FSTORE local, LDC <descent>,
+     * FSTORE local, <join>}.
      */
     private static float injectedDescentValue(MethodNode method) {
         for (AbstractInsnNode insn : method.instructions.toArray()) {
@@ -833,8 +835,14 @@ class ChestplateFlightPatchTest {
             if (((Float) ((LdcInsnNode) insn).cst).floatValue() != -0.1f) {
                 continue;
             }
+            // the stock literal must be the body of an IFEQ, not a bare constant
+            AbstractInsnNode branch = prevReal(insn);
+            if (branch == null || branch.getOpcode() != Opcodes.IFEQ || !(branch instanceof JumpInsnNode)) {
+                continue;
+            }
+            LabelNode join = ((JumpInsnNode) branch).label;
             AbstractInsnNode store = nextReal(insn.getNext());
-            if (store == null || store.getOpcode() != Opcodes.FSTORE) {
+            if (!(store instanceof VarInsnNode) || store.getOpcode() != Opcodes.FSTORE) {
                 continue;
             }
             AbstractInsnNode value = nextReal(store.getNext());
@@ -842,12 +850,17 @@ class ChestplateFlightPatchTest {
                 continue;
             }
             AbstractInsnNode again = nextReal(value.getNext());
-            if (again != null && again.getOpcode() == Opcodes.FSTORE
-                && ((VarInsnNode) again).var == ((VarInsnNode) store).var) {
-                return ((Float) ((LdcInsnNode) value).cst).floatValue();
+            if (again == null || again.getOpcode() != Opcodes.FSTORE
+                || ((VarInsnNode) again).var != ((VarInsnNode) store).var) {
+                continue;
             }
+            // the injected store must run before the branch's join label
+            if (method.instructions.indexOf(again) >= method.instructions.indexOf(join)) {
+                continue;
+            }
+            return ((Float) ((LdcInsnNode) value).cst).floatValue();
         }
-        throw new AssertionError("no descent store after the stock -0.1f store");
+        throw new AssertionError("no descent store after the stock -0.1f store, before its join label");
     }
 
     private static boolean isJumpQuery(AbstractInsnNode insn) {
@@ -862,6 +875,14 @@ class ChestplateFlightPatchTest {
         AbstractInsnNode cursor = insn;
         while (cursor != null && cursor.getOpcode() < 0) {
             cursor = cursor.getNext();
+        }
+        return cursor;
+    }
+
+    private static AbstractInsnNode prevReal(AbstractInsnNode insn) {
+        AbstractInsnNode cursor = insn == null ? null : insn.getPrevious();
+        while (cursor != null && cursor.getOpcode() < 0) {
+            cursor = cursor.getPrevious();
         }
         return cursor;
     }
@@ -969,13 +990,42 @@ class ChestplateFlightPatchTest {
                 return false;
             }
             for (int i = 0; i < method.instructions.size(); i++) {
-                if (method.instructions.get(i)
-                    .getOpcode()
-                    != now.instructions.get(i)
-                        .getOpcode()) {
+                if (!sameInstruction(method.instructions.get(i), now.instructions.get(i))) {
                     return false;
                 }
             }
+        }
+        return true;
+    }
+
+    /** Same opcode and same operands: literal, member, local or int operand. */
+    private static boolean sameInstruction(AbstractInsnNode a, AbstractInsnNode b) {
+        if (a == null || b == null) {
+            return a == b;
+        }
+        if (a.getOpcode() != b.getOpcode() || a.getType() != b.getType()) {
+            return false;
+        }
+        if (a instanceof LdcInsnNode) {
+            Object left = ((LdcInsnNode) a).cst;
+            Object right = ((LdcInsnNode) b).cst;
+            return left == null ? right == null : left.equals(right);
+        }
+        if (a instanceof MethodInsnNode) {
+            MethodInsnNode left = (MethodInsnNode) a;
+            MethodInsnNode right = (MethodInsnNode) b;
+            return left.owner.equals(right.owner) && left.name.equals(right.name) && left.desc.equals(right.desc);
+        }
+        if (a instanceof FieldInsnNode) {
+            FieldInsnNode left = (FieldInsnNode) a;
+            FieldInsnNode right = (FieldInsnNode) b;
+            return left.owner.equals(right.owner) && left.name.equals(right.name) && left.desc.equals(right.desc);
+        }
+        if (a instanceof VarInsnNode) {
+            return ((VarInsnNode) a).var == ((VarInsnNode) b).var;
+        }
+        if (a instanceof IntInsnNode) {
+            return ((IntInsnNode) a).operand == ((IntInsnNode) b).operand;
         }
         return true;
     }

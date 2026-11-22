@@ -124,9 +124,10 @@ It checks, on the live bytes:
 
 1. the class is patched: the jump clamp holds `+0.4` (twice the Advanced Nano's
    stock `0.2`), and `0.4f` appears **twice** in the patched method because IC2's
-   own sideways-forward argument is also `0.4f` — only **one** of them is stored,
-   the ascent clamp (`ldc 0.4f / fstore`); the descent is **injected as `-0.4f`
-   right after the stock `-0.1f` store** (so up and down match); the stock `0.1f`
+   own sideways-forward argument is also `0.4f` — the tool anchors the stored one
+   to the jump site (`isJumpKeyDown -> ifeq -> ldc 0.4f -> fstore`) and requires
+   the injected `-0.4f` store to sit before the sneak branch's join label in the
+   same local, so up and down match; the stock `0.1f`
    is gone but the stock `-0.1f` is deliberately kept (other mods match stock
    literals by value), `-0.025f` untouched, and the `0.6d` ascent ceiling still
    present with no `0.6f` written;
