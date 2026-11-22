@@ -20,7 +20,8 @@ import com.jointspaceforce.patchee.features.GraviSuiteFlightPatch;
  * ({@code useJetpack(EntityPlayer, boolean)}): the hover climb literal is rewritten
  * to {@link FlightTiers#QUANTUM_HOVER_ASCENT} and a second store is injected after
  * the stock sneak store so the sink matches it (the stock sink literal itself stays,
- * for Hodgepodge), a shift+space branch holds altitude instead of drifting up,
+ * so mixins that match stock values keep their target; Hodgepodge's hover fix targets
+ * {@code -0.025f} on this method), a shift+space branch holds altitude instead of drifting up,
  * and an early return keeps a player standing on the ground from being treated as
  * flying. See {@link ChestplateFlightPatch} for the byte-level detail and the
  * Hodgepodge interaction.

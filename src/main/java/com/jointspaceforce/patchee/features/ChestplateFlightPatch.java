@@ -341,11 +341,6 @@ public final class ChestplateFlightPatch {
 
     private ChestplateFlightPatch() {}
 
-    /** Apply all three edits. */
-    public static Result apply(byte[] original) {
-        return apply(original, true, true, true);
-    }
-
     /**
      * Apply the requested edits.
      *

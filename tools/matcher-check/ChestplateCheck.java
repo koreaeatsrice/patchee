@@ -35,13 +35,17 @@ import com.jointspaceforce.patchee.features.ChestplateFlightPatch;
  * Checks, all against {@code ic2/core/item/armor/ItemArmorQuantumSuit.class}:
  *
  * <ol>
- * <li>the shipped bytes are patched: exactly one {@code +0.0888889} (IC2's hover
- * horizontal speed) at the jump clamp, and exactly one exact negation of it
- * injected as a second store right after the stock sneak store, so rising and
- * sinking match; the stock {@code 0.1f} is gone but the stock {@code -0.1f} is
- * deliberately <b>kept</b> (value-matching mixins must keep their targets);
- * {@code -0.025f} untouched; and the {@code 0.6d} ascent ceiling still there
- * (this patch no longer writes it, and must never write {@code 0.6f});</li>
+ * <li>the shipped bytes are patched: the jump clamp now holds {@code +0.4} (twice
+ * the Advanced Nano's stock {@code 0.2}), so the chestplate rises at 0.4 a tick.
+ * The {@code 0.4f} appears <b>twice</b> in the patched method, because IC2's own
+ * sideways-forward argument is also {@code 0.4f}; only <b>one</b> of them is
+ * stored, the ascent clamp, as {@code LDC 0.4f} followed by {@code FSTORE}. The
+ * descent is injected as {@code -0.4f} right after the stock {@code -0.1f}
+ * store, so rising and sinking match; the stock {@code 0.1f} is gone but the
+ * stock {@code -0.1f} is deliberately <b>kept</b> (value-matching mixins must
+ * keep their targets); {@code -0.025f} untouched; and the {@code 0.6d} ascent
+ * ceiling still there (this patch no longer writes it, and must never write
+ * {@code 0.6f});</li>
  * <li>the ground guard is injected as the first seven instructions (a hover-flag
  * {@code ILOAD 2} test, the hook call test, and the {@code return false}), followed
  * by the {@code F_SAME} frame at its join point;</li>
@@ -86,7 +90,10 @@ public class ChestplateCheck {
         MethodNode after = method(result.bytes());
         float ascent = ChestplateFlightPatch.HOVER_JUMP_LIFTED;
         float descent = ChestplateFlightPatch.SNEAK_LIFTED;
-        check("exactly one +ascent hover constant", count(after, Float.valueOf(ascent)) == 1, floats(after));
+        check(
+            "two 0.4f literals, exactly one of them the stored ascent clamp",
+            count(after, Float.valueOf(ascent)) == 2 && floatStores(after, ascent) == 1,
+            floats(after) + " stores=" + floatStores(after, ascent));
         check(
             "exactly one exact -ascent hover constant (same magnitude)",
             count(after, Float.valueOf(descent)) == 1 && Float.compare(ascent, -descent) == 0,
@@ -131,7 +138,8 @@ public class ChestplateCheck {
         MethodNode bothMethod = method(both.bytes());
         check(
             "Hodgepodge-first bytes still patched",
-            both.state() == ChestplateFlightPatch.State.PATCHED && count(bothMethod, Float.valueOf(ascent)) == 1
+            both.state() == ChestplateFlightPatch.State.PATCHED && count(bothMethod, Float.valueOf(ascent)) == 2
+                && floatStores(bothMethod, ascent) == 1
                 && count(bothMethod, Float.valueOf(descent)) == 1,
             both.state() + " " + floats(bothMethod));
         check(
@@ -222,6 +230,24 @@ public class ChestplateCheck {
         int n = 0;
         for (Float found : floats(method)) {
             if (found.equals(value)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** How many {@code ldc float <value> -> FSTORE} pairs the method holds. */
+    private static int floatStores(MethodNode method, float value) {
+        int n = 0;
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) insn).cst).floatValue() != value) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store != null && store.getOpcode() == Opcodes.FSTORE) {
                 n++;
             }
         }

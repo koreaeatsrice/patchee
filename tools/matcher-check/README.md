@@ -122,12 +122,14 @@ how the synthetic unit-test shape is checked against the real class.
 
 It checks, on the live bytes:
 
-1. the class is patched: exactly one `+0.0888889` at the jump clamp, and exactly
-   one exact negation of it **injected as a second store right after the stock
-   `-0.1f` store** (IC2's own hover horizontal speed, so up and down match); the
-   stock `0.1f` is gone but the stock `-0.1f` is deliberately kept (other mods
-   match stock literals by value), `-0.025f` untouched, and the `0.6d` ascent
-   ceiling still present with no `0.6f` written;
+1. the class is patched: the jump clamp holds `+0.4` (twice the Advanced Nano's
+   stock `0.2`), and `0.4f` appears **twice** in the patched method because IC2's
+   own sideways-forward argument is also `0.4f` — only **one** of them is stored,
+   the ascent clamp (`ldc 0.4f / fstore`); the descent is **injected as `-0.4f`
+   right after the stock `-0.1f` store** (so up and down match); the stock `0.1f`
+   is gone but the stock `-0.1f` is deliberately kept (other mods match stock
+   literals by value), `-0.025f` untouched, and the `0.6d` ascent ceiling still
+   present with no `0.6f` written;
 2. the ground guard is the first seven instructions (hover-flag `ILOAD 2` test,
    hook-call test, `iconst_0; ireturn`) and its join point carries an `F_SAME`
    frame;
@@ -159,7 +161,8 @@ java -cp "$OUT:$ASM:$ASMT:$LW:$LOG4J:$MC" ChestplateCheck "$IC2" "$OUT"
 javap -p -c "$OUT/ItemArmorQuantumSuit.patched.class" | sed -n '/useJetpack/,/^$/p'
 ```
 
-Expected: `RESULT: 18/18 PASS`, and the `javap` output shows `ldc 0.08888892`
-where the shipped class has `ldc 0.1` for the jump clamp, followed by the stock
-`ldc -0.1f / fstore` and then the injected `ldc -0.08888892f / fstore`, with an
+Expected: `RESULT: 18/18 PASS`, and the `javap` output shows `ldc 0.4` where the
+shipped class has `ldc 0.1` for the jump clamp (that `0.4f` is stored by the
+following `fstore`; IC2's own sideways-forward `0.4f` is not), followed by the
+stock `ldc -0.1f / fstore` and then the injected `ldc -0.4f / fstore`, with an
 `ifeq` past an `iconst_0; ireturn` at the top of `useJetpack`.

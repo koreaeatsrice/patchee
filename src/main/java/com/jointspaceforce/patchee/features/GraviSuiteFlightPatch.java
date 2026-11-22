@@ -310,7 +310,10 @@ public final class GraviSuiteFlightPatch {
             return state;
         }
 
-        /** The class bytes to hand back to the loader (never null). */
+        /**
+         * The class bytes to hand back to the loader. Only null when the input was
+         * null, which is refused and handed back as-is.
+         */
         public byte[] bytes() {
             return bytes;
         }
@@ -351,11 +354,6 @@ public final class GraviSuiteFlightPatch {
     }
 
     private GraviSuiteFlightPatch() {}
-
-    /** Apply the hold and the guard. */
-    public static Result apply(byte[] original) {
-        return apply(original, true, true, true);
-    }
 
     /**
      * Apply the requested edits.
@@ -527,20 +525,6 @@ public final class GraviSuiteFlightPatch {
 
         int sitesChanged = 0;
         if (needHold) {
-            AbstractInsnNode stockStore = nextReal(sneak.value.getNext());
-            if (stockStore == null || stockStore.getOpcode() != Opcodes.DSTORE
-                || ((VarInsnNode) stockStore).var != clampLocal) {
-                return new Result(
-                    State.UNEXPECTED_SHAPE,
-                    original,
-                    0,
-                    false,
-                    false,
-                    false,
-                    false,
-                    "the stock hover+sneak clamp value is not stored to the jump clamp's local, so the "
-                        + "shift+space hold cannot be placed");
-            }
             if (!placeHold(method, sneak, clampLocal)) {
                 return new Result(
                     State.UNEXPECTED_SHAPE,
@@ -550,8 +534,8 @@ public final class GraviSuiteFlightPatch {
                     false,
                     false,
                     false,
-                    "the sneak branch's join label is not the target of exactly one jump, so the shift+space "
-                        + "branch cannot be placed");
+                    "the sneak branch's stock store is not a DSTORE to the jump clamp's local, or its join "
+                        + "label is not the target of exactly one jump, so the shift+space branch cannot be placed");
             }
             sitesChanged++;
         }
@@ -603,9 +587,10 @@ public final class GraviSuiteFlightPatch {
      * How many {@code (double) 0.6f} literals the method carries. The patch never
      * writes this value, so a patched class carries exactly the one ceiling; no
      * jump-site subtraction is needed, because {@link #clampSites} only accepts the
-     * stock {@value #HOVER_JUMP_CLAMP} at a jump site, never the ceiling. A class
-     * whose jump clamp was retargeted to {@code 0.6} by something else therefore
-     * has zero jump sites and is refused by the site check, not by this count.
+     * stock {@value #HOVER_JUMP_CLAMP} at a jump site, never the ceiling. The
+     * ceiling count is checked before the jump-site count, so a class whose jump
+     * clamp was retargeted to {@code 0.6} by something else carries two ceilings
+     * and is refused by this count, not by the site check.
      */
     private static int countAscentCeilings(MethodNode method) {
         int count = 0;
@@ -769,17 +754,22 @@ public final class GraviSuiteFlightPatch {
      * fails the whole patch - unless exactly one jump targets that join label.
      *
      * <p>
-     * The caller has already checked that the stock sneak store is a
-     * {@code DSTORE} to the jump clamp's local, so this method does not repeat it.
+     * Refuses - the caller fails the whole patch - unless the stock sneak store is
+     * a {@code DSTORE} to the jump clamp's local and exactly one jump targets the
+     * join label.
      *
      * @return true when the hold was placed
      */
     private static boolean placeHold(MethodNode method, ClampSite sneak, int local) {
+        AbstractInsnNode stockStore = nextReal(sneak.value.getNext());
+        if (stockStore == null || stockStore.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) stockStore).var != local) {
+            return false;
+        }
         InsnList ordered = new InsnList();
         if (!appendHold(method, sneak, local, ordered)) {
             return false;
         }
-        method.instructions.insert(nextReal(sneak.value.getNext()), ordered);
+        method.instructions.insert(stockStore, ordered);
         return true;
     }
 
