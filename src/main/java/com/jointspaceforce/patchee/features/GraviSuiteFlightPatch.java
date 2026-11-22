@@ -148,11 +148,13 @@ import org.objectweb.asm.tree.VarInsnNode;
  *
  * <p>
  * A <i>missing</i> sneak clamp is not a refusal. The shift+space hold is anchored
- * inside the sneak-taken block, so without that site the hold cannot be placed:
- * it is skipped with a reason while the ground guard still applies, which makes
- * the result {@link State#PARTIAL}. With nothing left to apply the bytes
- * are unchanged and the reason says so. Idempotent: a second pass over patched
- * bytes reports {@link State#ALREADY_PATCHED}.
+ * inside the sneak-taken block, so when the hold switch is on and that site is
+ * absent the hold cannot be placed: it is skipped with a reason while the ground
+ * guard, if requested, still applies, which makes the result
+ * {@link State#PARTIAL}. With the hold switch off the missing site is irrelevant:
+ * the guard alone still applies and there is no PARTIAL. With nothing left to
+ * apply the bytes are unchanged and the reason says so. Idempotent: a second pass
+ * over patched bytes reports {@link State#ALREADY_PATCHED}.
  */
 public final class GraviSuiteFlightPatch {
 
@@ -251,7 +253,7 @@ public final class GraviSuiteFlightPatch {
      * The detail when the shift+space hold was requested and the hover+sneak
      * clamp site is not in these bytes.
      */
-    static final String VERTICAL_SKIPPED_ALONE = "the hover+sneak clamp site is not in these bytes, so the shift+space hold could not be placed (another mixin may already handle shift+space); nothing else was requested";
+    static final String VERTICAL_SKIPPED_ALONE = "the hover+sneak clamp site is not in these bytes, so the shift+space hold could not be placed (another mixin may already handle shift+space); the ground guard still applies if it was requested";
 
     /** Appended to the detail when the guard went in but the hold could not be placed. */
     static final String VERTICAL_SKIPPED_SUFFIX = ", shift+space hold skipped: the hover+sneak clamp site is not in these bytes, so the hold could not be anchored";
@@ -504,7 +506,7 @@ public final class GraviSuiteFlightPatch {
         // for this item, so liftApplied is false on every path.
         boolean guardDone = hasGuardHook(method);
         boolean holdDone = verticalApplicable && hasHoldBranch(method, sneak);
-        // The hold is added inside the sneak-taken block by placeSneakStores.
+        // The hold is added inside the sneak-taken block by placeHold.
         boolean needHold = hold && verticalApplicable && !holdDone;
         boolean needGuard = guard && !guardDone;
         // A missing sneak site is not a refusal: the guard still applies, and only a
@@ -539,7 +541,7 @@ public final class GraviSuiteFlightPatch {
                     "the stock hover+sneak clamp value is not stored to the jump clamp's local, so the "
                         + "shift+space hold cannot be placed");
             }
-            if (!placeSneakStores(method, sneak, clampLocal, needHold)) {
+            if (!placeHold(method, sneak, clampLocal)) {
                 return new Result(
                     State.UNEXPECTED_SHAPE,
                     original,
@@ -766,21 +768,18 @@ public final class GraviSuiteFlightPatch {
      * {@code GOTO}, no new label and no new frame is added. Refuses - the caller
      * fails the whole patch - unless exactly one jump targets that join label.
      *
-     * @param addHold true when the shift+space hold is not in these bytes yet
-     * @return true when the hold was placed (or was not asked for)
+     * <p>
+     * The caller has already checked that the stock sneak store is a
+     * {@code DSTORE} to the jump clamp's local, so this method does not repeat it.
+     *
+     * @return true when the hold was placed
      */
-    private static boolean placeSneakStores(MethodNode method, ClampSite sneak, int local, boolean addHold) {
-        AbstractInsnNode stockStore = nextReal(sneak.value.getNext());
-        if (stockStore == null || stockStore.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) stockStore).var != local) {
-            return false;
-        }
+    private static boolean placeHold(MethodNode method, ClampSite sneak, int local) {
         InsnList ordered = new InsnList();
-        if (addHold && !appendHold(method, sneak, local, ordered)) {
+        if (!appendHold(method, sneak, local, ordered)) {
             return false;
         }
-        if (ordered.size() > 0) {
-            method.instructions.insert(stockStore, ordered);
-        }
+        method.instructions.insert(nextReal(sneak.value.getNext()), ordered);
         return true;
     }
 
@@ -800,10 +799,6 @@ public final class GraviSuiteFlightPatch {
      * @return true when the seven instructions were appended
      */
     private static boolean appendHold(MethodNode method, ClampSite sneak, int local, InsnList inserted) {
-        AbstractInsnNode store = nextReal(sneak.value.getNext());
-        if (store == null || store.getOpcode() != Opcodes.DSTORE || ((VarInsnNode) store).var != local) {
-            return false;
-        }
         LabelNode join = sneak.join;
         // the join label must belong to the sneak branch and nothing else
         int joins = 0;

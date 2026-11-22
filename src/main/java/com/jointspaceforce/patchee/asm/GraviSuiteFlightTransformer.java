@@ -127,10 +127,11 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 }
                 if (result.state() == GraviSuiteFlightPatch.State.PARTIAL) {
                     LOG.warn(
-                        "[GraviSuiteFlight] {} — the shift+space hold was skipped: {} (the Advanced Nano keeps its "
-                            + "stock hover clamps; only the hold could not be placed)",
+                        "[GraviSuiteFlight] {} — the shift+space hold could not be placed: the hover+sneak "
+                            + "clamp site is not in these bytes. The Advanced Nano keeps its stock hover "
+                            + "clamps, and the ground guard (if it was applied) still is. Switches from {}",
                         className,
-                        result.detail());
+                        source);
                 }
                 return result.bytes();
             case ALREADY_PATCHED:
@@ -141,17 +142,9 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                         "[GraviSuiteFlight] {} — bytes unchanged: only the hover-lift switch is on, and it has no "
                             + "effect on GraviSuite's Advanced Nano",
                         className);
-                } else if (result.detail() != null && result.detail()
-                    .length() > 0) {
-                        LOG.info(
-                            "[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged ({})",
-                            className,
-                            result.detail());
-                    } else {
-                        LOG.info(
-                            "[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged",
-                            className);
-                    }
+                } else {
+                    LOG.info("[GraviSuiteFlight] {} already carries every requested edit — bytes unchanged", className);
+                }
                 return original;
             default:
                 LOG.error(
