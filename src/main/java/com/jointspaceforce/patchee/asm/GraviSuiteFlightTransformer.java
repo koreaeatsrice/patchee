@@ -9,21 +9,23 @@ import com.jointspaceforce.patchee.features.ChestplateFlightSettings;
 import com.jointspaceforce.patchee.features.GraviSuiteFlightPatch;
 
 /**
- * Applies the same three flight edits to GraviSuite's Advanced Jetpack as its
- * class loads. The Advanced Nano Chestplate inherits that code path, so one
- * class is all that has to change; {@code ItemGraviChestPlate} is a different
- * method and is deliberately left alone.
+ * Applies Patchee's two GraviSuite flight extras to the Advanced Jetpack as its
+ * class loads: a shift+space hold and a ground guard. The Advanced Nano
+ * Chestplate inherits that code path, so one class is all that has to change;
+ * {@code ItemGraviChestPlate} is a different method and is deliberately left
+ * alone.
  *
  * <p>
  * The edits live in {@code ItemAdvancedJetPack.useJetpack(EntityPlayer,
- * boolean)}: the two hover key clamps are rewritten so jump rises and sneak
- * sinks at GraviSuite's own hover sideways speed, a shift+space branch holds
- * altitude instead of sinking, and an early return keeps a player standing on
- * the ground from being treated as flying. See {@link GraviSuiteFlightPatch} for
- * the byte-level detail.
+ * boolean)}. The Advanced Nano keeps GraviSuite's own stock hover clamps — 0.2 up,
+ * 0.2 down — so nothing here changes its rise or sink; that is the lowest rung of
+ * the flight ladder, below the IC2 Quantum's 0.4. What this adds is a shift+space
+ * branch that holds altitude instead of sinking, and an early return that keeps a
+ * player standing on the ground from being treated as flying. See
+ * {@link GraviSuiteFlightPatch} for the byte-level detail.
  *
  * <p>
- * The two keyboard-driven edits are applied on <b>both</b> sides, because
+ * The keyboard-driven hold is applied on <b>both</b> sides, because
  * GraviSuite forwards the player's key state to the server in its own packet
  * ({@code PacketKeyboardUpdate}), one tick late and only after a key change; the
  * ground guard runs on both sides as well.
@@ -98,13 +100,10 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 // switches fired without reading the detail string.
                 if (result.liftApplied()) {
                     LOG.info(
-                        "[GraviSuiteFlight] {} — in hover mode, jump rises at {} and sneak sinks at {} per tick — "
-                            + "the same speed GraviSuite's own hover flight moves the player sideways (stock "
-                            + "GraviSuite was {} up / {} down with sneak, and the previous Patchee release climbed "
-                            + "at 0.6; no key still sinks at the stock hover fall speed). Switches from {}",
+                        "[GraviSuiteFlight] {} — hover vertical left at GraviSuite's stock clamps: {} up / {} down "
+                            + "per tick (no vertical rewrite was requested; the Advanced Nano is the lowest "
+                            + "rung of the flight ladder). Switches from {}",
                         className,
-                        GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
-                        GraviSuiteFlightPatch.SNEAK_LIFTED,
                         GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
                         GraviSuiteFlightPatch.SNEAK_CLAMP,
                         source);
@@ -126,7 +125,8 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 }
                 if (result.state() == GraviSuiteFlightPatch.State.PARTIAL) {
                     LOG.warn(
-                        "[GraviSuiteFlight] {} — rise, sink and shift+space were skipped together: {} (another mixin may already handle shift+space, and raising the rise alone would put the asymmetry back)",
+                        "[GraviSuiteFlight] {} — the shift+space hold was skipped: {} (the Advanced Nano keeps its "
+                            + "stock hover clamps; only the hold could not be placed)",
                         className,
                         result.detail());
                 }

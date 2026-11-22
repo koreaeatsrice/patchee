@@ -19,10 +19,12 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
  * constants on the client, TeamChunkCap clamps ServerUtilities' team chunk
  * limits on the server, FinalCastleBreak
  * redirects Twilight Forest's castle and thorn call sites on the server,
- * ChestplateFlight lifts IC2's Quantum Chestplate hover climb and keeps a
- * standing player from counting as flying, GraviSuiteFlight applies those
- * same three flight edits to GraviSuite's Advanced Jetpack (which the Advanced
- * Nano Chestplate inherits), and HandshakeModList observes FML's client mod-list
+ * ChestplateFlight raises the IC2 Quantum Chestplate's hover climb and sink to
+ * twice the Advanced Nano's stock speed and keeps a standing player from counting
+ * as flying, GraviSuiteFlight adds only the shift+space hold and the ground guard
+ * to GraviSuite's Advanced Jetpack (which the Advanced Nano Chestplate inherits,
+ * leaving its stock 0.2 hover clamps alone), and HandshakeModList observes FML's
+ * client mod-list
  * handshake step so the Super Tank fix only clears debuffs for clients that run
  * Patchee.
  *

@@ -50,12 +50,14 @@ import com.jointspaceforce.patchee.asm.ChestplateFlightTransformer;
  *
  * <ul>
  * <li>the stock shape is patched: the jump clamp becomes
- * {@code +0.0888889} and the descent is injected as {@code -0.0888889} right
- * after the stock sneak store, the shift+space branch writes 0.0, the ground guard
- * is at the top, and the no-input {@code -0.025f} sink is untouched;</li>
+ * {@code +0.4} and the descent is injected as {@code -0.4} right after the stock
+ * sneak store, the shift+space branch writes 0.0, the ground guard is at the top,
+ * and the no-input {@code -0.025f} sink is untouched;</li>
  * <li>rising and sinking are the same size, exactly, read back from the patched
- * bytes; the stock {@code 0.1f} is gone but the stock {@code -0.1f} survives on
- * purpose, with the descent injected as a second store after it;</li>
+ * bytes, and that size is twice the Advanced Nano's stock 0.2
+ * ({@link FlightTiers#ADVANCED_NANO_HOVER_ASCENT}); the stock {@code 0.1f} is
+ * gone but the stock {@code -0.1f} survives on purpose, with the descent injected
+ * as a second store after it;</li>
  * <li>a class with no hover+sneak clamp store gets <b>no</b> climb either — the
  * lift is skipped, never half-applied;</li>
  * <li>Hodgepodge's {@code @ModifyConstant} (which rewrites {@code -0.025f} to
@@ -80,7 +82,7 @@ class ChestplateFlightPatchTest {
     private static final int GUARD_INSTRUCTIONS = 8;
     private static final int HOLD_INSTRUCTIONS = 6;
 
-    /** The injected descent store: {@code LDC -0.0888889f; FSTORE local}. */
+    /** The injected descent store: {@code LDC -0.4f; FSTORE local}. */
     private static final int DESCENT_INSTRUCTIONS = 2;
 
     /** The guard's eight nodes are seven opcodes plus the proceed label they jump to. */
@@ -140,9 +142,9 @@ class ChestplateFlightPatchTest {
         float descent = injectedDescentValue(method);
         assertEquals(0, Float.compare(ascent, -descent), "same magnitude, exact: " + ascent + " / " + descent);
         assertTrue(ascent > 0.0f && descent < 0.0f, "jump goes up, sneak goes down");
-        // Bare literals, not the constant: a wrong 0.5f base or a wrong drag fails here.
-        assertEquals(0.08888892f, ascent, "the written rise: " + clamps);
-        assertEquals(-0.08888892f, descent, "the written sink: " + clamps);
+        // Bare literals, not the constant: a wrong base or a wrong drag fails here.
+        assertEquals(0.4f, ascent, "the written rise: " + clamps);
+        assertEquals(-0.4f, descent, "the written sink: " + clamps);
     }
 
     @Test
@@ -158,7 +160,7 @@ class ChestplateFlightPatchTest {
             count(method, Float.valueOf(-0.1f)),
             "the stock sink literal was consumed: " + floatConstants(method));
         assertEquals(-0.1f, stockSneakStoredValue(method), "the stock store itself must stay intact");
-        assertEquals(-0.08888892f, injectedDescentValue(method), "the descent store must follow it");
+        assertEquals(-0.4f, injectedDescentValue(method), "the descent store must follow it");
     }
 
     @Test
@@ -283,7 +285,8 @@ class ChestplateFlightPatchTest {
         assertEquals(ChestplateFlightPatch.State.PATCHED, result.state(), result.detail());
         MethodNode method = method(result.bytes());
         List<Float> clamps = floatConstants(method);
-        float ascent = ChestplateFlight.HOVER_HORIZONTAL_SPEED;
+        float ascent = ChestplateFlight.hoverAscentTarget();
+        assertEquals(0.4f, ascent, "the Quantum rung");
         assertEquals(1, count(method, Float.valueOf(ascent)), "the lift did not fire: " + clamps);
         assertEquals(1, count(method, Float.valueOf(-ascent)), "the sink did not fire: " + clamps);
         assertEquals(
@@ -303,7 +306,7 @@ class ChestplateFlightPatchTest {
             .bytes();
         MethodNode method = method(patched);
         assertEquals(1, count(method, Float.valueOf(-0.025f)), "Hodgepodge's -0.025f target is gone");
-        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)), "the lift is missing");
+        assertEquals(1, count(method, Float.valueOf(0.4f)), "the lift is missing");
         assertEquals(1, count(method, Float.valueOf(0.0f)), "the hold target is missing");
     }
 
@@ -320,12 +323,12 @@ class ChestplateFlightPatchTest {
         assertFalse(ChestplateFlightPatch.hasGuardHook(method));
         List<Float> clamps = floatConstants(method);
         // both stores moved, and only those two
-        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)), clamps.toString());
-        assertEquals(1, count(method, Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)), clamps.toString());
+        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverAscentTarget())), clamps.toString());
+        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverDescentTarget())), clamps.toString());
         assertEquals(0, count(method, Float.valueOf(0.1f)), clamps.toString());
         assertEquals(1, count(method, Float.valueOf(-0.1f)), "the stock sink literal must survive: " + clamps);
         assertEquals(
-            -0.08888892f,
+            -0.4f,
             injectedDescentValue(method),
             "the injected descent store must sit after the stock one: " + clamps);
         assertFalse(floatConstants(method).contains(Float.valueOf(0.0f)), "the hold branch leaked in");
@@ -360,11 +363,11 @@ class ChestplateFlightPatchTest {
                 .bytes());
         assertEquals(
             1,
-            count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
-            "jump-only must rise at the hover horizontal speed");
+            count(method, Float.valueOf(ChestplateFlight.hoverAscentTarget())),
+            "jump-only must rise at the Quantum rung");
         assertEquals(
             1,
-            count(method, Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
+            count(method, Float.valueOf(ChestplateFlight.hoverDescentTarget())),
             "sneak-only must sink at the same speed");
         assertEquals(1, count(method, Float.valueOf(0.0f)), "sneak+jump must hold altitude");
     }
@@ -395,11 +398,11 @@ class ChestplateFlightPatchTest {
         List<Float> clamps = floatConstants(method);
         assertEquals(
             0,
-            count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
+            count(method, Float.valueOf(ChestplateFlight.hoverAscentTarget())),
             "a half-symmetric ascent constant was written: " + clamps);
         assertEquals(
             0,
-            count(method, Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
+            count(method, Float.valueOf(ChestplateFlight.hoverDescentTarget())),
             "a descent constant appeared from nowhere: " + clamps);
         assertEquals(1, count(method, Float.valueOf(0.1f)), "the stock jump clamp must stay: " + clamps);
         assertEquals(1, count(method, Float.valueOf(0.0f)), "the hold branch must still go in: " + clamps);
@@ -435,11 +438,11 @@ class ChestplateFlightPatchTest {
         assertFalse(twice.skipped());
         assertEquals(
             1,
-            count(method(once), Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
+            count(method(once), Float.valueOf(ChestplateFlight.hoverAscentTarget())),
             "the ascent clamp was duplicated");
         assertEquals(
             1,
-            count(method(once), Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)),
+            count(method(once), Float.valueOf(ChestplateFlight.hoverDescentTarget())),
             "the descent clamp was duplicated");
         assertEquals(1, guardHooks(method(once)), "the guard was duplicated");
         assertEquals(1, count(method(once), Float.valueOf(0.0f)), "the hold store was duplicated");
@@ -456,8 +459,8 @@ class ChestplateFlightPatchTest {
         assertTrue(result.guardApplied());
         assertTrue(result.holdApplied());
         MethodNode method = method(result.bytes());
-        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)));
-        assertEquals(1, count(method, Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)));
+        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverAscentTarget())));
+        assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverDescentTarget())));
         assertEquals(1, guardHooks(method));
         assertEquals(1, count(method, Float.valueOf(0.0f)));
     }
@@ -577,8 +580,8 @@ class ChestplateFlightPatchTest {
             byte[] out = new ChestplateFlightTransformer()
                 .transform(ChestplateFlightPatch.TARGET_CLASS, ChestplateFlightPatch.TARGET_CLASS, real);
             MethodNode method = method(out);
-            assertEquals(1, count(method, Float.valueOf(ChestplateFlight.HOVER_HORIZONTAL_SPEED)));
-            assertEquals(1, count(method, Float.valueOf(-ChestplateFlight.HOVER_HORIZONTAL_SPEED)));
+            assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverAscentTarget())));
+            assertEquals(1, count(method, Float.valueOf(ChestplateFlight.hoverDescentTarget())));
             assertEquals(1, count(method, Float.valueOf(0.0f)));
             assertFalse(ChestplateFlightPatch.hasGuardHook(method));
         } finally {
@@ -612,7 +615,7 @@ class ChestplateFlightPatchTest {
     }
 
     @Test
-    void theHoverSpeedsAreTheDerivedHorizontalSpeed() {
+    void theHoverSpeedsAreTwiceTheAdvancedNano() {
         assertEquals(0.4f * 0.5f * 2.0f, ChestplateFlight.HORIZONTAL_FORWARD);
         assertEquals(0.4f, ChestplateFlight.HORIZONTAL_FORWARD, "the forward argument at load 1");
         assertEquals(0.02f, ChestplateFlight.HORIZONTAL_FRICTION);
@@ -621,9 +624,15 @@ class ChestplateFlightPatchTest {
             ChestplateFlight.HORIZONTAL_FRICTION * ChestplateFlight.HORIZONTAL_FORWARD
                 / (1.0f - ChestplateFlight.AIR_DRAG),
             ChestplateFlight.HOVER_HORIZONTAL_SPEED);
+        // Horizontal only: the sideways speed is not on the ladder and did not move.
         assertEquals(0.08888892f, ChestplateFlight.HOVER_HORIZONTAL_SPEED, "the derived steady-state speed");
-        assertEquals(ChestplateFlight.HOVER_HORIZONTAL_SPEED, ChestplateFlight.hoverAscentTarget());
-        assertEquals(-ChestplateFlight.HOVER_HORIZONTAL_SPEED, ChestplateFlight.hoverDescentTarget());
+        // Vertical: the Quantum rung, twice the Advanced Nano's stock 0.2.
+        assertEquals(0.4f, ChestplateFlight.hoverAscentTarget(), "the Quantum hover climb");
+        assertEquals(-0.4f, ChestplateFlight.hoverDescentTarget(), "the Quantum hover sink");
+        assertEquals(
+            0.4f,
+            2.0f * FlightTiers.ADVANCED_NANO_HOVER_ASCENT,
+            "the Quantum rung must be twice the Advanced Nano rung");
         assertEquals(
             0,
             Float.compare(ChestplateFlight.hoverAscentTarget(), -ChestplateFlight.hoverDescentTarget()),
@@ -631,7 +640,7 @@ class ChestplateFlightPatchTest {
         assertEquals(0.6f, ChestplateFlight.IC2_JETPACK_CEILING, "IC2's non-hover ceiling is unchanged");
         assertEquals(0.1f, ChestplateFlight.IC2_HOVER_JUMP_CLAMP);
         assertEquals(-0.1f, ChestplateFlight.IC2_SNEAK_CLAMP);
-        assertEquals(ChestplateFlight.HOVER_HORIZONTAL_SPEED, ChestplateFlightPatch.HOVER_JUMP_LIFTED);
+        assertEquals(ChestplateFlight.hoverAscentTarget(), ChestplateFlightPatch.HOVER_JUMP_LIFTED);
         assertEquals(ChestplateFlight.hoverDescentTarget(), ChestplateFlightPatch.SNEAK_LIFTED);
         assertEquals(
             (double) ChestplateFlight.IC2_JETPACK_CEILING,
@@ -711,12 +720,19 @@ class ChestplateFlightPatchTest {
 
         MethodNode before = method(real);
         MethodNode after = method(result.bytes());
-        float ascent = ChestplateFlight.HOVER_HORIZONTAL_SPEED;
-        assertEquals(1, count(after, Float.valueOf(ascent)), "real bytes: no ascent clamp");
-        assertEquals(1, count(after, Float.valueOf(-ascent)), "real bytes: no descent clamp");
+        // The real IC2 method also carries its own 0.4f sideways-forward argument,
+        // so the ascent is pinned by "stored exactly once" (the clamp) rather than
+        // by a bare count; the descent has no such twin.
+        assertEquals(1, floatStores(after, 0.4f), "real bytes: the ascent literal is not stored exactly once");
+        assertEquals(
+            2,
+            count(after, Float.valueOf(0.4f)),
+            "real bytes: 0.4f must be only the ascent clamp and IC2's own horizontal 0.4f: " + floatConstants(after));
+        assertEquals(1, count(after, Float.valueOf(-0.4f)), "real bytes: no single descent clamp");
+        assertEquals(1, floatStores(after, -0.4f), "real bytes: the descent literal is not stored exactly once");
         assertEquals(0, count(after, Float.valueOf(0.1f)), "real bytes: the stock climb is still there");
         assertEquals(1, count(after, Float.valueOf(-0.1f)), "real bytes: the stock sink literal must survive");
-        assertEquals(-0.08888892f, injectedDescentValue(after), "real bytes: the injected descent store is missing");
+        assertEquals(-0.4f, injectedDescentValue(after), "real bytes: the injected descent store is missing");
         assertEquals(
             0,
             Float.compare(jumpClampStoredValue(after), -injectedDescentValue(after)),
@@ -882,6 +898,24 @@ class ChestplateFlightPatchTest {
         int n = 0;
         for (Float found : floatConstants(method)) {
             if (found.equals(value)) {
+                n++;
+            }
+        }
+        return n;
+    }
+
+    /** How many {@code ldc float <value> -> FSTORE} pairs the method holds. */
+    private static int floatStores(MethodNode method, float value) {
+        int n = 0;
+        for (AbstractInsnNode insn : method.instructions.toArray()) {
+            if (!(insn instanceof LdcInsnNode) || !(((LdcInsnNode) insn).cst instanceof Float)) {
+                continue;
+            }
+            if (((Float) ((LdcInsnNode) insn).cst).floatValue() != value) {
+                continue;
+            }
+            AbstractInsnNode store = nextReal(insn.getNext());
+            if (store != null && store.getOpcode() == Opcodes.FSTORE) {
                 n++;
             }
         }

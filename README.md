@@ -28,7 +28,7 @@ A server-side GT:NH (1.7.10) mod that fixes other mods at load time without touc
 - **Enriched fertilizer** — the old Chemical Reactor recipe works again, making 1000 L enriched fertilizer.
 - **Fish Trap** — the sorter's move hotkeys work in the trap; plain shift-click already moves bait in and fish out.
 - **GregTech pollution settings** — stays on, but the four effect limits are maxed, so no downsides.
-- **IC2 and GraviSuite jetpacks** — hover mode rises and sinks at the speed it already flies sideways.
+- **IC2 and GraviSuite jetpacks** — the Quantum Chestplate hovers at 0.4 up and down, twice the Advanced Nano's stock 0.2.
 
 ## Install
 

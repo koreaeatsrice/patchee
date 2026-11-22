@@ -74,4 +74,8 @@ GregTech pollution stays on, but nothing comes of it. Patchee rewrites `config/G
 
 ## IC2 and GraviSuite jetpacks
 
-In hover mode both jetpacks rise and sink at the speed they already fly sideways: 0.089 blocks a tick on IC2, 0.1156 on GraviSuite. Up matches down, and both match sideways. On IC2, hover with no key held still sinks gently at 0.025 (or 0.0 when Hodgepodge's hover fix is on). GraviSuite keeps its own fall speed with no key held. Sneak plus jump holds your height, and standing on the ground with hover on is not counted as flying. Both mods send key state to the server, so both sides apply it; the same jar everywhere keeps them in step. Switches: `enableChestplateHoverLift`, `enableChestplateGroundGuard`, `enableChestplateHoldAltitude`.
+In hover mode the better suit is the faster one. The Quantum Chestplate's jump rises at 0.4 blocks a tick and its sneak sinks at 0.4. That is twice the Advanced Nano's stock 0.2 (0.2 up, -0.2 down). Stock IC2 was 0.1 up and -0.1 down. Sideways is untouched at 0.089 a tick, and a hover with no key held still sinks at 0.025 (or 0.0 when Hodgepodge's hover fix is on).
+
+GraviSuite's Advanced Jetpack and Advanced Nano Chestplate keep their own hover vertical speed: 0.2 up and -0.2 down. Patchee no longer changes it. The old trim to 0.1156 is gone, because it made the Advanced Nano faster than the Quantum and put the tier order upside down. Sideways hover is still 0.1156, untouched. Sneak plus jump still holds your height, and standing on the ground with hover on is still not counted as flying. GraviChestPlate is a different item on its own creative-flight path and is untouched.
+
+Both mods send key state to the server, so both sides apply it; the same jar everywhere keeps them in step. IC2's stock -0.1 literal stays in its class so Hodgepodge's hover fix keeps its target. Switches: `enableChestplateHoverLift`, `enableChestplateGroundGuard`, `enableChestplateHoldAltitude`.
