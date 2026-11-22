@@ -788,6 +788,17 @@ class ChestplateFlightPatchTest {
 
     /** The float stored at the jump clamp site: {@code isJumpKeyDown -> IFEQ -> LDC -> FSTORE}. */
     private static float jumpClampStoredValue(MethodNode method) {
+        AbstractInsnNode value = nextReal(jumpClampStore(method).getPrevious());
+        return ((Float) ((LdcInsnNode) value).cst).floatValue();
+    }
+
+    /** The local the jump clamp value is stored into. */
+    private static int jumpClampLocal(MethodNode method) {
+        return jumpClampStore(method).var;
+    }
+
+    /** The {@code FSTORE} of the jump clamp site: {@code isJumpKeyDown -> IFEQ -> LDC -> FSTORE}. */
+    private static VarInsnNode jumpClampStore(MethodNode method) {
         for (AbstractInsnNode insn : method.instructions.toArray()) {
             if (!isJumpQuery(insn)) {
                 continue;
@@ -800,7 +811,7 @@ class ChestplateFlightPatchTest {
             assertTrue(((LdcInsnNode) value).cst instanceof Float, "the jump clamp must be a float");
             AbstractInsnNode store = nextReal(value.getNext());
             assertEquals(Opcodes.FSTORE, store.getOpcode(), "the jump clamp value must be stored");
-            return ((Float) ((LdcInsnNode) value).cst).floatValue();
+            return (VarInsnNode) store;
         }
         throw new AssertionError("no jump clamp site in these bytes");
     }
@@ -852,6 +863,10 @@ class ChestplateFlightPatchTest {
             AbstractInsnNode again = nextReal(value.getNext());
             if (again == null || again.getOpcode() != Opcodes.FSTORE
                 || ((VarInsnNode) again).var != ((VarInsnNode) store).var) {
+                continue;
+            }
+            // the injected store must also land in the same local as the jump clamp store
+            if (((VarInsnNode) again).var != jumpClampLocal(method)) {
                 continue;
             }
             // the injected store must run before the branch's join label
