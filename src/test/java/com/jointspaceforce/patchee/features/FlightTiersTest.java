@@ -1,7 +1,6 @@
 package com.jointspaceforce.patchee.features;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -22,23 +21,20 @@ class FlightTiersTest {
     @Test
     void theAdvancedNanoRungIsGravSuitesStockTwoTenths() {
         assertEquals(0.2f, FlightTiers.ADVANCED_NANO_HOVER_ASCENT);
-        assertEquals(0.2d, FlightTiers.ADVANCED_NANO_HOVER_ASCENT_DOUBLE);
         assertEquals(0.2d, GraviSuiteFlightPatch.HOVER_JUMP_CLAMP, "GraviSuite's own stock climb");
-        assertEquals(0.2d, GraviSuiteFlightPatch.HOVER_JUMP_LIFTED, "the Advanced Nano stays stock");
-        assertFalse(GraviSuiteFlightPatch.VERTICAL_LIFT, "no vertical rewrite ships for the Advanced Nano");
+        assertEquals(0.2d, Math.abs(GraviSuiteFlightPatch.SNEAK_CLAMP), "GraviSuite's own stock sink");
     }
 
     @Test
     void theQuantumRungIsExactlyTwiceTheAdvancedNanoRung() {
-        assertEquals(0.4f, FlightTiers.QUANTUM_HOVER_ASCENT);
+        assertEquals(0.4f, FlightTiers.QUANTUM_HOVER_ASCENT, "the Quantum climbs at 0.4 a tick");
         assertEquals(
-            0.4f,
-            2.0f * FlightTiers.ADVANCED_NANO_HOVER_ASCENT,
-            "the Quantum rung must be a product of the rung below it");
-        assertEquals(
-            FlightTiers.QUANTUM_HOVER_ASCENT,
-            2.0f * FlightTiers.ADVANCED_NANO_HOVER_ASCENT,
-            "the Quantum rung must be written as a multiple, not as a free literal");
+            (float) (2.0d * GraviSuiteFlightPatch.HOVER_JUMP_CLAMP),
+            ChestplateFlight.hoverAscentTarget(),
+            "the Quantum must be twice the Advanced Nano's stock 0.2");
+        assertTrue(
+            FlightTiers.QUANTUM_HOVER_ASCENT > GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
+            "the Quantum must climb faster than the Advanced Nano");
     }
 
     @Test
@@ -54,17 +50,7 @@ class FlightTiersTest {
     @Test
     void theQuantumTargetsAreTheLadderRungAndItsNegation() {
         assertEquals(FlightTiers.QUANTUM_HOVER_ASCENT, ChestplateFlight.hoverAscentTarget());
-        assertEquals(-FlightTiers.QUANTUM_HOVER_ASCENT, ChestplateFlight.hoverDescentTarget());
-        assertEquals(
-            (float) (2.0d * GraviSuiteFlightPatch.HOVER_JUMP_CLAMP),
-            Math.abs(ChestplateFlight.hoverAscentTarget()),
-            0.0f,
-            "the Quantum magnitude must be twice the Advanced Nano's stock 0.2");
-        assertEquals(
-            2.0f * FlightTiers.ADVANCED_NANO_HOVER_ASCENT,
-            Math.abs(ChestplateFlight.hoverAscentTarget()),
-            0.0f,
-            "the Quantum magnitude must be twice the float rung too");
+        assertEquals(-0.4f, ChestplateFlight.hoverDescentTarget(), "the sink is the climb with the sign flipped");
     }
 
     @Test

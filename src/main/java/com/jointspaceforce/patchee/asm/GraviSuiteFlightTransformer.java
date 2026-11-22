@@ -91,6 +91,18 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 source);
             return original;
         }
+        // Logged before the apply switch, so it is reached whatever the result:
+        // the lift switch cannot change this item, and a reader should not have to
+        // infer that from a missing edit.
+        if (lift) {
+            LOG.info(
+                "[GraviSuiteFlight] {} — the hover-lift switch does not change GraviSuite's Advanced Nano: it keeps "
+                    + "its stock {} up and {} down per tick. Switches from {}",
+                className,
+                GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
+                GraviSuiteFlightPatch.SNEAK_CLAMP,
+                source);
+        }
 
         GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(original, lift, guard, hold);
         switch (result.state()) {
@@ -98,16 +110,6 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
             case PARTIAL:
                 // One line per edit this pass made, so a log reader can see which
                 // switches fired without reading the detail string.
-                if (result.liftApplied()) {
-                    LOG.info(
-                        "[GraviSuiteFlight] {} — hover vertical left at GraviSuite's stock clamps: {} up / {} down "
-                            + "per tick (no vertical rewrite was requested; the Advanced Nano is the lowest "
-                            + "rung of the flight ladder). Switches from {}",
-                        className,
-                        GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
-                        GraviSuiteFlightPatch.SNEAK_CLAMP,
-                        source);
-                }
                 if (result.holdApplied()) {
                     LOG.info(
                         "[GraviSuiteFlight] {} — in hover mode, sneak + jump holds height at {} instead of sinking. "
@@ -134,6 +136,11 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
             case ALREADY_PATCHED:
                 if (result.skipped()) {
                     LOG.warn("[GraviSuiteFlight] {} — nothing applied: {}", className, result.detail());
+                } else if (lift && !hold && !guard) {
+                    LOG.info(
+                        "[GraviSuiteFlight] {} — bytes unchanged: only the hover-lift switch is on, and it has no "
+                            + "effect on GraviSuite's Advanced Nano",
+                        className);
                 } else if (result.detail() != null && result.detail()
                     .length() > 0) {
                         LOG.info(
@@ -150,13 +157,12 @@ public class GraviSuiteFlightTransformer implements IClassTransformer {
                 LOG.error(
                     "[GraviSuiteFlight] {} does not have the shape this patch knows — GraviSuite's jetpack left "
                         + "exactly as it ships ({}). "
-                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site (jump {} or {}, "
+                        + "Expected one {} method, one 0.6 ascent ceiling and one hover clamp site (jump {}, "
                         + "next to one sneak {}).",
                     className,
                     result.detail(),
                     GraviSuiteFlightPatch.METHOD_NAME + GraviSuiteFlightPatch.METHOD_DESC,
                     GraviSuiteFlightPatch.HOVER_JUMP_CLAMP,
-                    GraviSuiteFlightPatch.HOVER_JUMP_LIFTED,
                     GraviSuiteFlightPatch.SNEAK_CLAMP);
                 LOG.error("[GraviSuiteFlight] observed shape: {}", GraviSuiteFlightPatch.dump(original));
                 return original;

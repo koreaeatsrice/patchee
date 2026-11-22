@@ -49,8 +49,7 @@ import org.objectweb.asm.tree.VarInsnNode;
  * <ul>
  * <li>the Advanced Nano is the lowest rung of the flight ladder, so there is
  * <b>no</b> vertical rewrite: the stock {@code 0.2d} climb and {@code -0.2d} sink
- * are left exactly where GraviSuite puts them, and {@code VERTICAL_LIFT} is
- * false;</li>
+ * are left exactly where GraviSuite puts them;</li>
  * <li>the full apply writes the shift+space hold (one {@code 0.0d} store right
  * after the stock sneak store) and the ground guard at the top, and nothing
  * else — two sites, no lift;</li>
@@ -155,12 +154,9 @@ class GraviSuiteFlightPatchTest {
         // Horizontal only: the sideways speed is untouched by the ladder.
         assertEquals(0.11555557698011398d, GraviSuiteFlightPatch.HOVER_HORIZONTAL_SPEED, 0.0d, "the sideways speed");
         // Vertical: the Advanced Nano rung is GraviSuite's own stock 0.2, so no
-        // rewrite ships and the "lifted" value equals the stock one.
-        assertFalse(GraviSuiteFlightPatch.VERTICAL_LIFT, "the Advanced Nano must stay on its stock clamps");
+        // rewrite ships and this patch only reads those clamps to find its sites.
         assertEquals(0.2d, GraviSuiteFlightPatch.HOVER_JUMP_CLAMP, 0.0d);
-        assertEquals(0.2d, GraviSuiteFlightPatch.HOVER_JUMP_LIFTED, 0.0d, "the lift must equal the stock clamp");
         assertEquals(-0.2d, GraviSuiteFlightPatch.SNEAK_CLAMP, 0.0d);
-        assertEquals(-0.2d, GraviSuiteFlightPatch.SNEAK_LIFTED, 0.0d, "the descent must equal the stock sink");
     }
 
     @Test
@@ -171,7 +167,8 @@ class GraviSuiteFlightPatchTest {
                 .bytes());
         // DELIBERATE: Gravitation-Suite-Neo 1.3.16 ships on both sides of GTNH 2.9.0
         // with a ModifyExpressionValue on this method at CONSTANT with
-        // doubleValue=-0.2. Nothing here reads or rewrites that literal.
+        // doubleValue=-0.2. Patchee never rewrites that literal; it only reads it
+        // to find the sneak-clamp site that anchors the hold.
         assertEquals(1, count(method, -0.2d), "Neo's matcher target was consumed: " + doubleConstants(method));
         assertEquals(-0.2d, stockSneakStoredValue(method), 0.0d, "the stock store must stay intact");
         assertEquals(
@@ -428,8 +425,8 @@ class GraviSuiteFlightPatchTest {
 
         assertEquals(GraviSuiteFlightPatch.State.PARTIAL, result.state(), result.detail());
         assertEquals(1, result.sites(), "only the guard may land without the sneak clamp site");
-        assertFalse(result.liftApplied(), "the climb must be refused without the sneak clamp site");
-        assertFalse(result.holdApplied(), "the shift+space edit must be refused with the climb");
+        assertFalse(result.liftApplied(), "no vertical lift ships for this item");
+        assertFalse(result.holdApplied(), "the shift+space edit must be refused when there is no sneak clamp site");
         assertTrue(result.guardApplied(), "the ground guard must still land");
         assertFalse(java.util.Arrays.equals(original, result.bytes()), "the class must be rewritten");
 
@@ -482,17 +479,17 @@ class GraviSuiteFlightPatchTest {
     // ---- Gravitation-Suite-Neo ran first -----------------------------------
 
     @Test
-    void neoFirstLeavesNoStockSneakSiteSoTheVerticalEditsAreSkipped() {
+    void neoFirstLeavesNoStockSneakSiteSoTheHoldIsSkipped() {
         // Neo's ModifyExpressionValue already replaced the -0.2d store with
-        // "-0.2d + maxHoverY", so there is no constant store to anchor a descent
-        // store on. The vertical edits must be skipped together, not half-applied.
+        // "-0.2d + maxHoverY", so there is no constant store to anchor the hold on.
+        // The hold must be skipped, never half-placed.
         byte[] neo = graviClassWithSneakExpression();
         GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(neo, true, true, true);
 
         assertEquals(GraviSuiteFlightPatch.State.PARTIAL, result.state(), result.detail());
         assertTrue(result.skipped(), "the skip must be reported");
         assertFalse(result.liftApplied(), "no rise may be claimed");
-        assertFalse(result.holdApplied(), "the hold must be skipped with the rise");
+        assertFalse(result.holdApplied(), "the hold must be skipped when there is no sneak clamp site");
         assertTrue(result.guardApplied(), "the ground guard must still land");
         assertTrue(
             result.detail()
@@ -550,8 +547,8 @@ class GraviSuiteFlightPatchTest {
 
     @Test
     void refusesAJumpClampAnotherPatchAlreadyRaised() {
-        // A 0.6 jump clamp is not a site this patch knows (it accepts 0.2 or its own
-        // 0.1155556), so the class is refused by the site check with a "found 0"
+        // A 0.6 jump clamp is not a site this patch knows (it accepts only the
+        // stock 0.2), so the class is refused by the site check with a "found 0"
         // message, not silently treated as a ceiling.
         byte[] raised = graviClass(GraviSuiteFlightPatch.ASCENT_CEILING_CONSTANT, 0.6d);
         GraviSuiteFlightPatch.Result result = GraviSuiteFlightPatch.apply(raised, true, true, true);

@@ -9,9 +9,8 @@ package com.jointspaceforce.patchee.features;
  * <ol>
  * <li><b>GraviSuite Advanced Nano</b> — climbs at 0.2 blocks a tick and sinks at
  * 0.2 blocks a tick. That is GraviSuite's own stock literal; Patchee no longer
- * changes it. {@link #ADVANCED_NANO_HOVER_ASCENT} and
- * {@link #ADVANCED_NANO_HOVER_ASCENT_DOUBLE} name it so the second rung can be
- * written as a multiple of the first instead of as a second literal.</li>
+ * changes it. {@link #ADVANCED_NANO_HOVER_ASCENT} names it so the second rung
+ * can be written as a multiple of the first instead of as a second literal.</li>
  * <li><b>IC2 Quantum</b> — climbs at 0.4 blocks a tick and sinks at 0.4 blocks a
  * tick, exactly twice the Advanced Nano's 0.2. {@link #QUANTUM_HOVER_ASCENT} is
  * that number, and it is a product of the rung below it, not a free literal.</li>
@@ -37,14 +36,8 @@ public final class FlightTiers {
     /** The Advanced Nano's stock hover climb, as GraviSuite stores it ({@code ldc2_w 0.2d}). */
     public static final float ADVANCED_NANO_HOVER_ASCENT = 0.2f;
 
-    /** The same rung as the double GraviSuite actually loads. */
-    public static final double ADVANCED_NANO_HOVER_ASCENT_DOUBLE = 0.2d;
-
     /** The Quantum's hover climb: exactly twice the Advanced Nano's 0.2, so 0.4. */
     public static final float QUANTUM_HOVER_ASCENT = 2.0f * ADVANCED_NANO_HOVER_ASCENT;
-
-    /** The Quantum's hover climb as a double: exactly twice the Advanced Nano's 0.2d. */
-    public static final double QUANTUM_HOVER_ASCENT_DOUBLE = 2.0d * ADVANCED_NANO_HOVER_ASCENT_DOUBLE;
 
     private FlightTiers() {}
 }
